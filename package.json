@@ -41,6 +41,7 @@
     "esbuild": "0.25.12",
     "typescript": "5.9.3",
     "vite": "6.4.4",
+    "vite-node": "3.2.4",
     "vite-plugin-singlefile": "2.3.3",
     "vitest": "4.1.12"
   }
