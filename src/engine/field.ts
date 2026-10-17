@@ -71,6 +71,8 @@ export const RHYTHM_LABEL: Record<Rhythm, string> = {
   SINUSAL: 'Ritmo sinusal, com pulso',
 };
 export const SHOCKABLE: Rhythm[] = ['FV', 'TV'];
+/** o que o monitor mostra de frequência em cada ritmo de parada (contagem de complexos, não pulso) */
+const MONITOR_FC: Record<Exclude<Rhythm, 'SINUSAL'>, string> = { FV: '---', TV: '180', ASSISTOLIA: '0', AESP: '44' };
 
 /** dispositivos de oxigênio e via aérea */
 export type O2Kind = 'cateter' | 'venturi' | 'reservatorio' | 'iot';
@@ -216,6 +218,8 @@ export function vitalShown(d: FieldCaseDef, rt: FieldCaseRT, k: FieldVital): str
   const dx = d as FieldCaseX;
   if (k === 'sat' && x.sat !== undefined && !dx.arrest) return `${x.sat}%`;
   if (k === 'ritmo' && dx.arrest) return x.rhythm === 'SINUSAL' ? (d.vitalsAfter?.ritmo ?? RHYTHM_LABEL.SINUSAL) : '';
+  // na parada o monitor conta os complexos que vê (não é pulso): FV não tem contagem
+  if (k === 'fc' && dx.arrest && x.rhythm && x.rhythm !== 'SINUSAL') return MONITOR_FC[x.rhythm];
   return (rt.stable && d.vitalsAfter?.[k]) || d.vitals[k] || '--';
 }
 

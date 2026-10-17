@@ -8,6 +8,7 @@ import { presentPix } from '../../art/pix';
 import { audio } from '../../audio';
 import { Portrait } from '../../ui/Portrait';
 import { DEST_LABEL, OUTCOME_LABEL, FIELD_BASE, FIELD_WEAR, vitalShown, type FieldSim, type FieldActionView } from '../../../engine/field';
+import { drawEcg, type EcgRhythm } from '../../art/fieldMonitor';
 import type { AmbientId, FieldDest, FieldGroup, FieldOutcome, FieldVital } from '../../../engine/types';
 
 const GROUP_LABEL: Record<FieldGroup, string> = {
@@ -29,6 +30,8 @@ const VITALS: { k: FieldVital; label: string }[] = [
   { k: 'glasgow', label: 'Glasgow' },
 ];
 const QRR_LABEL: Record<1 | 2 | 3, string> = { 1: 'QRR 1 · prioridade baixa', 2: 'QRR 2 · prioridade moderada', 3: 'QRR 3 · prioridade absoluta' };
+/** teclas dos dispositivos de oxigênio e via aérea (as ações usam 1 a 9) */
+const O2_KEYS = ['q', 'w', 'e', 'r'];
 const DESTS: FieldDest[] = ['REG', 'UPA', 'MAT', 'LOCAL'];
 const DEST_SHORT: Record<FieldDest, string> = { REG: 'Regional', UPA: 'UPA Norte', MAT: 'Maternidade', LOCAL: 'Liberar no local' };
 
@@ -131,7 +134,7 @@ function FieldTop({ sim, money }: { sim: FieldSim; money: number }) {
   return (
     <header className="fd-top">
       <span className="fd-unit">INTERVENÇÃO · USA 01</span>
-      <span className="fd-crew">Seu Bené (condutor) · Enf. Márcio · você</span>
+      <span className="fd-crew">{f.story?.crew ?? 'Seu Bené (condutor) · Enf. Márcio · você'}</span>
       <span className="fd-count">
         Ocorrência {Math.min(f.idx + 1, f.cases.length)}/{f.cases.length}
       </span>
@@ -191,9 +194,15 @@ function FieldRadio({ sim, first, onGo }: { sim: FieldSim; first: boolean; onGo:
           <span className="fd-led" /> RÁDIO · REGULAÇÃO → USA 01
           <span className={'fd-qrr q' + d.qrr}>{QRR_LABEL[d.qrr]}</span>
         </div>
+        {f.idx === 0 && f.story && f.story.chapters.length > 0 && (
+          <div className="fd-chapter">
+            NOITE {f.story.night} NA 01 · {f.story.chapters.map((c) => `Capítulo ${c.chapter}: ${c.title}`).join(' · ')}
+          </div>
+        )}
         {extra.map((x, i) => (
-          <p key={i} className="fd-radio-extra">
-            <b>{x.who}:</b> {x.text}
+          <p key={i} className={'fd-radio-extra' + (x.who === 'NARRADOR' ? ' narr' : '')}>
+            {x.who !== 'NARRADOR' && <b>{sim.fill(x.who)}: </b>}
+            {sim.fill(x.text)}
           </p>
         ))}
         <p className="fd-radio-text screen">
@@ -208,8 +217,9 @@ function FieldRadio({ sim, first, onGo }: { sim: FieldSim; first: boolean; onGo:
           <div className="fd-howto">
             <b>Como funciona a Intervenção.</b> Aqui você está na rua, na USA 01. O paciente piora em tempo real enquanto você decide. Cada ação leva alguns
             segundos da equipe. Primeiro a segurança da cena; depois o que mata primeiro: sangramento, via aérea, respiração, circulação. Medir (monitor,
-            glicemia) mostra o que a câmera da Regulação nunca mostra. Quando o essencial estiver feito, escolha para onde levar. Atalhos: teclas 1 a 9 para as
-            ações.
+            glicemia) mostra o que a câmera da Regulação nunca mostra. Oxigênio e intubação ficam numa linha à parte: só use se indicar (cada máscara sobe
+            a saturação de um jeito). Na parada, o monitor mostra o traçado e quem lê o ritmo é você. Quando o essencial estiver feito, escolha para onde
+            levar. Atalhos: 1 a 9 para as ações, Q W E R para o oxigênio.
           </div>
         )}
         <button className="px-btn primary fd-go" onClick={go}>
@@ -282,7 +292,13 @@ function FieldScene({ sim, onChange }: { sim: FieldSim; onChange: () => void }) 
       if (n >= 1 && n <= 9) {
         // o número é o que está na tela (views desta renderização), mas o estado vem do motor agora:
         // a tela só redesenha a cada ~70 ms e a ação anterior pode ter acabado nesse meio-tempo
-        const a = views.filter((v) => v.state !== 'feito')[n - 1];
+        const a = views.filter((v) => v.state !== 'feito' && !v.o2)[n - 1];
+        const live = a && sim.visibleActions().find((v) => v.id === a.id);
+        if (live) act(live);
+      }
+      const k = O2_KEYS.indexOf(e.key.toLowerCase());
+      if (k >= 0) {
+        const a = views.filter((v) => v.o2)[k];
         const live = a && sim.visibleActions().find((v) => v.id === a.id);
         if (live) act(live);
       }
@@ -294,8 +310,9 @@ function FieldScene({ sim, onChange }: { sim: FieldSim; onChange: () => void }) 
   const stab = Math.round(rt.stab);
   const stabCls = stab > 60 ? 'ok' : stab > 30 ? 'mid' : 'bad';
   const canMove = !ended && rt.secured && !rt.busy && !d.prank;
-  const pending = views.filter((v) => v.state !== 'feito');
-  const done = views.filter((v) => v.state === 'feito');
+  const pending = views.filter((v) => v.state !== 'feito' && !v.o2);
+  const done = views.filter((v) => v.state === 'feito' && !v.o2);
+  const o2 = views.filter((v) => v.o2);
 
   return (
     <div className="fd-scene">
@@ -355,6 +372,27 @@ function FieldScene({ sim, onChange }: { sim: FieldSim; onChange: () => void }) 
               {a.state === 'ocupado' && <i className="fd-prog" style={{ width: Math.round((a.progress ?? 0) * 100) + '%' }} />}
             </button>
           ))}
+          {o2.length > 0 && (
+            <div className="fd-o2">
+              <span className="fd-o2-head">
+                O₂ e via aérea <small>só se você indicar</small>
+              </span>
+              {o2.map((a, i) => (
+                <button
+                  key={a.id}
+                  className={'fd-act g-' + a.group + ' st-' + a.state + (a.state === 'feito' ? ' on' : '')}
+                  disabled={ended || a.state === 'bloqueado' || a.state === 'ocupado' || a.state === 'feito'}
+                  onClick={() => act(a)}
+                  title={a.reason ?? (a.state === 'feito' ? 'Em uso' : a.label)}
+                >
+                  <span className="fd-key">{O2_KEYS[i].toUpperCase()}</span>
+                  <span className="fd-lbl">{a.label}</span>
+                  <span className="fd-cost">{a.state === 'feito' ? 'em uso' : a.state === 'falta' ? a.reason : `${a.cost}s`}</span>
+                  {a.state === 'ocupado' && <i className="fd-prog" style={{ width: Math.round((a.progress ?? 0) * 100) + '%' }} />}
+                </button>
+              ))}
+            </div>
+          )}
           {done.length > 0 && (
             <div className="fd-done" title={done.map((x) => x.label).join(' · ')}>
               Feito: {done.map((x) => x.label).join(' · ')}
@@ -383,46 +421,24 @@ function Monitor({ sim }: { sim: FieldSim }) {
   const ritmo = vitalShown(d, rt, 'ritmo');
   const fc = Number(vitalShown(d, rt, 'fc'));
   const on = rt.shown.includes('fc') || rt.shown.includes('ritmo');
-  const vf = /fibrila/i.test(ritmo) && !rt.stable;
+  // na parada, quem lê o traçado é o jogador: o monitor não escreve o ritmo
+  const arrest = !!d.arrest;
+  const rhythm: EcgRhythm = !on ? 'off' : arrest ? (rt.rhythm ?? 'SINUSAL') : fc > 0 ? 'SINUSAL' : 'ASSISTOLIA';
+  const semPulso = arrest && on && rt.rhythm !== 'SINUSAL' && !rt.outcome;
   // largura do traçado (×2 na tela): cabe na coluna ao lado da cena de vídeo em ×3
   const EW = 300;
+  // a saturação sempre tem lugar no monitor, junto com o resto
+  const keys = VITALS.filter((v) => v.k === 'sat' || d.vitals[v.k] !== undefined);
   return (
     <div className="fd-mon screen">
       <div className="fd-mon-head">
-        MONITOR {ritmo !== '--' && <span className="fd-ritmo">{ritmo}</span>}
+        MONITOR {ritmo && ritmo !== '--' && <span className="fd-ritmo">{ritmo}</span>}
+        {semPulso && <span className="fd-ritmo fd-ler">sem pulso · leia o traçado</span>}
         {!on && <span className="fd-off">sem cabos</span>}
       </div>
-      <ArtCanvas
-        w={EW}
-        h={30}
-        scale={2}
-        animate
-        fps={24}
-        className="fd-ecg"
-        draw={(ctx, t) => {
-          ctx.fillStyle = '#04100a';
-          ctx.fillRect(0, 0, EW, 30);
-          ctx.fillStyle = on ? '#7fe28a' : '#2a4a32';
-          const speed = 0.06;
-          const period = fc > 0 ? 60000 / fc : 1e9;
-          for (let x = 0; x < EW; x++) {
-            const tt = t - (EW - 1 - x) / speed;
-            let y = 18;
-            if (on && vf) y = 15 + Math.round(Math.sin(tt / 70) * 5 + Math.sin(tt / 23) * 3);
-            else if (on && fc > 0) {
-              const ph = ((tt % period) + period) % period;
-              if (ph < 40) y = 18 - Math.round(Math.sin((ph / 40) * Math.PI) * 2);
-              else if (ph > 90 && ph < 100) y = 21;
-              else if (ph >= 100 && ph < 118) y = 3 + Math.round(Math.abs(ph - 109) * 1.3);
-              else if (ph >= 118 && ph < 128) y = 23;
-              else if (ph > 220 && ph < 300) y = 18 - Math.round(Math.sin(((ph - 220) / 80) * Math.PI) * 3);
-            }
-            ctx.fillRect(x, y, 1, 1);
-          }
-        }}
-      />
+      <ArtCanvas w={EW} h={30} scale={2} animate fps={24} className="fd-ecg" draw={(ctx, t) => drawEcg(ctx, EW, 30, t, rhythm, fc)} />
       <div className="fd-vitals">
-        {VITALS.filter((v) => d.vitals[v.k] !== undefined).map((v) => (
+        {keys.map((v) => (
           <span key={v.k} className={rt.shown.includes(v.k) ? 'on' : ''}>
             <small>{v.label}</small>
             <b>{vitalShown(d, rt, v.k)}</b>
@@ -489,8 +505,10 @@ function FieldResult({ sim, onNext }: { sim: FieldSim; onNext: () => void }) {
           {mmss(rt.t)} na cena · {rt.harm ? `${rt.harm} conduta(s) que pioraram · ` : ''}
           <b>+R$ {rt.pay ?? 0}</b>
         </p>
+        {rt.dest && !rt.destOk && d.destNote?.[rt.dest] && <p className="fd-debrief fd-destnote">{d.destNote[rt.dest]}</p>}
         <p className="fd-debrief">{d.debrief}</p>
         <p className="fd-source">Referência: {d.source}</p>
+        {d.story && <p className="fd-chapter">Capítulo {d.story.chapter} da história das noites: {d.story.title}</p>}
         <button className="px-btn primary" onClick={next} autoFocus>
           {last ? 'Fim da noite ▸' : 'QRV: próxima ocorrência ▸'}
         </button>
@@ -501,6 +519,7 @@ function FieldResult({ sim, onNext }: { sim: FieldSim; onNext: () => void }) {
 
 function FieldEnd({ sim, onHome }: { sim: FieldSim; onHome: () => void }) {
   const sum = sim.summary();
+  const epi = sim.epilogue();
   return (
     <div className="fd-modal">
       <div className="fd-card bezel">
@@ -516,6 +535,16 @@ function FieldEnd({ sim, onHome }: { sim: FieldSim; onHome: () => void }) {
         <p className="fd-line">
           Plantão R$ {sum.base} + extras R$ {sum.extra} = <b>R$ {sum.pay}</b>
         </p>
+        {epi.length > 0 && (
+          <div className="fd-epilogo">
+            {epi.map((l, i) => (
+              <p key={i}>
+                {l.who !== 'NARRADOR' && <b>{sim.fill(l.who)}: </b>}
+                {sim.fill(l.text)}
+              </p>
+            ))}
+          </div>
+        )}
         <p className="fd-debrief">
           O Bené deixa você na base. Você chega em casa de madrugada e dorme três horas. Às 7h a Regulação começa: hoje as pálpebras vão pesar (desgaste +
           {FIELD_WEAR}
