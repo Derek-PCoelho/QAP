@@ -15,9 +15,15 @@ export * from './mapRender';
 export * from './figures';
 /** Ozzy, o lulu da família (corpo inteiro, poses animadas) */
 export * from './dog';
+/** adesivos do Ozzy para o quadro de cortiça */
+export * from './stickers';
 export * from './scenes';
 export * from './newsPhotos';
 export * from './endingArt';
+/** nome do protagonista desenhado na arte (crachá) — padrões Thiago/Camille Moura */
+export * from './names';
+/** conserto de legibilidade das fontes web (5/S, Z/2/8, B/8 na Pixelify; A gótico na Jacquard) */
+export * from './fontFix';
 /** objetos/móveis desenháveis num Pix (uso avançado) */
 export * as props from './props';
 

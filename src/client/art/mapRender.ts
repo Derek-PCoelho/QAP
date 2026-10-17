@@ -485,6 +485,11 @@ interface LRect {
 }
 const hit = (a: LRect, b: LRect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
+/** camada de nomes (bairros e marcos) de cada mapa-base */
+const LABELS = new WeakMap<Pix, Pix>();
+/** retângulos ocupados pelos nomes do mapa-base (os rótulos de viatura fogem deles) */
+const LABEL_RECTS = new WeakMap<Pix, LRect[]>();
+
 function buildBase(T: number, labels: boolean, flood: boolean): Pix {
   const { w, h } = mapPixelSize(T);
   const p = new Pix(w, h);
@@ -562,10 +567,17 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
     if (T >= 8) p.blit(ic, cx - 4, cy - 4);
     else p.rect(cx - 1, cy - 1, 3, 3, LM_PAL[LM_ICON[kind]?.[3]?.[3] ?? 'w'] ?? '#e6efd9');
   }
-  // nomes (com desvio de colisões)
+  // nomes (com desvio de colisões) numa camada à parte, desenhada por cima das
+  // rotas (a linha da rota não apaga mais as letras de "MATERNIDADE", "VILA NOVA")
+  const lab = new Pix(w, h);
+  LABELS.set(p, lab);
   if (labels && T >= 6) {
     const placed: LRect[] = [];
+    LABEL_RECTS.set(p, placed);
     const icons: LRect[] = placeLandmarks().map((pl) => ({ x: pl.at[0] * T + Math.floor(T / 2) - 5, y: pl.at[1] * T + Math.floor(T / 2) - 5, w: 10, h: 10 }));
+    // onde as viaturas param (na rua do marco: bases, hospitais, UPA, maternidade) — o nome não vai ali
+    for (const pl of placeLandmarks())
+      if (['hospital', 'upa', 'maternidade', 'base'].includes(pl.lm.kind)) icons.push({ x: pl.road[0] * T + Math.floor(T / 2) - 18, y: pl.road[1] * T + Math.floor(T / 2) - 7, w: 36, h: 14 });
     const free = (r: LRect, avoidIcons = true) =>
       r.x >= 1 && r.y >= 1 && r.x + r.w <= w - 1 && r.y + r.h <= h - 1 && !placed.some((q) => hit(q, r)) && (!avoidIcons || !icons.some((q) => hit(q, r)));
     // 1) marcos principais
@@ -582,6 +594,10 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
         [cx - Math.floor(tw / 2), cy + 8],
         [cx + 7, cy - 2],
         [cx - 7 - tw, cy - 2],
+        [cx - Math.floor(tw / 2), cy + 16],
+        [cx + 7, cy + 8],
+        [cx - 7 - tw, cy + 8],
+        [cx - Math.floor(tw / 2), cy - 20],
       ];
       let pick: [number, number] | null = null;
       for (const [x, y] of cands) {
@@ -596,7 +612,7 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
         pick = [Math.max(2, Math.min(w - tw - 2, x)), Math.max(5, y)];
       }
       placed.push({ x: pick[0] - 2, y: pick[1] - 4, w: tw + 4, h: 10 });
-      drawText(p, txt, pick[0], pick[1], warm ? HOME.lampLight : '#c4d4c0', { outline: warm ? HOME.bg1 : MAP_COLORS.labelOutline });
+      drawText(lab, txt, pick[0], pick[1], warm ? HOME.lampLight : '#c4d4c0', { outline: warm ? HOME.bg1 : MAP_COLORS.labelOutline });
     }
     // 2) bairros
     for (const b of BAIRROS) {
@@ -616,7 +632,7 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
         }
       if (!pick) pick = [Math.round(cxp - tw / 2), Math.round(labelBands(b)[0] * T - 2)];
       placed.push({ x: pick[0] - 2, y: pick[1] - 4, w: tw + 4, h: 10 });
-      drawText(p, name, pick[0], pick[1], MAP_COLORS.label, { outline: MAP_COLORS.labelOutline });
+      drawText(lab, name, pick[0], pick[1], MAP_COLORS.label, { outline: MAP_COLORS.labelOutline });
     }
   }
   return p;
@@ -859,7 +875,7 @@ function ambulancePix(type: 'USA' | 'USB', status: string, t: number, dir: 1 | -
   return p;
 }
 
-function drawUnits(p: Pix, units: MapUnit[], T: number, t: number): void {
+function drawUnits(p: Pix, units: MapUnit[], T: number, t: number, avoid: LRect[] = []): void {
   // agrupa viaturas sobrepostas e espalha em leque
   const groups = new Map<string, MapUnit[]>();
   for (const u of units) {
@@ -879,6 +895,7 @@ function drawUnits(p: Pix, units: MapUnit[], T: number, t: number): void {
       placed.push({ u, px, py: cy, up: arr.length > 1 && i % 2 === 1 });
     });
   }
+  const labels: { u: MapUnit; px: number; ax: number; ay: number; up: boolean }[] = [];
   // não selecionadas primeiro
   placed.sort((a, b) => Number(!!a.u.selected) - Number(!!b.u.selected) || a.py - b.py);
   for (const { u, px, py, up } of placed) {
@@ -918,14 +935,37 @@ function drawUnits(p: Pix, units: MapUnit[], T: number, t: number): void {
         p.px(x, y + 2 * sy, col);
       }
     }
-    // rótulo
+    labels.push({ u, px, ax, ay, up });
+  }
+  // rótulos por último, sem se sobrepor (nem uns aos outros, nem às viaturas)
+  const bodies: LRect[] = placed.map(({ px, py }) => ({ x: px - 7, y: py - 6, w: 16, h: 11 }));
+  const taken: LRect[] = [];
+  // a selecionada escolhe primeiro
+  labels.sort((a, b) => Number(!!b.u.selected) - Number(!!a.u.selected));
+  for (const { u, px, ax, ay, up } of labels) {
     const lab = u.label;
     const wpx = textWidth(lab);
-    let lx = px - Math.floor(wpx / 2);
-    lx = Math.max(1, Math.min(p.w - wpx - 1, lx));
-    let ly = up ? ay - 9 : ay + 11;
-    if (ly + 6 > p.h) ly = ay - 9;
-    if (ly < 1) ly = ay + 11;
+    const cl = (x: number) => Math.max(1, Math.min(p.w - wpx - 1, x));
+    const below = ay + 11;
+    const above = ay - 9;
+    const cands: [number, number][] = [
+      [cl(px - Math.floor(wpx / 2)), up ? above : below],
+      [cl(px - Math.floor(wpx / 2)), up ? below : above],
+      [cl(px - Math.floor(wpx / 2)), below + 7],
+      [cl(px - Math.floor(wpx / 2)), above - 7],
+      [cl(ax + 13), ay + 2],
+      [cl(ax - wpx - 3), ay + 2],
+      [cl(px - Math.floor(wpx / 2)), below + 14],
+    ];
+    // folga de 2 px entre rótulos ("USB 04USA 03" colados nunca mais)
+    const fits = ([x, y]: [number, number], strict: boolean) => {
+      if (y < 1 || y + 6 > p.h) return false;
+      const r = { x: x - 3, y: y - 2, w: wpx + 6, h: 9 };
+      return !taken.some((q) => hit(q, r)) && !bodies.some((q) => hit(q, r)) && (!strict || !avoid.some((q) => hit(q, r)));
+    };
+    const pick = cands.find((c) => fits(c, true)) ?? cands.find((c) => fits(c, false)) ?? cands.find(([, y]) => y >= 1 && y + 6 <= p.h) ?? cands[0];
+    const [lx, ly] = pick;
+    taken.push({ x: lx - 1, y: ly - 1, w: wpx + 2, h: 7 });
     p.recta(lx - 1, ly - 1, wpx + 2, 7, '#0b100e', u.selected ? 0.9 : 0.7);
     drawText(p, lab, lx, ly, u.selected ? CENTRAL.amber : u.type === 'USA' ? '#f2b2aa' : '#f5c49a');
   }
@@ -983,8 +1023,8 @@ function drawLiveLandmarks(p: Pix, T: number, t: number): void {
 
 const work = new Map<string, Pix>();
 
-/** Renderiza o mapa num Pix (puro, sem DOM). */
-export function renderCityMap(o: CityMapOpts): Pix {
+/** desenha no Pix de trabalho (reutilizado a cada quadro, um por tamanho) */
+function renderMapInto(o: CityMapOpts): Pix {
   const T = Math.max(2, Math.floor(o.tile));
   const b = base(T, o.showLabels !== false, !!o.flood);
   const key = `${b.w}x${b.h}`;
@@ -1002,10 +1042,17 @@ export function renderCityMap(o: CityMapOpts): Pix {
     drawHighlight(p, o.highlightStreet, T, o.t, shown);
   }
   for (const r of o.routes ?? []) drawRoute(p, r, T, o.t);
+  const lab = LABELS.get(b);
+  if (lab) p.blit(lab, 0, 0);
   for (const m of o.markers ?? []) drawMarker(p, m, T, o.t);
-  if (o.units?.length) drawUnits(p, o.units, T, o.t);
+  if (o.units?.length) drawUnits(p, o.units, T, o.t, LABEL_RECTS.get(b) ?? []);
   if (o.hoverTile) drawHover(p, o.hoverTile, T);
   return p;
+}
+
+/** Renderiza o mapa num Pix NOVO (puro, sem DOM; pode ser guardado). */
+export function renderCityMap(o: CityMapOpts): Pix {
+  return renderMapInto(o).copy();
 }
 
 /**
@@ -1013,8 +1060,7 @@ export function renderCityMap(o: CityMapOpts): Pix {
  * (MAP_W·tile × MAP_H·tile). Amplie com CSS image-rendering: pixelated.
  */
 export function drawCityMap(ctx: CanvasRenderingContext2D, o: CityMapOpts): void {
-  const p = renderCityMap(o);
-  presentPix(ctx, p, 0, 0, 1, 'map');
+  presentPix(ctx, renderMapInto(o), 0, 0, 1, 'map');
 }
 
 /** cor de status de viatura (para chips da UI) */
