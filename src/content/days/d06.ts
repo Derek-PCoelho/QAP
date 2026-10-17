@@ -111,9 +111,88 @@ export const DAY = day({
       },
     },
   }),
+  // 1.1 — ida (o pão do Toninho), almoço (a Joana e a menina da chave) e volta (o boné do Jairo no ponto)
+  ida: () => ({
+    id: 'd06_ida',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:20. Sábado. A padaria do Seu Toninho cheira a pão de queijo. Ele tem um lápis atrás da orelha e o caderno do fiado aberto no balcão.' },
+          { who: 'TONINHO', t: 'Pão pra Dona Zélia, {dr}? O de sal pouco. Ela reclama que o meu tem sal. Não tem. É ela que tem pressão.' },
+        ],
+        choices: [
+          { label: 'Levar quatro pãezinhos (R$ 4).', next: 'pao', needMoney: 4, effect: fx.all(fx.money(-4, 'pão do Seu Toninho'), fx.set('pao_toninho_d6'), fx.add('lacos', 1, 'o pão do Toninho')) },
+          { label: '"Hoje não, Seu Toninho."', next: 'nao' },
+        ],
+      },
+      pao: { lines: [{ who: 'NARRADOR', t: 'Você deixa o saquinho de pão pendurado no portão, para a Dona Zélia achar quando for regar a planta. O Ozzy fica de guarda.' }] },
+      nao: { lines: [{ who: 'TONINHO', t: 'Amanhã, então. À noite aqui vira pizzaria, viu? A calabresa é a mesma desde oitenta e cinco.' }] },
+    },
+  }),
+  almoco: (c) => {
+    const salva = c.flag('hipo_mae_salva');
+    const morta = c.flag('hipo_mae_morreu');
+    return {
+      id: 'd06_almoco',
+      bg: 'central',
+      cast: ['SIMONE', 'JOANA'],
+      nodes: {
+        start: {
+          lines: [
+            { who: 'NARRADOR', t: '13:00. Sábado. A Simone tira da gaveta de baixo um bolo de fubá enrolado em pano de prato: "patrimônio da OS". A Joana, da USB 01, entra com o prendedor de borboleta torto no cabelo.' },
+            salva
+              ? { who: 'JOANA', t: 'A menina da mãe diabética, {dr}. A Ana Clara. Ela abriu a porta com a chave numa mão e o telefone na outra. Sete anos.' }
+              : morta
+                ? { who: 'JOANA', t: 'A menina da mãe diabética, {dr}. A gente chegou e ela tava sentada na porta. Com o telefone ainda na mão.' }
+                : { who: 'JOANA', t: 'Bolo de fubá em dia de sábado, Simone. Você sabe que eu sou fraca.' },
+            { who: 'SIMONE', t: 'Estuda onde, essa menina?', when: () => salva || morta },
+            { who: 'JOANA', t: 'Monteiro Lobato. Segundo ano. Ela disse que a professora mandou decorar o telefone de emergência. Decorou.', when: () => salva || morta },
+            { who: 'NARRADOR', t: 'A Monteiro Lobato é a escola do Liam.', when: () => salva || morta },
+          ],
+          choices: [
+            { label: '"É a escola do meu filho."', next: 'escola', when: () => salva || morta, effect: fx.set('ana_clara_escola') },
+            { label: '"Ela vai ficar com quem?"', next: 'avo', when: () => morta, effect: fx.add('humanidade', 1, 'perguntou da menina') },
+            { label: '(Aceitar um pedaço de bolo.)', next: 'bolo' },
+          ],
+        },
+        escola: {
+          lines: [
+            { who: 'JOANA', t: 'Então seu filho conhece uma heroína. Fala pra ele, {dr}. Criança gosta de saber que herói estuda na mesma escola.' },
+            { who: 'SIMONE', t: '(cortando outro pedaço) E fala pra professora dele mandar decorar também.' },
+          ],
+        },
+        avo: {
+          lines: [
+            { who: 'JOANA', t: 'Com a avó. Dona Rita. Ela chegou correndo, segurou a menina no colo e ficou repetindo "você fez certo, você fez certo".' },
+            { who: 'NARRADOR', t: 'A Simone embrulha o bolo de volta no pano de prato. Ninguém come mais.' },
+          ],
+        },
+        bolo: {
+          lines: [
+            { who: 'SIMONE', t: 'Fubá com erva-doce. A receita é da minha mãe. Não conta pro Peixoto que a gaveta é patrimônio da OS.' },
+          ],
+        },
+      },
+    };
+  },
+  volta: () => ({
+    id: 'd06_volta',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:20. No ponto da XV, o mesmo moleque da semana, agora com um boné vermelho desbotado: "JAIRO REFRIGERAÇÃO".' },
+          { who: 'NARRADOR', t: 'Ele fala alto ao celular: "Vô, eu já tô indo, para de ligar. ...Tá. Tá. Eu levo o pão."' },
+          { who: 'NARRADOR', t: 'Você já ouviu essa voz em algum lugar. Não lembra onde.', when: (c) => c.flag('viu_biel_ponto') },
+        ],
+      },
+    },
+  }),
   timeline: [
     { at: '07:01', kind: 'radio', who: 'USA 01 · BENÉ', text: 'Central, USA 01 em QRV. Sábado de sol, {bene}. Dia de churrasco, de cachaça e de vô caindo da laje.' },
-    { at: '09:40', kind: 'simone', who: 'SIMONE', text: 'Sábado eu trago bolo de fubá, {dr}. Tá na gaveta de baixo. Não conta pro Peixoto que a gaveta é patrimônio da OS.' },
     {
       at: '11:05',
       kind: 'simone',
@@ -151,7 +230,8 @@ export const DAY = day({
       kind: 'script',
       id: 'simone_menina',
       run: (c) => {
-        if (c.flag('hipo_mae_salva')) {
+        // a Joana já contou da menina no almoço: o recado das 16:30 fica só para quem não almoçou com ela
+        if (c.flag('hipo_mae_salva') && !c.sflag('almocou')) {
           c.modal('SIMONE', 'A menina da injeção na barriga, {dr}... a Joana contou que ela abriu a porta com a chave numa mão e o telefone na outra. Sete anos.', 'simone');
         } else if (c.flag('hipo_mae_morreu') && c.flag('d6_hipo_dispensada')) {
           c.modal('SIMONE', 'Eu também achei que era trote, {dr}. A menina. Por dois segundos, eu também achei.', 'simone');
@@ -254,6 +334,8 @@ export const DAY = day({
         paciente: ['ADEMIR: Ne... Nei... tô... bem...', '[as palavras escorregam, uma em cima da outra]'],
         referencia: 'Esquina com a Tiradentes, casa do muro de pedra.',
         seguranca: 'Seguro.',
+        pulso: 'Tá batendo forte. Ele tem pressão alta, né? Batendo forte e certinho, eu acho.',
+        pele: 'A cor tá normal, {dr}. Corado até. Só a boca torta, puxando pro lado.',
       },
       extra: [
         {
@@ -424,6 +506,8 @@ export const DAY = day({
         paciente: ['[a criança encosta o telefone na mãe]', 'JAQUELINE: ...hmmm... [um gemido fraco]', 'Ela não fala, {m:moço|moça}.'],
         referencia: 'A casa é do portão azul. Tem um pé de acerola. Rua São João, mil oitocentos e trinta. A mamãe me ensinou.',
         seguranca: 'Só eu e a mamãe. {{A porta tá trancada|trancada}}.',
+        pulso: ['Onde é o pulso? ...No pescoço? [pausa] Tá pulando. {{Tá pulando rápido|pulso_rapido}}, igual quando eu corro.'],
+        pele: 'Ela tá branca. E molhada. A testa tá gelada e molhada.',
       },
       extra: [
         {
@@ -443,7 +527,7 @@ export const DAY = day({
           kind: 'fala',
           label: 'Perguntar o nome dela',
           say: 'Como é o seu nome? Você está sendo muito corajosa.',
-          a: 'Ana Clara. [funga] Eu não tô chorando.',
+          a: ['Ana Clara. [funga] Eu não tô chorando.', 'Eu sou do segundo ano. Da Monteiro Lobato. {{A professora mandou decorar o telefone da emergência|decorou}}. Eu decorei.'],
         },
       ],
       links: [
@@ -509,6 +593,8 @@ export const DAY = day({
         paciente: 'Sou eu mesma!',
         sangramento: 'Não!',
         seguranca: 'Seguro. O gato tá dormindo em cima da TV.',
+        pulso: 'Tá aqui, ó, batendo no pulso. Devagarinho, que nem relógio de igreja.',
+        pele: 'Corada. Passei pó de arroz, que sábado é dia.',
       },
       extra: [
         {
@@ -575,7 +661,7 @@ export const DAY = day({
         fast: [
           'Pai, sorri... {{a boca puxa pra direita|fast_boca}}.',
           'Levanta os braços... {{o esquerdo não sobe|fast_braco}}.',
-          'Fala "o céu é azul"... SEBASTIÃO: O... sé... u... Embolado.',
+          'Fala "o céu é azul"... LÁZARO: O... sé... u... Embolado.',
         ],
         consciencia: 'Acordado. Olha pra mim assustado.',
         respira: 'Normal.',
@@ -583,7 +669,7 @@ export const DAY = day({
         historico: ['Pressão e {{diabetes, toma insulina à noite|diabetes}}.', 'Mediu agora a glicemia: {{deu 132|glicemia_132}}.'],
         sangramento: 'Não.',
         dorpeito: 'Não reclamou do peito.',
-        paciente: ['SEBASTIÃO: Fi... lha... o... braço...'],
+        paciente: ['LÁZARO: Fi... lha... o... braço...'],
         referencia: 'Condomínio Recanto, casa sete. O porteiro já sabe.',
         seguranca: 'Seguro.',
       },
@@ -600,7 +686,7 @@ export const DAY = day({
         { a: 'glicemia_132', b: 'manual:hipoglicemia', kind: 'confirma', insight: 'Diabético com insulina, mas glicemia 132: não é hipoglicemia. É AVC.' },
         { a: 'fast_braco', b: 'manual:fast', insight: 'Boca torta, braço que não sobe, fala embolada: FAST positivo (Manual p.6).' },
       ],
-      patient: { name: 'Sebastião Ramos', age: 74, sex: 'M' },
+      patient: { name: 'Lázaro Pimenta', age: 74, sex: 'M' },
       // RC1: FAST positivo = USI/USB; na janela o jogo prefere USA e aceita USB (⚖), como no AVC das 07:40.
       truth: { dx: 'AVC isquêmico na janela', sev: 'vermelho', ok: ['USA', 'USB'], best: 'USA', risk: { good: 60, bad: 140, needs: 'USB' } },
       guide: { id: 'avc' },
@@ -682,8 +768,8 @@ export const DAY = day({
       at: '15:40',
       pool: 'leve',
       num: '(17) 99876-2650',
-      caller: 'Valdemar (o próprio)',
-      callerName: 'Valdemar',
+      caller: 'Dorival (o próprio)',
+      callerName: 'Dorival',
       type: 'exagerador',
       voice: 'homem',
       note: 'Homem com dor nas costas. Quer remédio.',
@@ -713,7 +799,7 @@ export const DAY = day({
           id: 'remedio',
           kind: 'fala',
           label: 'Explicar: a ambulância não leva injeção',
-          say: 'A ambulância não leva injeção para dor de três anos, Seu Valdemar. O senhor precisa tratar essa dor na UBS, com consulta e exame.',
+          say: 'A ambulância não leva injeção para dor de três anos, Seu Dorival. O senhor precisa tratar essa dor na UBS, com consulta e exame.',
           a: ['UBS? Tem fila de três meses, {dr}!', '[suspiro longo]', 'Tá bom. Segunda eu vou. Mas fala pra eles que eu sou ruim de agulha.'],
         },
       ],
@@ -721,7 +807,7 @@ export const DAY = day({
         { a: 'vai_matar', b: 'tres_anos', insight: '"Vai me matar"... uma dor que ele tem há três anos. Sem sinal de alarme: crônica. Verde, UBS.' },
         { a: 'anda', b: 'manual:verde', insight: 'Anda, sem febre, sem perda de força nem do controle da urina: dor lombar crônica. Orientação, UBS (Manual p.1).' },
       ],
-      patient: { name: 'Valdemar Souza', age: 45, sex: 'M' },
+      patient: { name: 'Dorival Souza', age: 45, sex: 'M' },
       truth: { dx: 'Dor lombar crônica (sem sinais de alarme)', sev: 'verde', ok: ['ORI'], ref: ['UBS'] },
       radio: { excess: '{central}, {unit}. Lombalgia de três anos, {dr}. Ele perguntou se a gente aceitava cartão pra aplicar a injeção.' },
       diary: { ori: 'Dor lombar de três anos. Queria "uma injeção forte". Orientado à UBS.' },
@@ -782,6 +868,7 @@ export const DAY = day({
             { who: 'ZELIA', t: 'A minha insulina tá lá dentro, ficando morna. E o leite do Liam.' },
             { who: 'LUCIA', t: 'Liguei pro técnico do anúncio do jornal, o Seu Jairo. Ele vem ainda hoje, mesmo sendo sábado à noite.' },
             { who: 'LUCIA', t: 'Até lá, o isopor com gelo do posto custa dez reais. Segura a insulina por um dia.' },
+            { who: 'ZELIA', t: 'E o pão do Toninho de manhã, e você só volta de noite. O pão envelheceu esperando você. Igual a gente.', when: is.flag('pao_toninho_d6') },
           ],
         },
       },
@@ -810,11 +897,11 @@ export const DAY = day({
             { who: 'JAIRO', t: 'E {m:o senhor|a senhora}, trabalha com o quê?' },
           ],
           choices: [
-            { label: '"Sou {medico} da Regulação. Sou eu que atendo quando alguém chama ambulância."', next: 'samu' },
+            { label: '"Sou {medico} da Regulação. Sou eu que atendo quando alguém chama ambulância."', next: 'regulacao' },
             { label: '"Trabalho num escritório, lá no Centro."', next: 'direto' },
           ],
         },
-        samu: {
+        regulacao: {
           lines: [
             { who: 'JAIRO', t: '(para de mexer no cano) Da ambulância? ...Ô, meu Deus.' },
             { who: 'JAIRO', t: 'O Gabriel vive no celular. Já levou bronca por passar trote, me mata de vergonha. A polícia veio aqui em casa uma vez, sabia?' },
