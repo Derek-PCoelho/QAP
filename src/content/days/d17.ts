@@ -4,12 +4,19 @@
 // 🌾 Rosângela (ajudante do ateliê), ↺ Cida (sinal 2: repete a mesma frase),
 // ↺ Seu Hélio (D9), ↺ Nogueira (aluguel atrasado), ↺ Lúcia fora (D13–D17).
 // Precisão da Simone: 50% enquanto presente (ela já está passando mal de manhã).
+// 1.1 (ROTEIRO, dia 17): R4 vira às 15:40 — o muro da casa 14 da Baixada cai em cima do Seu
+// Alcides Nogueira ("Tudo tem volta, né, doutor?"); de manhã, ao telefone, ele avisa que vai ver as
+// casas da Baixada; à noite, quem liga é o filho dele (aluguel perdoado, abatido ou cobrado). O
+// almoço é interrompido: é a crise da Simone (a colher). `cida_sinal2` fica (o `cida_sinais_cruzados`
+// sai); rádios do celular a 6% e da chave geral; a Dona Zélia internada não está em casa; volta de
+// carona com o Peixoto (goiabada) ou a pé; nomes da Parte 2.
 // =============================================================================
-import type { CallRT, Ctx, EffCtx, SceneDef, DLine, Choice, HomeObject, LinkDef } from '../../engine/types';
+import type { CallRT, Ctx, EffCtx, SceneDef, DLine, Choice, HomeObject, LinkDef, SceneNode } from '../../engine/types';
 import type { DeskDoc } from '../../engine/content-api';
 import { hm } from '../../engine/util';
 import { day, call, fx, is, NUM, ADDR } from '../dsl';
 import { DAY as D16 } from './d16';
+import { rua, zeliaEmCasa } from './arco';
 
 /** A ligação da Cida no dia 16 (sinal 1) só vira pista se o dia 16 a tiver com esse id. */
 const TEM_D16_CIDA = D16.calls.some((x) => x.id === 'd16_cida');
@@ -34,17 +41,80 @@ export const DOCS_EXTRA: Record<string, DeskDoc> = {
 // -----------------------------------------------------------------------------
 // Casa (interlúdio): goteiras, Nogueira, Rosângela, a casa vazia
 // -----------------------------------------------------------------------------
+/** R4: à noite, o telefone do quarto do casal — o filho do Nogueira (salvo, morto ou sem notícia) */
+function filhoNogueira(c: Ctx, next: string): SceneNode | undefined {
+  const salvo = c.flag('d17_nogueira_salvo');
+  const morto = c.flag('d17_nogueira_morto');
+  if (!salvo && !morto) return undefined;
+  const briga = c.flag('brigou_nogueira');
+  const lines: DLine[] = [
+    { who: 'NARRADOR', t: 'Nove da noite. O telefone do quarto toca. Uma voz de homem novo, cansada, com barulho de corredor de hospital atrás.' },
+  ];
+  if (salvo) {
+    lines.push({ who: 'FILHO DO NOGUEIRA', t: 'Aqui é o filho do Nogueira. Meu pai tá no Regional. Operou a bacia. Tá vivo.' });
+    if (briga)
+      lines.push(
+        { who: 'FILHO DO NOGUEIRA', t: 'Pediu pra dizer que o aluguel desse mês ele perdoa. E que "tudo tem volta, mas não precisava ser assim". Palavras dele.' },
+        { who: 'NARRADOR', t: 'Você não lembra de ter ouvido o Seu Nogueira pedir desculpa a ninguém. Ele também não pediu agora. Mas foi perto.' },
+      );
+    else
+      lines.push(
+        { who: 'FILHO DO NOGUEIRA', t: 'Ele disse que conheceu a voz do telefone. Que era a do inquilino da 40. Pediu pra abater os cinquenta da goteira e mandar o Zé da telha amanhã cedo. Disse que dívida de telhado ele paga primeiro.' },
+      );
+  } else {
+    lines.push(
+      { who: 'FILHO DO NOGUEIRA', t: 'Aqui é o filho do Seu Nogueira. Ele faleceu hoje à tarde. O muro da casa 14, na Baixada.' },
+      briga
+        ? { who: 'FILHO DO NOGUEIRA', t: 'O aluguel continua no dia de sempre. Desculpa ligar pra isso hoje. Meu pai dizia que tudo tem volta. Não voltou.' }
+        : { who: 'FILHO DO NOGUEIRA', t: 'O aluguel continua no dia de sempre, a gente vai manter tudo como ele deixou. Meu pai falava bem de você. Dizia que pelo menos você reclamava na cara.' },
+    );
+  }
+  const choices: Choice[] = [];
+  if (morto)
+    choices.push({
+      label: '"A viga da sala tá podre. Ele sabia. Tá chovendo dentro."',
+      needLink: 'goteira_nogueira',
+      next: 'nog_abate',
+      effect: (e) => {
+        e.s.bills.rentDebt = Math.max(0, e.s.bills.rentDebt - 50);
+        e.set('nogueira_abateu');
+      },
+    });
+  choices.push({ label: salvo ? '"Fala pra ele que eu fico feliz que ele tá vivo."' : '"Meus sentimentos."', next });
+  return {
+    lines,
+    onEnter: (e) => {
+      if (!salvo) return;
+      if (briga) {
+        e.set('nogueira_perdoou');
+        const b = e.s.bills;
+        b.rentDebt = Math.max(0, b.rentDebt - b.rent);
+        b.rentOverdue = b.rentDebt > 0 ? Math.max(0, b.rentOverdue - 1) : 0;
+      } else {
+        e.set('telhado_consertado');
+        if (e.s.bills.rentDebt > 0) e.s.bills.rentDebt = Math.max(0, e.s.bills.rentDebt - 50);
+        else e.pay(50, 'abatimento da goteira (Nogueira)');
+        e.set('nogueira_abateu');
+      }
+    },
+    choices,
+  };
+}
+
 function casaD17(c: Ctx): SceneDef {
   const luc = is.present('lucia')(c);
   const dav = is.present('davi')(c);
-  const zel = zeliaViva(c);
+  const zel = zeliaEmCasa(c);
+  const internada = zeliaViva(c) && !zel;
   const ausentes = fora(c);
   const atrasos = c.s.bills.rentOverdue;
-  const nogueira = atrasos > 0;
+  const filho = filhoNogueira(c, 'pos_nogueira');
+  /** sem notícia do muro, o Nogueira ainda vem cobrar (como na 1.0.4) */
+  const nogueira = !filho && atrasos > 0 && !c.flag('d17_nogueira_salvo') && !c.flag('d17_nogueira_morto');
   const rosa = c.key('rosangela') === 'salvo' && c.flag('maquina') && luc && !c.flag('rosangela_ajudante');
   const bilhete = c.key('rosangela') === 'salvo' && c.flag('maquina') && !luc && ausentes && !c.flag('rosangela_ajudante');
   const depoisNogueira = rosa ? 'rosangela' : bilhete ? 'bilhete' : 'fim';
-  const depoisCasa = nogueira ? 'nogueira' : depoisNogueira;
+  const depoisCasa = filho ? 'filho_nogueira' : nogueira ? 'nogueira' : depoisNogueira;
 
   const start: DLine[] = ausentes
     ? [
@@ -65,6 +135,9 @@ function casaD17(c: Ctx): SceneDef {
           { who: 'LUCIA', t: 'Dezessete baldes de chuva e nenhum de dinheiro. Pelo menos a gente ri.', when: () => luc },
           { who: 'DAVI', t: '{{Os meus desenhos tão tudo bem, tá? Eu guardei|desenhos_ok}}.', when: () => dav },
         ];
+  if (internada) start.push({ who: 'NARRADOR', t: 'A poltrona da Dona Zélia com o xale dobrado em cima. O Ozzy, molhado e ofendido, dorme em cima do xale.' });
+  if (dav && c.flag('davi_apanhando')) start.push({ who: 'DAVI', t: 'Amanhã eu posso não ir na escola? Por causa da chuva. ...E de outra coisa.' });
+  if (luc && c.flag('davi_lucia_descobriu')) start.push({ who: 'LUCIA', t: 'Eu fui na escola hoje cedo. Sozinh{c:a|o}. Da próxima vez você vai junto, {nome}.' });
 
   const objects: HomeObject[] = [
     { id: 'goteira', label: 'Goteira na viga da sala', desc: 'Pinga a cada dois segundos. A madeira da viga está escura e mole: infiltração antiga, de anos.', x: 148, y: 18, w: 22, h: 30 },
@@ -169,13 +242,26 @@ function casaD17(c: Ctx): SceneDef {
           { label: '"Me dá mais uma semana."', next: 'nog_semana' },
         ],
       },
-      nog_abate: {
-        lines: [
-          { who: 'NOGUEIRA', t: '(ele olha a viga, o balde, a viga de novo) ...Tá. Tá bom!' },
-          { who: 'NOGUEIRA', t: 'Abato cinquenta do atrasado pelo telhado. E mando o Zé da telha na semana que vem. Mas o resto é hoje, {dr}. Hoje.' },
-        ],
-        next: depoisNogueira,
-      },
+      ...(filho
+        ? {
+            filho_nogueira: filho,
+            pos_nogueira: { lines: [{ who: 'NARRADOR', t: 'Você desliga. Uma gota cai da viga, bem no lugar onde o Seu Nogueira disse que reformou o telhado.' }], next: depoisNogueira },
+          }
+        : {}),
+      nog_abate: filho
+        ? {
+            lines: [
+              { who: 'FILHO DO NOGUEIRA', t: '(um silêncio, papel virando) ...Tá aqui no caderno dele. "Abater 50 da 40, telhado." Com a letra dele, de semana passada. Eu abato.' },
+            ],
+            next: 'pos_nogueira',
+          }
+        : {
+            lines: [
+              { who: 'NOGUEIRA', t: '(ele olha a viga, o balde, a viga de novo) ...Tá. Tá bom!' },
+              { who: 'NOGUEIRA', t: 'Abato cinquenta do atrasado pelo telhado. E mando o Zé da telha na semana que vem. Mas o resto é hoje, {dr}. Hoje.' },
+            ],
+            next: depoisNogueira,
+          },
       nog_paga: {
         lines: [{ who: 'NOGUEIRA', t: 'Promessa não molha nem seca, {dr}. Eu espero o dinheiro, não a promessa.' }],
         next: depoisNogueira,
@@ -248,8 +334,8 @@ function casaD17(c: Ctx): SceneDef {
 
 function bicoD17(c: Ctx): SceneDef {
   const luc = is.present('lucia')(c);
-  const zel = zeliaViva(c);
-  const nogueira = c.s.bills.rentOverdue > 0;
+  const zel = zeliaEmCasa(c);
+  const nogueira = c.s.bills.rentOverdue > 0 && !c.flag('d17_nogueira_salvo') && !c.flag('d17_nogueira_morto');
   const rosa = c.key('rosangela') === 'salvo' && c.flag('maquina') && luc && !c.flag('rosangela_ajudante');
   const lines: DLine[] = [
     { who: 'NARRADOR', t: 'A noite na USA 01 é água até o joelho: corte de vidro, febre, uma senhora que perdeu a dentadura na enchente e quer saber se "a gente acha".' },
@@ -263,6 +349,8 @@ function bicoD17(c: Ctx): SceneDef {
     lines.push({ who: 'LUCIA', t: '(outro bilhete) "Contratei a Rosângela. Ela perguntou de você. Disse que conhece a sua voz."' });
   }
   if (fora(c) && zel) lines.push({ who: 'ZELIA', t: '(bilhete na mesa) "{Oconj} ligou. Eles voltam amanhã. {c:Ela|Ele} perguntou se você tava em casa. Eu disse que não."' });
+  if (c.flag('d17_nogueira_salvo') || c.flag('d17_nogueira_morto'))
+    lines.push({ who: 'NARRADOR', t: c.flag('d17_nogueira_salvo') ? 'Na secretária eletrônica, um recado do filho do Seu Nogueira: o pai está no Regional, vivo. "Ele pediu pra ligar amanhã. Disse que tem uma coisa pra falar com o inquilino da 40."' : 'Na secretária eletrônica, um recado do filho do Seu Nogueira. O pai morreu hoje à tarde, no muro da Baixada. O aluguel continua no dia de sempre.' });
   return {
     id: 'd17_bico',
     bg: 'preto',
@@ -276,6 +364,32 @@ function bicoD17(c: Ctx): SceneDef {
           }
           if (rosa) e.set('rosangela_ajudante');
         },
+      },
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Almoço (almoco.md, D17 — "A colher"): INTERROMPIDO. É a crise da Simone; a ligação dela
+// (d17_simone, 13:00) entra na sua fila ali mesmo, com ela na sua frente.
+// -----------------------------------------------------------------------------
+function almocoD17(c: Ctx): SceneDef {
+  return {
+    id: 'd17_almoco',
+    bg: 'central',
+    cast: ['SIMONE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Segunda de temporal. A Simone chegou a pé. A copa tem um balde pegando goteira em cima do micro-ondas novo da OS.' },
+          { who: 'SIMONE', t: 'Não tô com fome. Vou comer porque você tá olhando.' },
+          { who: 'NARRADOR', t: 'Ela pega a colher. A colher bate duas vezes no pote antes de chegar à boca.' },
+          { who: 'SIMONE', t: 'Pontinho brilhando no olho. Deve ser a luz da copa. A OS trocou por LED. LED dá dor de cabeça, todo mundo sabe.' },
+          { who: 'SIMONE', t: 'Você perguntou da minha pressão às sete. Eu menti. Desculpa.', when: () => c.flag('d17_simone_perguntada') },
+          { who: 'NARRADOR', t: 'A colher cai no chão de granitina. Ela fica olhando a colher como se fosse de outra pessoa.' },
+          { who: 'SIMONE', t: '...Abre a ficha, {dr}. Eu dito.' },
+          { who: 'NARRADOR', t: 'O relógio da copa volta a andar. A ligação dela entra na sua fila, com ela sentada na sua frente.' },
+        ],
       },
     },
   };
@@ -353,7 +467,7 @@ export const DAY = day({
     { at: '07:02', kind: 'radio', who: 'DEFESA CIVIL', text: 'Av. Beira-Rio interditada desde as 05:00. Baixada da Vila Nova submersa. Av. Sul com lâmina d’água. Rotas recalculadas no mapa.' },
     { at: '07:03', kind: 'radio', who: 'COPOM/193', text: 'Bombeiros: todas as equipes de resgate empenhadas. Acionamento pela central, com risco de vida ou de desabamento.' },
     { at: '11:00', kind: 'simone', who: 'SIMONE', text: 'Desculpa, {dr}. Tô trocando as bolas hoje. Se o post-it vier esquisito, confia no seu ouvido, não na minha letra.' },
-    { at: '12:45', kind: 'simone', who: 'SIMONE', text: '(a letra sai torta, grande demais, atravessando o papel) Vou lavar o rosto. Já volto.' },
+    { at: '12:45', kind: 'simone', who: 'SIMONE', text: '(a letra sai torta, grande demais, atravessando o papel) Vou esquentar a marmita. Vem comer comigo hoje, {dr}. Hoje eu não quero comer sozinha.' },
     {
       at: '13:00',
       kind: 'script',
@@ -436,12 +550,15 @@ export const DAY = day({
         sangramento: 'Ninguém se cortou não. Só o susto.',
         historico: '{{Pressão e diabetes|diabetes}}. Os remédios ficaram lá embaixo, debaixo d’água.',
         dorpeito: '{{Diz que aperta e vai pro queixo e pro braço|irradia}}. E tá {{suando frio|suor}}, mesmo com essa chuva gelada. A testa dele pinga suor, não é chuva: eu passei a mão.',
-        paciente: ['LEANDRO: Pai, fala com {o} {medico}.', 'SEBASTIÃO: [ofegante] É um peso... aqui no meio. Igual um saco de cimento. Não é nada não, é o frio.'],
+        paciente: ['LEANDRO: Pai, fala com {o} {medico}.', 'SEVERINO: [ofegante] É um peso... aqui no meio. Igual um saco de cimento. Não é nada não, é o frio.'],
+        // [validar] pulso e pele escritos à mão (infarto com suor frio: pulso rápido e fraco, pele fria e úmida)
+        pulso: 'No pescoço dele? Rápido. Fraquinho, mas tem.',
+        pele: 'Cinza, {m:moço|moça}. Frio e molhado de suor, debaixo da chuva.',
         seguranca: 'Seguro não tá, {m:moço|moça}! A água tá subindo e a correnteza tá arrastando carro na avenida!',
         referencia: 'Av. Beira-Rio, 2650, perto da ponte velha. A casa de dois andares com a caixa-d’água azul. É a única com gente em cima.',
       },
       extra: [
-        { id: 'quantos', label: 'Quantas pessoas no telhado?', say: 'Quantas pessoas estão no telhado? Tem criança?', a: 'Cinco. Eu, a Kátia, a Yasmin de nove, a Sofia de cinco e o meu pai. A pequena tá no meu colo.' },
+        { id: 'quantos', label: 'Quantas pessoas no telhado?', say: 'Quantas pessoas estão no telhado? Tem criança?', a: 'Cinco. Eu, a Kátia, a Iara de nove, a Lorena de cinco e o meu pai. A pequena tá no meu colo.' },
         {
           id: 'poupar',
           label: 'Poupar a bateria',
@@ -458,17 +575,20 @@ export const DAY = day({
         { a: 'telhado', b: 'manual:bombeiros', insight: 'Família ilhada no telhado, água subindo, correnteza na avenida: a USA não chega sem bote. Bombeiros obrigatório (Manual p.17).' },
       ],
       worsen: [{ after: 95, lines: ['LEANDRO: {m:Moço|Moça}! {{Meu pai deitou na telha, tá cinza!|cinza}} Ele não quer mais falar!', '[o choro da criança mais alto]'] }],
-      patient: { name: 'Sebastião Souza', age: 71, sex: 'M' },
+      patient: { name: 'Severino Souza', age: 71, sex: 'M' },
       truth: { dx: 'Infarto em idoso ilhado pela enchente', sev: 'vermelho', ok: ['USA'], sup: ['BOMB'], dest: ['REG'], risk: { good: 60, bad: 150 } },
       radio: {
-        ok: '{central}, {unit} na cabeceira da ponte velha. Os Bombeiros desceram o senhor do telhado no bote, deitado na prancha. Supra no eletro. A família vem no segundo bote. Seguimos {dest}.',
+        ok: (c) =>
+          c.flag('d17_telhado_bateria')
+            ? '{central}, {unit} na cabeceira da ponte velha. Os Bombeiros desceram o senhor do telhado no bote, deitado na prancha. Supra no eletro. O celular do filho ainda tava com seis por cento, {dr}. Ele desligou na hora certa: dava pra gente ligar de volta. Seguimos {dest}.'
+            : '{central}, {unit} na cabeceira da ponte velha. Os Bombeiros desceram o senhor do telhado no bote, deitado na prancha. Supra no eletro. A família vem no segundo bote. Seguimos {dest}.',
         unsafe: 'Central, {unit} na Beira-Rio! A água tá na altura do peito, a correnteza levou um carro na nossa frente! Sem bote a gente não chega no telhado. Cadê os Bombeiros?!',
         dead: 'Central... {unit}. Os Bombeiros trouxeram ele no bote, mas chegou parado. Óbito às {hora}. A família ainda tá no telhado.',
         under: '{unit}: senhor com dor torácica típica, suando frio, ilhado. É infarto, precisamos de USA!',
       },
       diary: {
-        alive: 'Seu Sebastião, 71. Infarto em cima do telhado, na Beira-Rio. Desceu de bote. A neta de cinco anos dormiu no colo do bombeiro.',
-        dead: 'Seu Sebastião, 71. Infarto em cima do telhado, na Beira-Rio, com a família em volta e a água subindo.',
+        alive: 'Seu Severino, 71. Infarto em cima do telhado, na Beira-Rio. Desceu de bote. A Lorena, de cinco anos, dormiu no colo do bombeiro.',
+        dead: 'Seu Severino, 71. Infarto em cima do telhado, na Beira-Rio, com a família em volta e a água subindo.',
       },
     }),
     // ----------------------------------------------------------------- 2 ★ CIDA (sinal 2)
@@ -526,18 +646,14 @@ export const DAY = day({
         },
         {
           id: 'repetiu',
-          label: '"A senhora já tinha me falado da água..."',
+          label: '"A senhora já me disse isso, Dona Cida?"',
           kind: 'fala',
           locked: true,
           // 1.1: ela repetiu a frase na abertura; aparece depois da primeira troca com ela
           unlockedBy: ['oque', 'nivel', 'consciencia', 'conversar', 'seguranca'],
           say: 'Dona Cida, a senhora já tinha me falado da água. Tá tudo bem com a senhora?',
           a: ['Falei? [silêncio curto] ...Falei, né.', 'Desculpa, {meu} {filho}. É o nervoso. Quando eu fico nervosa eu fico boba.'],
-          onAsk: (e) => {
-            e.set('cida_sinal2');
-            // sábado ela esqueceu a novela; hoje repetiu a frase: dois sinais, um atrás do outro
-            if (e.flag('cida_sinal1')) e.set('cida_sinais_cruzados');
-          },
+          onAsk: fx.set('cida_sinal2'),
         },
         {
           id: 'conversar',
@@ -569,7 +685,7 @@ export const DAY = day({
                 a: 'nome_novela',
                 b: 'diario:d16_cida',
                 insight: 'No sábado ela não lembrou o nome da novela. Hoje, de novo. E repetiu a mesma frase duas vezes. Dois sinais pequenos, um atrás do outro.',
-                onFind: fx.all(fx.set('cida_sinal2'), fx.set('cida_sinais_cruzados')),
+                onFind: fx.set('cida_sinal2'),
               },
             ]
           : []),
@@ -667,7 +783,7 @@ export const DAY = day({
       open: [
         '{Dr}! Meu marido foi mexer no quadro de luz e {{levou um choque|choque}}, tá caído no chão da área, {{dentro da água|na_agua}}!',
         '[chuva; um zumbido elétrico; uma criança chorando]',
-        'ROSANA: Edinho! Edinho, fala comigo!',
+        'ROSANA: Gilsinho! Gilsinho, fala comigo!',
       ],
       q: {
         consciencia: 'Não fala! Não mexe! {{Não responde nada|nao_responde}}!',
@@ -699,18 +815,21 @@ export const DAY = day({
       ],
       worsen: [{ after: 15, lines: ['ROSANA: Desliguei a chave! Puxei ele pro seco! {{Ele não respira, {dr}! Tá roxo!|nao_respira}}'] }],
       guide: { id: 'agua' },
-      patient: { name: 'Ednaldo Lopes', age: 42, sex: 'M' },
+      patient: { name: 'Gilson Prates', age: 42, sex: 'M' },
       truth: { dx: 'Parada cardíaca por choque elétrico em área alagada', sev: 'vermelho', ok: ['USA'], sup: ['BOMB'], dest: ['REG'], risk: { good: 30, bad: 75, guideBonus: 25 } },
       radio: {
         saved: '{central}, {unit}. Fibrilação, choque, voltou. Os Bombeiros cortaram a energia da rua. Quem mandou a esposa desligar a chave antes de tocar nele? Salvou duas pessoas.',
-        ok: '{central}, {unit}. Ritmo de volta, queimadura na mão direita. Seguimos {dest}.',
+        ok: (c) =>
+          c.flag('d17_choque_chave')
+            ? '{central}, {unit}. A chave geral tava desligada quando a gente chegou. Deu pra entrar na água. Alguém mandou? Ritmo de volta, queimadura na mão direita. Seguimos {dest}.'
+            : '{central}, {unit}. Ritmo de volta, queimadura na mão direita. Seguimos {dest}.',
         unsafe: 'Central, {unit}! Fio energizado na água, a área inteira tá eletrificada! Sem Bombeiros e sem cortar a energia a gente não entra!',
         dead: 'Central... {unit}. Óbito às {hora}. A esposa ainda tá com a chave de fenda na mão.',
         under: 'Central, {unit}! Parada por choque elétrico! Precisamos de USA!',
       },
       diary: {
-        alive: 'Edinho, 42. Choque no quadro de luz com a casa alagada. A esposa desligou a chave antes de tocar nele.',
-        dead: 'Edinho, 42. Choque no quadro de luz com a casa alagada. Estava descalço.',
+        alive: 'Gilsinho, 42. Choque no quadro de luz com a casa alagada. A esposa desligou a chave antes de tocar nele.',
+        dead: 'Gilsinho, 42. Choque no quadro de luz com a casa alagada. Estava descalço.',
       },
     }),
     // ----------------------------------------------------------------- 5
@@ -720,8 +839,8 @@ export const DAY = day({
       at: '11:35',
       pool: 'trauma_moderado',
       num: '(17) 99620-1150',
-      caller: 'Cleide',
-      callerName: 'Cleide',
+      caller: 'Nádia',
+      callerName: 'Nádia',
       type: 'exagerador',
       voice: 'mulher',
       note: 'Mulher cortou o pé na água. Diz que tá jorrando.',
@@ -757,13 +876,13 @@ export const DAY = day({
         { a: 'jorrando', b: 'toalha', insight: '"Tá jorrando"... mas com a toalha apertada parou de pingar. Corte profundo com sangramento controlado: não é hemorragia grave.' },
         { a: 'sem_tontura', b: 'manual:amarelo', insight: 'Corte profundo no pé, sangramento controlado, sem tontura nem pele fria, e sem como chegar à UPA pela enchente: amarelo → USB → UPA (Manual p.1 e 9-A).' },
       ],
-      patient: { name: 'Cleide Ramos', age: 38, sex: 'F' },
+      patient: { name: 'Nádia Ramos', age: 38, sex: 'F' },
       truth: { dx: 'Corte profundo no pé (sangramento controlado)', sev: 'amarelo', ok: ['USB'], dest: ['UPA'], risk: { good: 120, bad: 300, needs: 'USB' } },
       radio: {
         ok: 'Central, {unit}. Corte de oito centímetros na planta do pé, sangramento contido na toalha. Vai precisar de pontos e vacina. Seguimos {dest}.',
         excess: '{central}, {unit}. Corte no pé, sangramento controlado. Ela tá bem, {dr}. Dava USB.',
       },
-      diary: { alive: 'Cleide, 38. Cortou o pé num caco de garrafa dentro da enchente. Oito pontos.' },
+      diary: { alive: 'Nádia, 38. Cortou o pé num caco de garrafa dentro da enchente. Oito pontos.' },
     }),
     // ----------------------------------------------------------------- 6 ★ SIMONE (crise na central)
     call({
@@ -782,11 +901,12 @@ export const DAY = day({
       note: '',
       addr: ADDR.central,
       amb: ['chuva', 'silencio'],
-      open: [
-        '[a cadeira da Simone arrasta no chão; o fone dela cai em cima da mesa]',
+      open: (c) => [
+        '[a colher no chão da copa; a Simone puxa o fone do bolso do avental]',
         'SIMONE: {Dr}... desculpa. Eu mesma abro a ficha, que é mais rápido.',
         'SIMONE: Mulher, cinquenta e um anos. {{Dor de cabeça forte desde ontem|cefaleia}}, piorou agora. {{A vista tá embaçada|visao_turva}}. Hipertensa. {{Sem remédio faz três semanas|sem_remedio}}.',
         '[ela aperta as têmporas com as duas mãos]',
+        ...(c.flag('d7_simone_ouviu') ? ['SIMONE: Eu ouvi o meu filho pela sua linha, lembra? Agora é você que vai me ouvir.'] : []),
         'SIMONE: Pode regular. Eu espero.',
       ],
       q: {
@@ -867,6 +987,7 @@ export const DAY = day({
           e.set('d17_simone_usb');
           e.set('simone_crise_ok');
           e.add('lealSimone', 2, 'regulou a Simone direito');
+          if (e.flag('d17_simone_perguntada')) e.add('lealSimone', 1, 'perguntou da pressão às sete');
         } else if (d.resource === 'USA') {
           e.set('d17_simone_usa');
           e.set('simone_crise_ok');
@@ -918,13 +1039,13 @@ export const DAY = day({
         seguranca: 'Seguro, seguro. Eu tô no carro.',
         referencia: 'Na ponte do Parque. Linha 12, o amarelo.',
       },
-      extra: [{ id: 'quem', label: 'Mais alguém ligou? Bombeiros aí?', say: 'Tem mais gente aí ajudando? Os Bombeiros já chegaram?', a: 'Não... só eu. Não tem ninguém. [{{alguém ri baixinho perto do telefone|risadinha}}]' }],
+      extra: [{ id: 'quem', label: 'Mais alguém ligou? Bombeiros aí?', say: 'Tem mais gente aí ajudando? Os Bombeiros já chegaram?', a: 'Não... só eu. Não tem ninguém. [{{um videogame pausado apita baixinho perto do telefone|risadinha}}]' }],
       callback: ['[{{O número chamado não existe ou está fora de serviço.|retorno_inexistente}}]'],
       links: [
         { a: 'passei_carro', b: 'doc:beira_rio', insight: 'A Av. Beira-Rio está interditada desde as cinco da manhã, com mais de um metro de água. Ninguém "passou de carro agora" por ali.' },
         { a: 'sem_chuva', b: 'passei_carro', insight: 'Diz que está na rua, de carro, no meio do temporal... e não tem barulho de chuva nenhum na ligação.' },
         { a: 'retorno_inexistente', b: 'num', insight: 'Ligar de volta: o número não existe (chip descartável). Trote aproveitando a enchente.' },
-        { a: 'risadinha', b: 'manual:trote_sinais', insight: 'Risada abafada, relato cinematográfico e ninguém mais ligando sobre um ônibus no rio: sinais de trote (Manual p.2).' },
+        { a: 'risadinha', b: 'manual:trote_sinais', insight: 'Um videogame apitando "dentro do carro", relato de cinema e ninguém mais ligando sobre um ônibus no rio: sinais de trote (Manual p.2).' },
       ],
       patient: { name: '"Ônibus no rio"' },
       truth: { dx: 'Trote aproveitando a enchente', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
@@ -985,36 +1106,43 @@ export const DAY = day({
     // ----------------------------------------------------------------- 9
     call({
       id: 'd17_muro',
-      ref: 'D17 #8',
+      ref: 'D17 #8 ★',
       at: '15:40',
-      pool: 'grave,trauma_moderado',
+      anchor: true,
       num: '(17) 99561-3020',
       caller: 'Seu Joel (vizinho)',
       callerName: 'Seu Joel',
       type: 'testemunha',
       voice: 'homem',
       note: 'Muro caiu em cima de um homem. Diz que tá conversando.',
-      noteWrong: 'Muro caiu. Homem preso, mas tá bem, conversando.',
-      addr: { rua: 'Rua Dom Pedro II', n: 3020, bairro: 'Vila Esperança', ref: 'Casa de esquina com a Rua das Acácias, portão de ferro verde.' },
+      noteFixed: true,
+      addr: { rua: 'Rua São João', n: 1014, bairro: 'Vila Nova', ref: 'Casa 14 da vila, na Baixada. Muro de bloco sem reboco, portão de ferro azul.' },
       amb: ['chuva', 'gritos', 'multidao'],
       open: [
-        'O muro do vizinho caiu! {{Pegou o Seu Josué pelas pernas|pernas}}, ele tá preso embaixo dos tijolos!',
+        'O muro da casa 14 caiu! {{Pegou o Seu Alcides pelas pernas|pernas}}, o dono das casas! Ele veio ver o muro e o muro veio nele!',
         '[chuva; gente gritando "não puxa, não puxa!"; um cachorro latindo]',
-        '{{Mas ele tá bem, tá conversando|conversando}}!',
+        '{{Mas ele tá bem, tá conversando|conversando}}! Tá até reclamando!',
       ],
       q: {
         oque: 'Ele tava tirando o entulho que a enxurrada trouxe pro quintal. O muro tava encharcado, desabou de uma vez.',
         consciencia: 'Acordado, falando. Pede pra tirar ele dali.',
         respira: '{{Respirando rápido, ofegante|ofegante}}.',
-        idade: 'Uns sessenta.',
+        idade: 'Sessenta e oito. Ele fala a idade pra todo mundo, pra dizer que é velho de respeito.',
         inicio: 'Faz uns dez minutos.',
         sangramento: '{{Tem sangue escorrendo por baixo dos tijolos|sangue_tijolo}}, misturado com a água da chuva. Não dá pra ver de onde.',
-        historico: 'Não sei, {m:moço|moça}. Ele é forte, trabalha de pedreiro.',
-        paciente: ['JOSUÉ: Tira isso de mim... tá pesado... {{tô com sede, me dá água|sede}}...', 'JOSUÉ: Tô com frio.'],
+        historico: 'Pressão alta, toma remédio. E já mancava da perna esquerda antes do muro, {m:moço|moça}. Agora as duas.',
+        paciente: [
+          'ALCIDES: Tira isso de mim... tá pesado... {{tô com sede, me dá água|sede}}...',
+          'ALCIDES: {{Fala pro inquilino da 40 que o telhado eu arrumo|inquilino}}... Ai. Tudo tem volta, né, doutor?',
+        ],
         seguranca: '{{O resto do muro tá rachado, balançando|rachado}}. Tem gente querendo puxar ele assim mesmo.',
-        referencia: 'Dom Pedro II, 3020, esquina com a Acácias. Portão de ferro verde.',
+        referencia: 'Rua São João, 1014, a vila de casinhas da Baixada. A casa 14. Portão de ferro azul.',
+        // [validar] pulso e pele escritos à mão (choque hemorrágico por fratura de bacia: pulso fino, pele fria)
+        pulso: 'No pulso não acho. No pescoço, {{fininho e rápido|pulso_fino}}.',
+        pele: 'Branco. Frio. A boca clarinha.',
       },
       extra: [
+        { id: 'nome', label: 'Nome completo dele?', say: 'Qual o nome completo dele?', a: 'Alcides. {{Alcides Nogueira|nome_nogueira}}. O dono das casas daqui e de mais duas na Vila Esperança. Tá com uma pasta de elástico que não larga nem embaixo do muro.' },
         { id: 'cor', label: 'Como está a cor dele?', say: 'Como está a cor dele? Está suando?', a: '{{Branco que nem papel, suando, a boca clarinha|branco}}.' },
         {
           id: 'nao_puxar',
@@ -1031,20 +1159,22 @@ export const DAY = day({
         { a: 'conversando', b: 'branco', insight: '"Tá bem, tá conversando"... mas está branco, suando, com sede e frio, respirando rápido: sinais de choque por sangramento. Vermelho.' },
         { a: 'sede', b: 'manual:vermelho', insight: 'Sede, frio e respiração rápida em quem sangra preso: choque. Risco imediato de morte → USA (Manual p.1).' },
         { a: 'rachado', b: 'manual:bombeiros', insight: 'Desabamento com vítima presa e o resto do muro balançando: Bombeiros obrigatório (Manual p.17).' },
+        { a: 'inquilino', b: 'nome_nogueira', kind: 'confirma', insight: 'O inquilino da 40 é você. O homem debaixo do muro é o Seu Nogueira, o da pasta de elástico. "Tudo tem volta."' },
       ],
       guide: { id: 'hemorragia' },
-      patient: { name: 'Josué Fagundes', age: 61, sex: 'M' },
+      patient: { name: 'Alcides Nogueira', age: 68, sex: 'M' },
       truth: { dx: 'Vítima presa em desabamento, com choque hemorrágico', sev: 'vermelho', ok: ['USA'], sup: ['BOMB'], dest: ['REG'], risk: { good: 45, bad: 110, guideBonus: 15 } },
       radio: {
-        ok: '{central}, {unit}. Os Bombeiros escoraram o muro e tiraram o Seu Josué. Fratura de bacia, sangrando por dentro. Dois acessos, seguimos {dest}. Chegamos a tempo.',
+        ok: '{central}, {unit}. Os Bombeiros escoraram o muro e tiraram o Seu Alcides. Fratura de bacia, sangrando por dentro. Dois acessos, seguimos {dest}. Chegamos a tempo. Ele não larga a pasta, {dr}.',
         saved: '{central}, {unit}. Pegamos ele branco, mas a compressão segurou. Quem mandou ninguém puxar? Se puxassem, caía o resto do muro em cima de três.',
         unsafe: 'Central, {unit}! O resto do muro tá caindo aos pedaços! Sem Bombeiros pra escorar, a gente não chega nele!',
         dead: 'Central... {unit}. Tiraram ele sem pulso. Óbito às {hora}.',
         under: 'Central, {unit}! Vítima presa em choque! Precisamos de USA!',
       },
+      onResolve: (e, r) => e.set(r.outcome === 'obito' ? 'd17_nogueira_morto' : 'd17_nogueira_salvo'),
       diary: {
-        alive: 'Seu Josué, 61, pedreiro. Um muro encharcado caiu nas pernas dele. Ninguém puxou. Os Bombeiros escoraram.',
-        dead: 'Seu Josué, 61, pedreiro. Um muro encharcado caiu nas pernas dele, no quintal de casa.',
+        alive: 'Seu Alcides Nogueira, 68, o senhorio. O muro da casa 14 da Baixada caiu nas pernas dele. "Tudo tem volta, né, doutor?" Ninguém puxou. Os Bombeiros escoraram.',
+        dead: 'Seu Alcides Nogueira, 68, o senhorio. O muro de uma das casas dele, na Baixada. "Fala pro inquilino da 40 que o telhado eu arrumo."',
       },
     }),
     // ----------------------------------------------------------------- 10
@@ -1054,13 +1184,13 @@ export const DAY = day({
       at: '17:20',
       pool: 'leve,pediatria',
       num: '(17) 99208-1720',
-      caller: 'Patrícia (mãe)',
-      callerName: 'Patrícia',
+      caller: 'Lázara (mãe)',
+      callerName: 'Lázara',
       type: 'comum',
       voice: 'jovem_m',
       note: 'Mãe: criança engoliu água da enxurrada.',
       noteWrong: 'Criança se afogou! Mãe desesperada.',
-      addr: { rua: 'Rua das Acácias', n: 1720, bairro: 'Vila Esperança', ref: 'Casa rosa, do lado do bar do Toninho.' },
+      addr: { rua: 'Rua das Acácias', n: 1720, bairro: 'Vila Esperança', ref: 'Casa rosa, do lado do salão de beleza.' },
       amb: ['chuva', 'desenho'],
       open: ['Oi, desculpa ligar por isso... meu filho {{caiu sentado na enxurrada|caiu}} brincando na porta e {{engoliu um golão daquela água suja|engoliu}}. Isso faz mal?'],
       q: {
@@ -1096,6 +1226,48 @@ export const DAY = day({
       diary: { ori: 'Miguel, 4. Caiu na enxurrada e engoliu água suja. Brincando. Orientei os sinais de alerta.' },
     }),
   ],
+  ida: (c) =>
+    rua('d17_ida', 'rua', [
+      { who: 'NARRADOR', t: 'Um dia de folga e um temporal no meio. O 12 não passa: a Av. Brasil virou rio. Você vai a pé, com a água na canela, até a XV.' },
+      ...(c.flag('tel_ze_carlos')
+        ? [
+            { who: 'NARRADOR', t: 'Na esquina da Ipê-Roxo, o Zé Carlos, da USA 03, tira água da casa de um vizinho com balde.' },
+            { who: 'ZÉ CARLOS', t: 'Vai, doutor, que hoje a cidade precisa de telefone. Aqui eu me viro.' },
+          ]
+        : [{ who: 'NARRADOR', t: 'Na esquina da Ipê-Roxo, um homem de bermuda tira água de uma casa com balde. Não olha pra cima.' }]),
+      { who: 'NARRADOR', t: 'A goteira da sala pingou a noite inteira. O número do Seu Nogueira está no seu celular, embaixo de "NÃO ATENDER".' },
+    ], [
+      { label: 'Ligar pro Seu Nogueira por causa da goteira.', next: 'nogueira', effect: fx.set('ligou_nogueira_d17') },
+      { label: 'Guardar o celular. Hoje não.' },
+    ], {
+      nogueira: { lines: [
+        { who: 'NOGUEIRA', t: '(chuva no telefone dele também) Hoje eu não posso, {dr}. Hoje não. Vou ver as casas da Baixada.' },
+        { who: 'NOGUEIRA', t: 'Se o muro da 14 cair, eu tô perdido. Depois a gente fala do seu telhado.' },
+        { who: 'NARRADOR', t: 'Ele desliga sem tchau. Pela primeira vez, ele não falou do atrasado.' },
+      ] },
+    }),
+  almoco: (c) => almocoD17(c),
+  volta: (c) => {
+    const pai = c.key('osvaldo');
+    return rua('d17_volta', 'rua', [
+      { who: 'NARRADOR', t: '19:20. Ainda chove fino. Na porta da central, o carro do Peixoto, de pisca-alerta. Ele abaixa o vidro.' },
+      { who: 'DR. PEIXOTO', t: 'Entra, {dr}. Eu levei a Simone na UPA à tarde. Hoje eu sou motorista.' },
+      { who: 'NARRADOR', t: pai === 'perdido' ? 'O carro cheira a desinfetante e, de algum lugar, a goiabada.' : 'O carro cheira a desinfetante e a goiabada.' },
+      pai === 'perdido'
+        ? { who: 'DR. PEIXOTO', t: 'Comprei goiabada hoje cedo. Pra levar pro meu pai. Comprei antes de lembrar.' }
+        : { who: 'DR. PEIXOTO', t: 'Meu pai pediu goiabada no Regional. A enfermeira escondeu. Eu levei. Não conta.' },
+    ], [
+      { label: 'Aceitar a carona.', next: 'carona', effect: fx.set('carona_peixoto') },
+      { label: '"Eu vou a pé, Peixoto. Obrigad{o}."', next: 'ape', effect: fx.add('desgaste', 2, 'voltou a pé na chuva') },
+    ], {
+      carona: { lines: [
+        { who: 'DR. PEIXOTO', t: '(no meio da Santos Dumont, sem tirar o olho da rua) Você acha que eu sou o vilão, né? Às vezes eu acho também.' },
+        { who: 'DR. PEIXOTO', t: 'Aí eu olho a planilha e acho que o vilão é a planilha. É mais fácil.' },
+        { who: 'NARRADOR', t: 'Ele te deixa na esquina da Acácias. Espera você abrir o portão antes de ir embora, que nem pai na porta de escola.' },
+      ] },
+      ape: { lines: [{ who: 'NARRADOR', t: 'A água baixou até o tornozelo. Você chega em casa com o sapato fazendo barulho de sapo.' }] },
+    });
+  },
   interlude: {
     teaser: (c) => {
       if (fora(c)) return 'A casa está escura. Uma goteira pinga em cima da cama vazia do Liam.';
