@@ -219,7 +219,7 @@ function decide(sh: Game['shift'] & {}, call: CallRT, p: BotProfile, rng: Rng, d
   }
   // perguntas obrigatórias + algumas extras
   for (const q of t.must ?? []) sh.ask(q);
-  const qs = sh.questions(call).filter((q) => !q.asked && q.group !== 'acalmar' && q.id !== 'callback');
+  const qs = sh.questions(call).filter((q) => !q.asked && q.group !== 'acalmar' && q.id !== 'callback' && !q.box?.includes('outros'));
   for (let i = 0; i < p.questions && qs.length; i++) {
     const q = qs.splice(rng.int(0, qs.length - 1), 1)[0];
     sh.ask(q.id);

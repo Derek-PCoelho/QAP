@@ -2,6 +2,7 @@
 // Regra de ouro: o padrão nunca contradiz a verdade da ligação, nem o que ela mesma já disse.
 import type { CallDef, Ctx, TruthDef } from '../engine/types';
 import { normLines, stripMarkup } from '../engine/text';
+import { skinOf } from './video';
 
 function truthOf(def: CallDef, c: Ctx): TruthDef {
   return typeof def.truth === 'function' ? def.truth(c) : def.truth;
@@ -40,6 +41,12 @@ const DESORIENTADO = /resmung|coisa com coisa|n[ãa]o fala direito|n[ãa]o enten
 const NAO_COOPERA = /xingando|querendo brigar|ningu[ée]m encosta|n[ãa]o deixa ningu[ée]m/i;
 // Obstrução total da via aérea: não fala, não sorri, não repete frase.
 const OBSTRUCAO_TOTAL = /obstru[çc][ãa]o (total|de via a[ée]rea)/i;
+// Pulso: o que a própria ligação já contou do coração e da respiração manda na resposta padrão.
+const SEM_PULSO_DX = /parada|pcr|fibrila|[óo]bito|morte (evidente|s[úu]bita)|assistolia/i;
+const DISPARADO = /disparad|acelerad|batendo (muito )?r[áa]pido|taquicard|palpita|arritmia|coração.*(corre|dispar)/i;
+const FRACO_DX = /choque|hemorrag|sepse|desidrat|sangramento (grave|intenso|em jato)|hda|perfura|anafila|dengue grave|queimadura extensa|politrauma/i;
+const NAO_RESPIRA = /n[ãa]o (respira|t[áa] respirando)|parou de respirar|ronco|gasping|respira[çc][ãa]o ag[ôo]nica|suspiro/i;
+
 // A abertura (ou o relato) já disse o que foi ingerido: o padrão não pode negar.
 const JA_CONTOU_INGESTAO = /engoli|bebeu|comeu|ingeri|golinho|golão|maionese/i;
 
@@ -135,6 +142,52 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
       if (JA_CONTOU_INGESTAO.test(openText(def, c) + ' ' + ownText(def, 'oque', c)) || /ingest|aliment|engoli/i.test(t.dx)) return `Foi o que eu contei, ${dr}. Mais nada que eu saiba.`;
       if (def.type === 'testemunha') return `Não vi ${ele} engolir nada, ${dr}.`;
       return 'Engolir? Não, não engoliu nada.';
+    case 'pulso': {
+      if (prank) return pick(['Pulso? Tem! Tem muito! [risadinha]', 'Tá batendo, tá batendo... acho. [risadas abafadas]']);
+      if (def.type === 'testemunha' && !grave) return `Não sei medir, ${dr}... mas tá batendo, sim.`;
+      const contou = [openText(def, c), ownText(def, 'respira', c), ownText(def, 'consciencia', c), ownText(def, 'oque', c)].join(' ');
+      if (SEM_PULSO_DX.test(t.dx) || (semResposta() && NAO_RESPIRA.test(contou))) return pick([`Não tô achando, ${dr}! Não tô sentindo nada no pescoço!`, `Eu ponho o dedo e... não sinto nada, ${dr}. Nada.`]);
+      if (DISPARADO.test(contou) || /taquicard|arritmia|fibrila[çc][ãa]o atrial|palpita/i.test(t.dx)) return `Tá disparado, ${dr}. Não dá nem pra contar.`;
+      if (FRACO_DX.test(t.dx) || (grave && /p[áa]lid|cinza|suando frio|suor frio/i.test(contou))) return `Tem, mas tá fraquinho, ${dr}. Fininho e rápido.`;
+      if (grave) return `Tem... acho que tem, ${dr}. Eu não sei medir direito.`;
+      return pick(['Tem, sim. Batendo normal, eu acho.', `Tá batendo, ${dr}. Normal.`]);
+    }
+    case 'pele': {
+      if (prank) return pick(['Cor de gente, ué! [risadas]', 'Tá... verde! Não, normal. [risadinha]']);
+      const skin = skinOf(def, t);
+      const ped = p.age != null && p.age < 12;
+      switch (skin) {
+        case 'cinza':
+          return `Tá cinza, ${dr}. Uma cor feia, de cera.`;
+        case 'cianose':
+          return ped ? `A boquinha tá roxa, ${dr}! As unhas também!` : `A boca tá roxa, ${dr}. E as pontas dos dedos.`;
+        case 'palido':
+          return grave ? `Branc${o} que nem papel, ${dr}. E suando frio.` : `Tá meio pálid${o}, ${dr}.`;
+        case 'vermelho':
+          return /anafila|alerg|urtic/i.test(t.dx) ? `Tá vermelh${o}, ${dr}. Cheio de vergão, empolad${o}.` : `Tá vermelh${o}, ${dr}. Quente.`;
+        case 'amarelado':
+          return `Tá amarelad${o}, ${dr}. O olho também.`;
+        default:
+          return pick(['Cor normal, {dr}.', `Normal, corad${o}.`]);
+      }
+    }
+    case 'gravada':
+      if (prank) return pick(['[silêncio de dois segundos]', '...Grava, ué. [risadinha nervosa]']);
+      if (grave || t.sev === 'amarelo') return pick(['Grava o que quiser, mas manda alguém, pelo amor de Deus!', 'Pode gravar! Só manda a ambulância!']);
+      return pick(['...Tá. Tá bom. Não precisa disso.', 'Ah, é? [pausa] Tá. Eu só tô explicando, {dr}.']);
+    case 'nao_perfil':
+      if (prank) return ['Como não é perfil?! [risadas]', '[desliga]'];
+      if (grave) return pick([`Como não é perfil?! ${Ele} tá muito mal, ${dr}!`, `Não é perfil? Vocês tão loucos? ${Ele} vai morrer!`]);
+      if (t.sev === 'amarelo') return `Mas ${ele} tá com muita dor, ${dr}... não dá pra mandar nada?`;
+      return pick(['Mas eu não tenho carro, {dr}...', 'Então vocês servem pra quê? [bufa]', 'E a UPA vai me atender? Tá lotada.']);
+    case 'meios_proprios':
+      if (prank) return ['Meios próprios? Hahaha!', '[desliga]'];
+      if (grave) return pick([`Por meios próprios?! Eu não consigo carregar ${ele}, ${dr}!`, `Como assim, levar? ${Ele} não tá nem acordando direito!`]);
+      return pick(['Tá... eu vejo um Uber. Ou chamo o vizinho.', 'Tá bom, {dr}. A gente leva de carro.', 'Uma hora de fila na UPA... tá. Tá bom.']);
+    case 'encerrar':
+      if (prank) return ['[risadas]', '[desliga]'];
+      if (grave) return ['O quê?! Não desliga! Não—', '[a linha cai]'];
+      return pick([['[resmunga alguma coisa]', '[desliga]'], ['Vocês não servem pra nada!', '[desliga]']]);
     case 'confronto_quadro':
       if (prank) return ['[risadas]', '[desliga]'];
       return kid ? 'Não é trote! Juro, {m:moço|moça}!' : 'Que trote, {dr}?! É sério! Pelo amor de Deus!';

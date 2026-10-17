@@ -549,9 +549,10 @@ export const DAY = day({
         sangramento: 'Não.',
         paciente: ['FELIPE: Que dia é hoje... cadê o palco...', '[ele balbucia alguma coisa sem sentido]', 'Viu? Tá assim.'],
         seguranca: 'Seguro.',
+        pele: ['Vermelho que nem pimentão.', 'Encostei: {{tá pelando, mas seco! Parou de suar|pele_seca}}.'],
+        pulso: 'Tá batendo rápido, {dr}. Muito rápido.',
       },
       extra: [
-        { id: 'pele', label: 'Pele quente? Suando?', say: 'Encosta nele: a pele está quente? Ele está suando?', a: '{{Tá pelando, mas seco! Parou de suar|pele_seca}}. Tá vermelho que nem pimentão.' },
         { id: 'vomitou', label: 'Vomitou? Convulsionou?', say: 'Ele vomitou? Teve tremedeira, convulsão?', a: 'Vomitou duas vezes. Tremer não tremeu.' },
         {
           id: 'resfriar',

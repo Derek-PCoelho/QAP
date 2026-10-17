@@ -343,7 +343,8 @@
 }
 .monitor {
   padding: 8px;
-  height: 292px;
+  height: 252px;
+  flex: 0 0 auto;
   display: flex;
 }
 .monitor-screen {
@@ -362,6 +363,7 @@
   font-size: 20px;
 }
 .call-head {
+  flex: 0 0 auto;
   display: flex;
   gap: 8px;
   align-items: baseline;
@@ -503,16 +505,83 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 26px;
   gap: 4px;
   align-content: start;
-  padding-right: 2px;
+  padding: 0 2px 2px 0;
+  overflow-y: auto;
+}
+.kp-tip {
+  grid-column: span 2;
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--c-soft);
+  align-self: center;
+}
+/* caixas (1.1): Clínico azul, GO rosa, Trauma verde, Outros branco */
+.kp-boxes {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.kp-box {
+  --bx: #5aa7d6;
+  border: 0;
+  height: 24px;
+  font-family: var(--f-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #10170f;
+  background: color-mix(in srgb, var(--bx) 55%, #26352f);
+  cursor: pointer;
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.3), inset 1px 1px 0 rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.kp-box small {
+  font-family: var(--f-screen);
+  font-size: 14px;
+  opacity: 0.75;
+}
+.kp-box.on {
+  background: var(--bx);
+  box-shadow: inset 0 0 0 2px #0a0f0d, 0 0 0 1px var(--bx);
+}
+.kp-box:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.box-clinico {
+  --bx: #6fb4e8;
+}
+.box-go {
+  --bx: #f2a3c4;
+}
+.box-trauma {
+  --bx: #8fd486;
+}
+.box-outros {
+  --bx: #eef0e8;
+}
+.kp-btn.fixed {
+  background: #46584f;
+}
+.kp-btn.inbox {
+  box-shadow:
+    inset 3px 0 0 var(--bx),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.35);
 }
 .kp-btn {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 4px;
-  min-height: 30px;
+  min-height: 0;
+  line-height: 1.05;
+  overflow: hidden;
   border: 0;
   padding: 3px 6px;
   background: #3a5045;
@@ -567,9 +636,17 @@
   background: #2f4a4a;
 }
 .kp-actions {
+  flex: 0 0 auto;
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
+}
+.kp-actions .tool .kp-cost {
+  font-size: 13px;
+  margin-left: 2px;
+}
+.kp-actions .tool.asked {
+  opacity: 0.55;
 }
 
 /* ---------------------------------------------------------------- mapa */
@@ -1767,6 +1844,9 @@ abbr.qcode {
 
 /* post-it da TARM dentro da ligação atendida (texto inteiro) */
 .ch-tarm {
+  /* 1.1: não encolhe dentro da coluna do monitor (encolhida, cobria a 1ª linha da transcrição) */
+  flex: 0 0 auto;
+  position: relative;
   align-self: flex-start;
   max-width: 100%;
   margin: 0 0 6px;
@@ -1781,6 +1861,11 @@ abbr.qcode {
 .ch-tarm.red {
   background: #f2928a;
   color: #3d0f0b;
+}
+.ch-tarm .ch-addr {
+  display: block;
+  font-style: normal;
+  font-weight: 600;
 }
 .ch-tarm b {
   font-size: 10px;

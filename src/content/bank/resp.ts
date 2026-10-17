@@ -117,7 +117,7 @@ export const NAO_RESPIRA = tpl({
             ingestao: alt(p, ['Camarão, na festa. Faz uns dez minutos.', 'Uma dipirona pra dor de cabeça, faz uns dez minutos.', 'Engolir nada. Foi uma picada, de um bicho no quintal.']),
           },
           extra: [
-            ex('pele', 'Manchas na pele?', 'Tem manchas ou placas na pele?', '{{Cheio de placas vermelhas|placas}}, coçando.'),
+            ex('manchas', 'Manchas na pele?', 'Tem manchas ou placas na pele?', '{{Cheio de placas vermelhas|placas}}, coçando.'),
             ex('caneta', 'Tem caneta de adrenalina?', 'Tem caneta de adrenalina aí?', 'Não tem, nunca precisou!'),
           ],
           links: [

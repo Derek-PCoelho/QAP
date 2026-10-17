@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { store, useStore } from '../../store';
 import { parseMarkup, resolveTokens } from '../../../engine/text';
-import type { CallRT, ShownLine, VoiceId } from '../../../engine/types';
+import { BOXES, type BoxId, type CallRT, type ShownLine, type VoiceId } from '../../../engine/types';
 import type { QuestionView } from '../../../engine/shift';
 import { audio } from '../../audio';
 import { fmtDur } from '../../../engine/util';
@@ -47,6 +47,7 @@ function CallHeader({ call }: { call: CallRT }) {
       {call.noteText && (
         <div className={'ch-tarm' + (call.noteUrgent ? ' red' : '')}>
           <b>TARM</b> {call.noteText}
+          {call.noteAddr && <em className="ch-addr"> {call.noteAddr}</em>}
         </div>
       )}
     </>
@@ -199,66 +200,95 @@ function Line({ line, partial }: { line: ShownLine; partial?: number }) {
   );
 }
 
-const GROUP_ORDER = ['confronto', 'base', 'protocolo', 'ferramenta', 'acalmar'];
+/** caixas de perguntas (1.1): Clínico azul, GO rosa, Trauma verde, Outros branco */
+const BOX_LABEL: Record<BoxId, string> = { clinico: 'Clínico', go: 'GO', trauma: 'Trauma', outros: 'Outros' };
 
 /**
- * Perguntas próprias da ligação ("especifica", "fala") ficam misturadas às perguntas de sempre,
- * na mesma cor: em cor própria e no topo elas entregavam quais perguntas importavam.
+ * Perguntas do regulador (1.1): as cinco fixas no topo; as quatro caixas acrescentam à tela as
+ * perguntas daquele tipo de caso (e as perguntas próprias da ligação que forem dele); confrontos
+ * liberados ficam à vista; "Falar com o paciente", "Ligar de volta", "Acalmar", vídeo e espera são
+ * ferramentas, na linha de baixo.
  */
-function orderQuestions(qs: QuestionView[], callId: string): QuestionView[] {
-  const own = (g: string) => g === 'especifica' || g === 'fala';
-  const rank = (g: string) => (own(g) ? GROUP_ORDER.indexOf('base') : GROUP_ORDER.indexOf(g));
-  const base = qs.filter((q) => !own(q.group)).sort((a, b) => rank(a.group) - rank(b.group));
-  const extras = qs.filter((q) => own(q.group));
-  // posição estável por ligação, depois das três primeiras perguntas de sempre
-  const out = [...base];
-  const firstFree = Math.min(3, out.filter((q) => q.group === 'base').length);
-  for (const q of extras) {
-    let h = 0;
-    for (const ch of callId + q.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    const lastBase = out.reduce((n, x, i) => (x.group === 'base' || own(x.group) ? i + 1 : n), 0);
-    const span = Math.max(1, lastBase - firstFree + 1);
-    out.splice(firstFree + (h % span), 0, q);
-  }
-  return out;
-}
-
 function Keypad({ call }: { call: CallRT }) {
   const s = useStore();
   const g = s.game!;
   const sh = g.shift!;
   const def = sh.defOf(call);
-  const qs = orderQuestions(sh.questions(call), call.id);
+  const all = sh.questions(call);
+  const open = call.boxes ?? [];
   const busy = !!sh.sh.guideCallId || call.status !== 'ativa' || !!call.decision;
   const ask = (id: string) => {
     sh.ask(id);
     audio.sfx('click');
     store.notify();
   };
+  const toggle = (b: BoxId) => {
+    sh.toggleBox(b);
+    audio.sfx('page');
+    store.notify();
+  };
+  const tarm = !!sh.sh.tarm;
+  const tools = all.filter((q) => !q.fixed && !q.box && (q.group === 'ferramenta' || q.group === 'acalmar'));
+  const fixed = all.filter((q) => q.fixed);
+  // confrontos liberados e perguntas sem caixa (TARM: todas as dela)
+  const loose = all.filter((q) => !q.fixed && !q.box && q.group !== 'ferramenta' && q.group !== 'acalmar');
+  const inBox = (b: BoxId) => all.filter((q) => q.box?.includes(b));
+  const shownBoxQ: (QuestionView & { b: BoxId })[] = [];
+  const seen = new Set<string>();
+  for (const b of BOXES) {
+    if (!open.includes(b)) continue;
+    for (const q of inBox(b)) {
+      if (seen.has(q.id)) continue;
+      seen.add(q.id);
+      shownBoxQ.push({ ...q, b });
+    }
+  }
+  const btn = (q: QuestionView, extra = '') => (
+    <button
+      key={q.id}
+      className={`kp-btn g-${q.group === 'especifica' || q.group === 'fala' ? 'base' : q.group}${extra}` + (q.asked ? ' asked' : '')}
+      disabled={busy || (q.asked && q.group !== 'acalmar')}
+      title={q.hint ?? ''}
+      onClick={() => ask(q.id)}
+    >
+      <span className="kp-label">{q.label}</span>
+      <span className="kp-cost">{q.asked && q.group !== 'acalmar' ? '✓' : `${q.cost}′`}</span>
+    </button>
+  );
   return (
     <div className="keypad bezel">
+      {!tarm && (
+        <div className="kp-boxes" role="group" aria-label="Caixas de perguntas">
+          {BOXES.map((b) => {
+            const n = inBox(b).filter((q) => !q.asked).length;
+            return (
+              <button key={b} className={`kp-box box-${b}` + (open.includes(b) ? ' on' : '')} disabled={busy} aria-pressed={open.includes(b)} onClick={() => toggle(b)} title={open.includes(b) ? 'Fechar a caixa' : 'Abrir: acrescenta as perguntas desta caixa'}>
+                {BOX_LABEL[b]}
+                {n > 0 && <small>{n}</small>}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="kp-grid scroll-y">
-        {qs.map((q) => (
-          <button
-            key={q.id}
-            className={`kp-btn g-${q.group === 'especifica' || q.group === 'fala' ? 'base' : q.group}` + (q.asked ? ' asked' : '')}
-            disabled={busy || (q.asked && q.group !== 'acalmar')}
-            title={q.hint ?? ''}
-            onClick={() => ask(q.id)}
-          >
-            <span className="kp-label">{q.label}</span>
-            <span className="kp-cost">{q.asked && q.group !== 'acalmar' ? '✓' : `${q.cost}′`}</span>
-          </button>
-        ))}
+        {fixed.map((q) => btn(q, ' fixed'))}
+        {loose.map((q) => btn(q))}
+        {shownBoxQ.map((q) => btn(q, ` inbox box-${q.b}`))}
+        {!tarm && open.length === 0 && <p className="kp-tip">Abra uma caixa para mais perguntas.</p>}
       </div>
       <div className="kp-actions">
-        <button className="px-btn small ghost" disabled={busy} onClick={() => (sh.hold(), store.notify())} title="Volta para a fila com tudo que já foi dito">
+        {tools.map((q) => (
+          <button key={q.id} className={'px-btn tiny ghost tool' + (q.asked && q.group !== 'acalmar' ? ' asked' : '')} disabled={busy || (q.asked && q.group !== 'acalmar')} title={(q.hint ?? '') + ` (${q.cost} min)`} onClick={() => ask(q.id)}>
+            {q.label} <span className="kp-cost">{q.asked && q.group !== 'acalmar' ? '✓' : `${q.cost}′`}</span>
+          </button>
+        ))}
+        <VideoButton call={call} busy={busy} />
+        <button className="px-btn tiny ghost" disabled={busy} onClick={() => (sh.hold(), store.notify())} title="Volta para a fila com tudo que já foi dito">
           Pôr em espera
         </button>
-        <VideoButton call={call} busy={busy} />
-        {def.impedimento && !sh.sh.tarm && (
+        {def.impedimento && !tarm && (
           <button
-            className="px-btn small warm"
+            className="px-btn tiny warm"
             disabled={busy}
             onClick={() => {
               sh.declareImpediment();
@@ -287,7 +317,7 @@ function VideoButton({ call, busy }: { call: CallRT; busy: boolean }) {
     : view.reason ?? '';
   return (
     <button
-      className="px-btn small video"
+      className="px-btn tiny video"
       disabled={busy || !view.canStart}
       title={title}
       onClick={() => {

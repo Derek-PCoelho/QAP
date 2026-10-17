@@ -695,10 +695,12 @@ export const DAY = day({
         historico: 'Nada. Nunca teve nada. Fez o exame de dengue na UBS anteontem.',
         paciente: ['YURI: Mãe... tô com frio...', '[{{a voz dele é fraca, sem força|voz_fraca}}]'],
         seguranca: 'Seguro.',
+        // 1.1: as perguntas fixas de pulso e pele (antes, uma pergunta própria "Pele fria? Pulso?")
+        pele: '{{Frio e molhado, as mãos e os pés|pele_fria}}. E branquinho, {dr}. Branco de papel.',
+        pulso: 'No punho... {{fininho, rápido, quase não acho|pulso_fraco}}.',
         referencia: 'Vila do fundo, casa 4. Portão de ferro verde. Eu ponho uma luz na frente.',
       },
       extra: [
-        { id: 'pele', label: 'Pele fria? Pulso?', say: 'Põe a mão nele: a pele está fria, úmida? E o pulso, dá pra sentir no punho?', a: '{{Frio e molhado, as mãos e os pés|pele_fria}}. O pulso... {{fininho, rápido, quase não acho|pulso_fraco}}.' },
         { id: 'urina', label: 'Está urinando?', say: 'Quando ele urinou pela última vez?', a: 'De manhã. Uma vez só, pouquinho.' },
       ],
       links: [

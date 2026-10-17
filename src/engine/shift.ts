@@ -5,9 +5,10 @@
 import type {
   GameState, ShiftState, CallRT, CallDef, TruthDef, Decision, UnitState, Resource, LineIn, SchedEvent,
   RadioKind, Dest, Verdict, ReportItem, LinkDef, ExtraQ, Ctx, EffCtx, TimelineDef, UnitStatus, ModalMsg,
-  PendingRequest, Color, Support, Referral, AnswerIn, CallOutcome, DayDef, RegId, TarmShiftState, ShownLine,
+  PendingRequest, Color, Support, Referral, AnswerIn, CallOutcome, DayDef, RegId, TarmShiftState, ShownLine, BoxId, OutrosAct,
 } from './types';
 import type { Content } from './content-api';
+import { callBox, extraBox } from './categories';
 import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL } from './state';
 import { hm, fmtTime, clamp, Rng, hashString } from './util';
 import { normLines, txt, cluesIn, resolveTokens, stripMarkup, beneForm } from './text';
@@ -62,6 +63,10 @@ export interface QuestionView {
   group: 'base' | 'protocolo' | 'ferramenta' | 'especifica' | 'confronto' | 'fala' | 'acalmar';
   asked: boolean;
   hint?: string;
+  /** uma das cinco perguntas fixas */
+  fixed?: boolean;
+  /** caixas em que aparece (sem fixed e sem box: ferramenta/confronto, sempre à vista) */
+  box?: BoxId[];
 }
 
 const RANK: Record<string, number> = { ORI: 0, USB: 1, USA: 2 };
@@ -738,6 +743,11 @@ export class ShiftSim {
     return Math.max(1, Math.round(c));
   }
 
+  /**
+   * Perguntas da ligação (1.1): `fixed` = as cinco fixas; `box` = a(s) caixa(s) em que aparece
+   * (Clínico/GO/Trauma/Outros: a tela mostra só as das caixas abertas, `call.boxes`); sem as duas
+   * = ferramenta ou confronto liberado (sempre à vista).
+   */
   questions(call: CallRT): QuestionView[] {
     const def = this.defOf(call);
     const c = this.ctx();
@@ -745,27 +755,52 @@ export class ShiftSim {
     for (const q of this.c.questions) {
       if (q.day && q.day > this.st.day) continue;
       if (q.id === 'acalmar') continue;
-      if (this.tarm && !TARM_QUESTIONS.includes(q.id)) continue;
-      // idade é dado que a TARM já anotou (aparece na ficha): não é pergunta do regulador
-      if (!this.tarm && q.id === 'idade') continue;
-      // para o regulador, a referência serve para confirmar o local (trote, endereço que não fecha)
-      const label = !this.tarm && q.id === 'referencia' ? 'Confirmar o endereço' : q.label;
-      const hint = !this.tarm && q.id === 'referencia' ? 'Só quando o local não fecha: trote, endereço difícil' : q.hint;
-      out.push({ id: q.id, label, cost: this.questionCost(q.cost), group: q.group, asked: call.asked.includes(q.id), hint });
+      if (this.tarm) {
+        if (!TARM_QUESTIONS.includes(q.id)) continue;
+      } else if (q.tarmOnly) continue;
+      const box = q.box === undefined ? undefined : Array.isArray(q.box) ? q.box : [q.box];
+      out.push({ id: q.id, label: q.label, cost: this.questionCost(q.cost), group: q.group, asked: call.asked.includes(q.id), hint: q.hint, fixed: !this.tarm && !!q.fixed, box: this.tarm ? undefined : box });
     }
     out.push({ id: 'acalmar', label: 'Acalmar', cost: this.questionCost(4), group: 'acalmar', asked: false, hint: 'Reduz o pânico de quem liga' });
     if (this.tarm) return out;
+    const cat = this.callCat(call);
     for (const x of def.extra ?? []) {
       if (x.when && !x.when(c)) continue;
       if (!this.isUnlocked(call, x)) continue;
       const asked = call.asked.includes(x.id);
-      out.push({ id: x.id, label: x.label, cost: this.questionCost(x.cost ?? 8), group: this.groupOf(x), asked });
+      const b = extraBox(x, cat);
+      out.push({ id: x.id, label: x.label, cost: this.questionCost(x.cost ?? 8), group: this.groupOf(x), asked, box: b ? [b] : undefined });
     }
     // o número já está no quadro de trotes: dá para dizer isso a quem liga
     if (this.onBoard(call)) {
       out.push({ id: 'confronto_quadro', label: '"Esse número já passou trote aqui."', cost: this.questionCost(6), group: 'confronto', asked: call.asked.includes('confronto_quadro') });
     }
     return out;
+  }
+
+  /** caixa (categoria) do chamado: Clínico, GO ou Trauma */
+  callCat(call: CallRT): BoxId {
+    return callBox(this.defOf(call), this.truthOf(call));
+  }
+
+  /** a pergunta foi feita com a caixa fechada (atalho, bot): abre a caixa dela (a do chamado, se servir) */
+  private openBoxFor(call: CallRT, boxes: BoxId[]) {
+    const open = (call.boxes ??= []);
+    if (boxes.some((b) => open.includes(b))) return;
+    const cat = this.callCat(call);
+    open.push(boxes.includes(cat) ? cat : boxes[0]);
+  }
+
+  /** abre (ou fecha) uma caixa de perguntas na ligação ativa; não custa tempo */
+  toggleBox(box: BoxId, open?: boolean): boolean {
+    const call = this.active();
+    if (!call) return false;
+    const list = (call.boxes ??= []);
+    const has = list.includes(box);
+    const want = open ?? !has;
+    if (want && !has) list.push(box);
+    if (!want && has) call.boxes = list.filter((b) => b !== box);
+    return want;
   }
 
   /** o número desta ligação está no quadro de trotes */
@@ -823,9 +858,13 @@ export class ShiftSim {
     }
     if (base) {
       if (base.day && base.day > this.st.day) return false;
+      if (!this.tarm && base.tarmOnly) return false;
       if (call.asked.includes(qid)) return false;
       call.asked.push(qid);
+      // perguntar algo de uma caixa fechada (atalho, bot) abre a caixa
+      if (!this.tarm && base.box) this.openBoxFor(call, Array.isArray(base.box) ? base.box : [base.box]);
       this.regLine(call, base.say);
+      if (base.act) return this.outros(call, def, base.act, base.cost);
       if (qid === 'callback') {
         this.sysLine(call, '📞 Você desliga e liga de volta para o número...');
         const ans = def.callback ?? this.defaultCallback(call, def);
@@ -853,11 +892,41 @@ export class ShiftSim {
     if (!this.isUnlocked(call, x)) return false;
     if (call.asked.includes(qid) && !x.repeat) return false;
     if (!call.asked.includes(qid)) call.asked.push(qid);
+    const xb = extraBox(x, this.callCat(call));
+    if (xb) this.openBoxFor(call, [xb]);
     this.regLine(call, txt(x.say ?? x.label, c));
     this.pushLines(call, x.a, def);
     for (const u of x.unlocks ?? []) if (!call.unlocked.includes(u)) call.unlocked.push(u);
     if (x.onAsk) x.onAsk(this.eff());
     this.advance(this.questionCost(x.cost ?? 8));
+    return true;
+  }
+
+  /**
+   * Frases da caixa Outros (o solicitante folgado). A resposta vem de `def.q[id]` (por ligação) ou
+   * do padrão (`defaults`). Efeitos: "gravada" acalma o abuso (paciência +10) mas irrita quem tem
+   * urgência de verdade (−10); "não é perfil" irrita (−10) quem tem urgência; "meios próprios" conta
+   * como orientação dada (fica marcado em `call.unlocked` como 'meios'); "encerro" fecha a ligação
+   * como orientação (ORI) — com meios próprios ditos, para a UPA (ou o encaminhamento da verdade);
+   * sem isso, ficar em casa. O carimbo avalia como qualquer orientação.
+   */
+  private outros(call: CallRT, def: CallDef, act: OutrosAct, cost: number): boolean {
+    const c = this.ctx();
+    const id = this.c.questions.find((q) => q.act === act)?.id ?? act;
+    const t = this.truthOf(call);
+    const urgent = t.sev === 'vermelho' || t.sev === 'amarelo';
+    const a = def.q?.[id];
+    this.pushLines(call, a !== undefined ? a : this.c.defaults(id, def, c), def);
+    if (act === 'gravada') call.patience = clamp(call.patience + (urgent ? -10 : 10), 0, 100);
+    if (act === 'perfil' && urgent) call.patience = clamp(call.patience - 10, 0, 100);
+    if (act === 'meios' && !call.unlocked.includes('meios')) call.unlocked.push('meios');
+    this.advance(this.questionCost(cost));
+    if (act === 'encerra' && !call.decision && this.active()?.id === call.id) {
+      const meios = call.unlocked.includes('meios');
+      const ref: Referral = meios ? (t.ref?.find((r) => r !== 'CASA') ?? 'UPA') : 'CASA';
+      const r = this.stamp({ color: t.sev === 'azul' ? 'azul' : 'verde', resource: 'ORI', support: [], referral: ref });
+      if (r.ok) this.sysLine(call, '☎ Você encerrou a ligação. Registrado como orientação' + (meios ? ' (meios próprios).' : '.'));
+    }
     return true;
   }
 

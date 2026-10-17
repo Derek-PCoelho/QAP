@@ -114,6 +114,11 @@ export interface ExtraQ {
   kind?: 'pergunta' | 'confronto' | 'fala' | 'acalmar';
   /** repete? padrão: não (some depois de perguntada) */
   repeat?: boolean;
+  /**
+   * Caixa em que a pergunta aparece (1.1). Sem ela: confronto fica sempre à vista quando liberado;
+   * o resto vai pela heurística de `extraBox` (palavras do texto) ou para a caixa da ligação.
+   */
+  cat?: BoxId;
 }
 
 /** @deprecated Resto do Modo Inconsistência (removido na 1.1). Nas ligações e nos dias é ignorado;
@@ -608,6 +613,12 @@ export interface CallDef {
   video?: VideoDef | ((c: Ctx) => VideoDef);
   /** dica para a cena gerada da videochamada (lugar, pose, quem está junto); ver VideoHint */
   cena?: VideoHint;
+  /**
+   * Categoria do chamado (1.1): Clínico, GO ou Trauma (e a cor do post-it da Simone na Onda 2).
+   * Sem ela, `callBox` deduz pelo diagnóstico/etiquetas. As perguntas específicas sem `cat`
+   * caem nesta caixa.
+   */
+  cat?: BoxId;
 }
 
 export interface MciVictim {
@@ -855,6 +866,13 @@ export interface ManualPage {
   rules: ManualRule[];
 }
 
+/** Caixas de perguntas da mesa (1.1): Clínico (azul), GO (rosa), Trauma (verde), Outros (branco). */
+export type BoxId = 'clinico' | 'go' | 'trauma' | 'outros';
+export const BOXES: readonly BoxId[] = ['clinico', 'go', 'trauma', 'outros'];
+
+/** Frases do regulador para o solicitante folgado (caixa Outros) e o que fazem no motor. */
+export type OutrosAct = 'gravada' | 'perfil' | 'meios' | 'encerra';
+
 export interface QuestionDef {
   id: string;
   label: string;
@@ -863,6 +881,14 @@ export interface QuestionDef {
   day?: number;
   group: 'base' | 'protocolo' | 'ferramenta';
   hint?: string;
+  /** uma das cinco perguntas fixas (sempre na tela) */
+  fixed?: boolean;
+  /** caixa(s) em que a pergunta aparece quando aberta */
+  box?: BoxId | BoxId[];
+  /** frase da caixa Outros: efeito no motor (gravada, não é perfil, meios próprios, encerrar) */
+  act?: OutrosAct;
+  /** só para a TARM (campanha da Simone); o regulador não vê */
+  tarmOnly?: boolean;
 }
 
 // ----------------------------------------------------------------------------
@@ -970,6 +996,8 @@ export interface CallRT {
   lines: ShownLine[];
   asked: string[];
   unlocked: string[];
+  /** caixas de perguntas abertas nesta ligação (1.1) */
+  boxes?: BoxId[];
   patience: number;
   worsenIdx: number;
   truthPatch?: Partial<TruthDef>;

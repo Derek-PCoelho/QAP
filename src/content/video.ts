@@ -822,6 +822,13 @@ function castFor(f: Feat, red: boolean): VideoExtra[] | undefined {
   return cast;
 }
 
+/** cor da pele que a cena do vídeo mostraria (fonte da resposta padrão de "Cor da pele?") */
+export function skinOf(def: CallDef, t: TruthDef): VideoSkin {
+  if (t.sev === 'trote') return 'normal';
+  const age = ageOf(def, norm(t.dx));
+  return features(def, t, age, AJUSTE[def.id] ?? def.cena).skin;
+}
+
 export function buildVideo(def: CallDef, t: TruthDef, c: Ctx, callId: string): VideoDef {
   if (t.sev === 'trote') return prankVideo(def, t, callId);
   const dx = norm(t.dx);

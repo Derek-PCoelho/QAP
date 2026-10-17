@@ -824,9 +824,9 @@ export const DAY = day({
         historico: 'Nada. Tô tomando dipirona e soro caseiro, que mandaram na UBS.',
         paciente: 'Sou eu mesmo.',
         seguranca: 'Seguro. Moro sozinho.',
+        pele: 'Normal, eu acho. A mão tá quentinha. Desmaiar, não desmaiei.',
         referencia: 'Rua Bahia, 1750, prédio de tijolinho. Eu deixo a porta destrancada.',
       },
-      extra: [{ id: 'pele', label: 'Pele fria? Desmaiou?', say: 'Sua pele está fria, úmida? Você desmaiou?', a: 'Desmaiar, não. A mão tá normal, quentinha.' }],
       links: [
         { a: 'dor_barriga', b: 'manual:dengue_alarme', insight: 'Dengue com dor abdominal intensa, vômitos persistentes e tontura ao levantar: sinais de alarme. USB → UPA (Manual p.11).' },
         { a: 'lucido', b: 'manual:dengue_grave', kind: 'confirma', insight: 'Lúcido, pele quente, sem desmaio, sem sangramento importante: alarme, mas ainda não é choque. USB, não USA.' },

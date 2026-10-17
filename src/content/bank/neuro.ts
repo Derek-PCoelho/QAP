@@ -410,7 +410,7 @@ export const DESMAIOU = tpl({
             paciente: [`${p.PT}: Eu tô... fraco... o coração tá... esquisito...`],
           },
           extra: [
-            ex('pulso', 'Contar o pulso', `Põe dois dedos no pulso ${p.dele} e conta as batidas enquanto eu marco 15 segundos.`, ['Peraí... um... dois... três...', '[pausa longa]', 'Deu {{oito, {dr}. Bem devagarinho|pulso_lento}}.']),
+            ex('contar_pulso', 'Contar o pulso', `Põe dois dedos no pulso ${p.dele} e conta as batidas enquanto eu marco 15 segundos.`, ['Peraí... um... dois... três...', '[pausa longa]', 'Deu {{oito, {dr}. Bem devagarinho|pulso_lento}}.']),
           ],
           links: [
             lk('sem_aviso', 'pulso_lento', 'Desmaio sem aviso e pulso de 32 por minuto em quem tem doença do coração: bradiarritmia. Vermelho, USA.'),

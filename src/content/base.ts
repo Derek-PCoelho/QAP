@@ -4,24 +4,39 @@ import type { QuestionDef, ManualPage, FleetSpec, GameState } from '../engine/ty
 import type { DeskDoc } from '../engine/content-api';
 import { protagonistFirst } from '../engine/text';
 
+// 1.1: cinco perguntas fixas + quatro caixas (Clínico, GO, Trauma, Outros) + ferramentas.
+// Os ids antigos ficam (truth.must e as respostas das ligações usam os ids); muda só onde aparecem.
 export const QUESTIONS: QuestionDef[] = [
-  { id: 'oque', label: 'O que aconteceu?', say: 'O que aconteceu?', cost: 5, group: 'base', hint: 'Relato base' },
-  { id: 'consciencia', label: 'Está acordado?', say: 'A pessoa está acordada? Responde quando chama?', cost: 8, group: 'base', hint: 'Nível de consciência' },
-  { id: 'respira', label: 'Respira normal?', say: 'Está respirando normalmente?', cost: 8, group: 'base', hint: 'Via aérea e respiração' },
-  { id: 'idade', label: 'Qual a idade?', say: 'Qual a idade do paciente?', cost: 5, group: 'base', hint: 'Fator de risco' },
-  { id: 'inicio', label: 'Desde que horas?', say: 'Desde que horas está assim?', cost: 8, group: 'base', hint: 'Decisivo em AVC e infarto' },
-  { id: 'sangramento', label: 'Tem sangramento?', say: 'Tem sangramento? Muito ou pouco?', cost: 8, group: 'base', hint: 'Hemorragia' },
-  { id: 'historico', label: 'Doenças/remédios?', say: 'Tem alguma doença? Toma algum remédio?', cost: 10, group: 'base', hint: 'Histórico' },
-  { id: 'paciente', label: 'Falar com o paciente', say: 'Posso falar com o paciente?', cost: 15, group: 'base', hint: 'Testa a história' },
-  { id: 'referencia', label: 'Ponto de referência', say: 'Qual o ponto de referência?', cost: 8, group: 'base', hint: 'Confirma o endereço' },
-  { id: 'seguranca', label: 'Local seguro?', say: 'O local está seguro? Tem alguém armado ou brigando aí?', cost: 8, group: 'base', hint: 'Cena com violência' },
+  // fixas (sempre na tela)
+  { id: 'pulso', label: 'Tem pulso?', say: 'Encosta dois dedos no pescoço, do lado. Tem pulso? Está batendo?', cost: 5, group: 'base', fixed: true, hint: 'Circulação' },
+  { id: 'respira', label: 'Respira?', say: 'Está respirando normalmente?', cost: 8, group: 'base', fixed: true, hint: 'Via aérea e respiração' },
+  { id: 'pele', label: 'Cor da pele?', say: 'Qual a cor da pele? Está pálida, roxa, cinza, suando frio?', cost: 5, group: 'base', fixed: true, hint: 'Perfusão' },
+  { id: 'consciencia', label: 'Está acordado?', say: 'A pessoa está acordada? Responde quando chama?', cost: 8, group: 'base', fixed: true, hint: 'Nível de consciência' },
+  { id: 'oque', label: 'O que aconteceu?', say: 'O que aconteceu?', cost: 5, group: 'base', fixed: true, hint: 'Relato base' },
+  // caixa Clínico (azul)
+  { id: 'inicio', label: 'Desde que horas?', say: 'Desde que horas está assim?', cost: 8, group: 'base', box: ['clinico', 'trauma', 'go'], hint: 'Decisivo em AVC e infarto' },
+  { id: 'historico', label: 'Doenças/remédios?', say: 'Tem alguma doença? Toma algum remédio?', cost: 10, group: 'base', box: ['clinico', 'trauma'], hint: 'Histórico' },
+  { id: 'dorpeito', label: 'Dor irradia? Suor?', say: 'A dor vai para o braço, as costas ou o queixo? Está com suor frio?', cost: 8, day: 3, group: 'protocolo', box: 'clinico', hint: 'Manual p.3' },
+  { id: 'fast', label: 'Teste FAST', say: 'Peça para sorrir, levantar os dois braços e repetir: "o céu é azul".', cost: 10, day: 6, group: 'protocolo', box: 'clinico', hint: 'Manual p.6 — AVC' },
+  { id: 'dengue', label: 'Sinais de alarme', say: 'Tem dor forte na barriga, vômito sem parar, sangramento ou tontura ao levantar?', cost: 8, day: 11, group: 'protocolo', box: 'clinico', hint: 'Manual p.11 — dengue' },
+  { id: 'risco', label: 'Risco imediato?', say: 'Alguém corre perigo agora? A pessoa está tentando machucar alguém ou a si mesma?', cost: 8, day: 12, group: 'protocolo', box: 'clinico', hint: 'Manual p.12' },
+  { id: 'ingestao', label: 'O que engoliu?', say: 'O que foi engolido, quanto, e há quanto tempo? A embalagem está aí?', cost: 8, day: 13, group: 'protocolo', box: 'clinico', hint: 'Manual p.13' },
+  // caixa GO (rosa)
+  { id: 'gestacao', label: 'Gestação?', say: 'Está grávida? De quantas semanas? Tem sangramento, dor de cabeça forte, convulsão?', cost: 8, day: 7, group: 'protocolo', box: 'go', hint: 'Manual p.7' },
+  // caixa Trauma (verde)
+  { id: 'sangramento', label: 'Tem sangramento?', say: 'Tem sangramento? Muito ou pouco?', cost: 8, group: 'base', box: ['trauma', 'go'], hint: 'Hemorragia' },
+  { id: 'seguranca', label: 'Local seguro?', say: 'O local está seguro? Tem alguém armado ou brigando aí?', cost: 8, group: 'base', box: ['trauma', 'clinico'], hint: 'Cena com violência' },
+  // caixa Outros (branco): frases para quem quer ambulância como táxi ou consulta
+  { id: 'gravada', label: '"A ligação está sendo gravada."', say: 'Atenção: esta ligação está sendo gravada.', cost: 1, group: 'base', box: 'outros', act: 'gravada', hint: 'Esfria quem está abusando' },
+  { id: 'nao_perfil', label: '"Não é perfil do serviço de urgências."', say: 'O paciente não é perfil do nosso serviço de urgências.', cost: 2, group: 'base', box: 'outros', act: 'perfil', hint: 'Caso sem urgência' },
+  { id: 'meios_proprios', label: '"Levar por meios próprios."', say: 'A indicação é levar o paciente por meios próprios até a UPA ou a UBS.', cost: 2, group: 'base', box: 'outros', act: 'meios', hint: 'Conta como orientação' },
+  { id: 'encerrar', label: '"Encerro a ligação."', say: 'Por motivo de conflitos, encerro a ligação.', cost: 1, group: 'base', box: 'outros', act: 'encerra', hint: 'Encerra como orientação (meios próprios)' },
+  // ferramentas
+  { id: 'paciente', label: 'Falar com o paciente', say: 'Posso falar com o paciente?', cost: 15, group: 'ferramenta', hint: 'Testa a história' },
   { id: 'callback', label: 'Ligar de volta', say: 'Vou desligar e ligar de volta para confirmar o chamado.', cost: 30, day: 2, group: 'ferramenta', hint: 'Desmascara número falso (30 min)' },
-  { id: 'dorpeito', label: 'Dor irradia? Suor?', say: 'A dor vai para o braço, as costas ou o queixo? Está com suor frio?', cost: 8, day: 3, group: 'protocolo', hint: 'Manual p.3' },
-  { id: 'fast', label: 'Teste FAST', say: 'Peça para sorrir, levantar os dois braços e repetir: "o céu é azul".', cost: 10, day: 6, group: 'protocolo', hint: 'Manual p.6 — AVC' },
-  { id: 'gestacao', label: 'Gestação?', say: 'Está grávida? De quantas semanas? Tem sangramento, dor de cabeça forte, convulsão?', cost: 8, day: 7, group: 'protocolo', hint: 'Manual p.7' },
-  { id: 'dengue', label: 'Sinais de alarme', say: 'Tem dor forte na barriga, vômito sem parar, sangramento ou tontura ao levantar?', cost: 8, day: 11, group: 'protocolo', hint: 'Manual p.11 — dengue' },
-  { id: 'risco', label: 'Risco imediato?', say: 'Alguém corre perigo agora? A pessoa está tentando machucar alguém ou a si mesma?', cost: 8, day: 12, group: 'protocolo', hint: 'Manual p.12' },
-  { id: 'ingestao', label: 'O que engoliu?', say: 'O que foi engolido, quanto, e há quanto tempo? A embalagem está aí?', cost: 8, day: 13, group: 'protocolo', hint: 'Manual p.13' },
+  // da TARM (campanha da Simone): idade e endereço são dados que ela anota
+  { id: 'idade', label: 'Qual a idade?', say: 'Qual a idade do paciente?', cost: 5, group: 'base', tarmOnly: true, hint: 'Fator de risco' },
+  { id: 'referencia', label: 'Ponto de referência', say: 'Qual o ponto de referência?', cost: 8, group: 'base', tarmOnly: true, hint: 'Confirma o endereço' },
 ];
 
 export const MANUAL: ManualPage[] = [

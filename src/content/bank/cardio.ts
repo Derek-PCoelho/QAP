@@ -211,7 +211,7 @@ export const CORACAO_DISPARADO = tpl({
           },
           extra: [
             ex('formiga', 'Formigamento?', 'Sente formigamento na boca ou nas mãos?', '{{As mãos e a boca formigando|formigando}}.'),
-            ex('pulso', 'Contar o pulso', 'Põe dois dedos no pulso e conta as batidas por 15 segundos.', '...vinte e sete, vinte e oito. {{Deu 28|pulso_110}}.'),
+            ex('contar_pulso', 'Contar o pulso', 'Põe dois dedos no pulso e conta as batidas por 15 segundos.', '...vinte e sete, vinte e oito. {{Deu 28|pulso_110}}.'),
           ],
           links: [
             lm(p, 'formigando', 'ansiedade', 'Formigamento, respiração rápida, fala frases inteiras: crise de ansiedade. Respiração guiada (Manual p.5-B).'),
@@ -244,7 +244,7 @@ export const CORACAO_DISPARADO = tpl({
             idade: `${p.anos}.`,
             historico: '{{Já aconteceu duas vezes|ja_aconteceu}}. No hospital apertaram meu pescoço e me deram uma injeção.',
           },
-          extra: [ex('pulso', 'Contar o pulso', 'Põe dois dedos no pulso e conta as batidas por 15 segundos.', '...nem consigo contar direito, é muito rápido. {{Uns 48|pulso_rapido}}.')],
+          extra: [ex('contar_pulso', 'Contar o pulso', 'Põe dois dedos no pulso e conta as batidas por 15 segundos.', '...nem consigo contar direito, é muito rápido. {{Uns 48|pulso_rapido}}.')],
           links: [
             lk('chave', 'pulso_rapido', 'Começo súbito "como uma chave", quase 200 por minuto: taquicardia supraventricular. Amarelo, USB.'),
             lk('ja_aconteceu', 'chave', 'Já aconteceu antes e reverteu no hospital: mesmo quadro.', { kind: 'confirma' }),
@@ -277,7 +277,7 @@ export const CORACAO_DISPARADO = tpl({
           },
           extra: [
             ex('tomou', 'Tomou alguma coisa?', 'Você tomou alguma coisa? Energético, remédio, droga?', '{{Quatro latas de energético|energetico}}... e {{um remédio pra emagrecer que a minha prima me deu|emagrecer}}.'),
-            ex('pulso', 'Contar o pulso', 'Põe dois dedos no pulso e conta por 15 segundos.', 'Deu 30.'),
+            ex('contar_pulso', 'Contar o pulso', 'Põe dois dedos no pulso e conta por 15 segundos.', 'Deu 30.'),
           ],
           links: [lk('energetico', 'emagrecer', 'Energéticos e remédio para emagrecer, sem dormir: o coração acelerado tem causa. Sem dor no peito: UPA por meios próprios e nada de cafeína.')], // [validar]
           radio: { ok: 'Central, {unit}. Taquicardia por estimulante, estável. Levamos pra UPA.', excess: '{central}, {unit}. Energético e remédio de emagrecer, {dr}. Estável.' },

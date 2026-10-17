@@ -333,7 +333,7 @@ function runVariant(t: TemplateDef, trId: string, day: number, seed: number, wro
   sim.answer(id);
   const def = sim.defOf(call);
   for (let round = 0; round < 3; round++) {
-    for (const q of sim.questions(call)) if (!q.asked && sim.active()?.id === id) sim.ask(q.id);
+    for (const q of sim.questions(call)) if (!q.asked && !q.box?.includes('outros') && sim.active()?.id === id) sim.ask(q.id);
   }
   if (sim.active()?.id !== id) {
     // desligou (ex.: trote com confronto) — tudo bem, mas não pode explodir
