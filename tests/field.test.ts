@@ -29,27 +29,36 @@ function playPerfect(sim: FieldSim) {
   sim.begin();
   const d = sim.def!;
   const rt = sim.rt!;
+  const all = sim.actionsOf(d);
   const run = (id: string) => {
     const r = sim.act(id);
     expect(r.ok, `${d.id}: ${id} (${r.reason ?? ''})`).toBe(true);
     for (let i = 0; i < 200 && rt.busy; i++) sim.tick(0.25);
   };
-  if (d.unsafe) run(d.actions.find((a) => a.secures)!.id);
+  if (d.unsafe) run(all.find((a) => a.secures)!.id);
   if (d.prank) {
-    run(d.actions.find((a) => a.endsPrank)!.id);
+    run(all.find((a) => a.endsPrank)!.id);
     return;
   }
   const done = new Set<string>();
   const doWithNeeds = (id: string) => {
-    const a = d.actions.find((x) => x.id === id)!;
+    const a = all.find((x) => x.id === id)!;
     for (const n of [...(a.needs ?? []), ...(a.after ?? [])]) if (!done.has(n)) doWithNeeds(n);
     if (!done.has(id)) {
       run(id);
       done.add(id);
     }
   };
-  for (const c of d.actions.filter((a) => a.kind === 'critico')) doWithNeeds(c.id);
+  for (const c of sim.criticals()) doWithNeeds(c.id);
+  expect(rt.stable, `${d.id}: estabilizou`).toBe(true);
   sim.transport(d.dest[0]);
+}
+
+/** faz uma ação e espera a equipe terminar */
+function doAct(sim: FieldSim, id: string) {
+  const r = sim.act(id);
+  expect(r.ok, `${id} (${r.reason ?? ''})`).toBe(true);
+  for (let i = 0; i < 200 && sim.rt!.busy; i++) sim.tick(0.25);
 }
 
 describe('Intervenção: conteúdo', () => {
@@ -61,9 +70,10 @@ describe('Intervenção: conteúdo', () => {
       expect(PLACES).toContain(d.scene.place);
       if (d.far) expect(PLACES).toContain(d.far.place);
       for (const a of d.actions) if (a.scene?.place) expect(PLACES).toContain(a.scene.place);
-      const aids = new Set(d.actions.map((a) => a.id));
-      expect(aids.size, d.id).toBe(d.actions.length);
-      for (const a of d.actions) for (const n of [...(a.needs ?? []), ...(a.after ?? [])]) expect(aids.has(n), `${d.id}.${a.id} → ${n}`).toBe(true);
+      const acts = single(d).actionsOf(d);
+      const aids = new Set(acts.map((a) => a.id));
+      expect(aids.size, d.id).toBe(acts.length);
+      for (const a of acts) for (const n of [...(a.needs ?? []), ...(a.after ?? [])]) expect(aids.has(n), `${d.id}.${a.id} → ${n}`).toBe(true);
       expect(d.radio).toContain('{unit}');
       expect(/SAMU|192/.test(JSON.stringify(d)), d.id).toBe(false);
       if (d.prank) {
@@ -74,7 +84,7 @@ describe('Intervenção: conteúdo', () => {
       expect(d.dest.length, d.id).toBeGreaterThan(0);
       if (d.unsafe) expect(d.actions.some((a) => a.secures) && d.actions.some((a) => a.hurts), d.id).toBe(true);
     }
-    expect(FIELD_CASES.length).toBeGreaterThanOrEqual(12);
+    expect(FIELD_CASES.filter((c) => !c.special).length).toBeGreaterThanOrEqual(16);
   });
 
   it('jogando certo, todo paciente chega estável no hospital certo', () => {

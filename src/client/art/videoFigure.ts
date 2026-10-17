@@ -1442,6 +1442,8 @@ function faceCoords(r: Rig, x: number, y: number): V2 {
 function hairBack(F: Fig, r: Rig, Lk: Look, hairM: number, k: number): void {
   const st = Lk.style;
   if (st !== 'longo' && st !== 'cacheado' && st !== 'chanel' && st !== 'rabo') return;
+  // cacheado em homem é curto: sem a cortina de cabelo atrás (lia como mulher de cabelo comprido)
+  if (st === 'cacheado' && Lk.sex === 'M') return;
   const top = r.view === 'top';
   const hx = r.head[0];
   const hy = r.head[1];

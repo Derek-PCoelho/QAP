@@ -636,3 +636,75 @@
   color: #10170f;
   background: #c9a3e6;
 }
+
+/* ---------------------------------------------------------------- 1.1: oxigênio, ritmo e a história das noites */
+.fd-o2 {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 120px repeat(4, 1fr);
+  gap: 6px;
+  align-items: stretch;
+  min-height: 46px;
+}
+.fd-o2-head {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1.05;
+  color: #63c7c2;
+}
+.fd-o2-head small {
+  font-size: 11px;
+  color: var(--c-soft);
+}
+.fd-o2 .fd-act {
+  padding-left: 26px;
+}
+.fd-o2 .fd-act.on {
+  background: #163236;
+  box-shadow:
+    inset 0 0 0 2px #63c7c2,
+    0 0 0 2px #05080a;
+}
+.fd-ler {
+  margin-left: auto;
+  color: #ff8a7a;
+  animation: fd-blink 1.4s steps(2) infinite;
+}
+.fd-chapter {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: #10170f;
+  background: #e8c77a;
+  align-self: flex-start;
+}
+.fd-radio-extra.narr {
+  color: #cfe0d6;
+  font-style: italic;
+}
+.fd-destnote {
+  color: #ffb39d;
+}
+.fd-epilogo {
+  padding: 10px 12px;
+  background: #0d1418;
+  border-left: 4px solid #e8c77a;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.fd-epilogo p {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.3;
+  color: #e6ddc8;
+}
+.fd-epilogo p:last-child {
+  margin-bottom: 0;
+}
+.fd-epilogo b {
+  font-weight: normal;
+  color: #e8c77a;
+}
