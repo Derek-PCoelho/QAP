@@ -76,6 +76,7 @@ export const DAY = day({
           { who: 'HENRIQUE', t: 'Bom dia, {nome}. Noite de dor no peito: duas. As duas eram azia. Metade da cidade comeu torresmo ontem.' },
           { who: 'HENRIQUE', t: 'Hoje é quarta. Feijoada. Prepara que de tarde chove dor no peito.' },
           { who: 'NARRADOR', t: 'Ele levanta devagar demais. O cheiro de menta chega antes dele.' },
+          { who: 'NARRADOR', t: 'Ele pega a chave do carro duas vezes antes de conseguir segurar. As mesmas mãos de segunda. Você reparou nelas uma vez; agora não consegue mais desver.', when: is.flag('henrique_maos_d1') },
         ],
         choices: [
           { label: '"Dor no peito é coração até prova em contrário, Henrique."', next: 'protocolo' },
@@ -92,16 +93,106 @@ export const DAY = day({
       cuidado: {
         lines: [
           { who: 'HENRIQUE', t: 'Durmo de dia, {nome}. É igual, só que com mais barulho.' },
-          { who: 'NARRADOR', t: 'Ele pega a chave do carro duas vezes antes de conseguir segurar.' },
+          { who: 'NARRADOR', t: 'Ele pega a chave do carro duas vezes antes de conseguir segurar.', when: is.not('henrique_maos_d1') },
+          { who: 'NARRADOR', t: 'A chave cai no chão. Ele ri, junta, e sai sem olhar pra trás.', when: is.flag('henrique_maos_d1') },
         ],
       },
+    },
+  }),
+  // 1.1 — ida (a farmácia fechada), almoço (o Saulo tem medo) e volta (a farmácia 24 horas do Centro)
+  ida: () => ({
+    id: 'd03_ida',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:30. Garoa fina. A Drogaria do Gervásio ainda está de porta baixada. Uma placa amarela, desbotada: "FARMÁCIA POPULAR AQUI".' },
+          { who: 'NARRADOR', t: 'O Ozzy late para a moto do entregador de pão. A moto não liga para o Ozzy.' },
+          { who: 'AÍLTON', t: 'Quarta-feira, {dr}. Dia de feijoada e de enfarte. Senta firme que a curva da Brasil hoje tá lisa.' },
+        ],
+      },
+    },
+  }),
+  almoco: (c) => {
+    const conc = c.s.shift ? Object.values(c.s.shift.calls).find((x) => x.def === 'd03_conceicao' && !x.gen)?.decision?.resource : undefined;
+    return {
+      id: 'd03_almoco',
+      bg: 'central',
+      cast: ['SIMONE', 'CASTRO'],
+      nodes: {
+        start: {
+          lines: [
+            { who: 'NARRADOR', t: '13:00. Feijoada da quarta, de marmitex. A Simone come pouco e conta os torresmos como quem conta comprimidos.' },
+            { who: 'SIMONE', t: 'Eu tomei o remédio da pressão. Já vou avisando antes de você perguntar.' },
+            { who: 'NARRADOR', t: 'O Dr. Castro, médico da USA 01, entra para esquentar a marmita no micro-ondas da copa.' },
+            conc === 'USA'
+              ? { who: 'CASTRO', t: 'A senhora do infarto sem dor, de manhã? Foi você? A gente levou pro Regional e o Saulo, o plantonista, chiou: "trinta e oito no corredor". Recebeu chiando. O Saulo é bom médico. Só tem medo.' }
+              : { who: 'CASTRO', t: 'Ouvi o Saulo do Regional chiando no rádio hoje: "trinta e oito no corredor, duas macas". Ele fala em número. O Saulo é bom médico. Só tem medo.' },
+            { who: 'SIMONE', t: 'Ele te deve um pastel desde dezenove, Castro.' },
+            { who: 'CASTRO', t: 'Eu devo pra ela. Não ele. Ela que conta errado.' },
+          ],
+          choices: [
+            { label: '"Medo de quê?"', next: 'medo', effect: (e) => e.set('castro_saulo') },
+            { label: '"Qual pastel?"', next: 'pastel', effect: (e) => e.add('lealSimone', 1, 'fez a Simone rir') },
+          ],
+        },
+        medo: {
+          lines: [
+            { who: 'CASTRO', t: 'De vaga zero. Teve uma noite que...' },
+            { who: 'NARRADOR', t: 'O micro-ondas apita.' },
+            { who: 'CASTRO', t: '...Deixa pra lá. Pergunta pra ele quando ele gostar de você. Ele demora.' },
+            { who: 'NARRADOR', t: 'A Simone para de contar os torresmos.' },
+          ],
+        },
+        pastel: {
+          lines: [
+            { who: 'CASTRO', t: 'Pastel de palmito da Lurdinha, ali na Santos Dumont. Tinha uma aposta. Ela ganhou. Eu nunca paguei, porque se eu pagar acaba a aposta.' },
+            { who: 'SIMONE', t: '(rindo pela primeira vez no dia) Seis anos, Castro. Seis anos de juros.' },
+          ],
+        },
+      },
+    };
+  },
+  volta: (c) => ({
+    id: 'd03_volta',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:30. A drogaria do Gervásio fechou às sete. A placa da Farmácia Popular continua lá, acesa, de enfeite.' },
+          { who: 'NARRADOR', t: 'Você conta as moedas no bolso no ponto. Oitenta reais não cabem num bolso.', when: (cc) => !cc.flag('bombinha') },
+        ],
+        choices: [
+          {
+            label: 'Descer um ponto antes e ver se a farmácia 24 horas do Centro está aberta (R$ 80).',
+            needMoney: 80,
+            when: (cc) => !cc.flag('bombinha') && cc.s.family.davi.status !== 'morto' && !cc.s.family.davi.away,
+            next: 'farmacia',
+            effect: (e) => {
+              e.pay(-80, 'Bombinha do Liam (farmácia 24 horas)');
+              e.set('bombinha');
+              e.set('bombinha_dia', 3);
+              e.set('bombinha_volta');
+            },
+          },
+          { label: '(Seguir no ônibus até a Vila.)', next: 'segue', when: (cc) => !cc.flag('bombinha') },
+        ],
+      },
+      farmacia: {
+        lines: [
+          { who: 'NARRADOR', t: 'Aberta. Um balconista de olheira te vende a bombinha e o espaçador sem levantar os olhos do celular.' },
+          { who: 'NARRADOR', t: 'Você faz o resto do caminho a pé, com a sacolinha balançando. A garoa voltou.' },
+        ],
+      },
+      segue: { lines: [{ who: 'NARRADOR', t: 'O ônibus passa pela frente da farmácia 24 horas sem parar. A luz verde da cruz pisca na janela.' }] },
     },
   }),
   timeline: [
     { at: '07:01', kind: 'simone', who: 'SIMONE', when: is.flag('d3_simone_anotou'), text: 'Aquele moleque de ontem, o da escola fechada: pus o número no quadro, {dr}. Final 8877. Esses sempre voltam.' },
     { at: '07:01', kind: 'simone', who: 'SIMONE', when: is.not('d3_simone_anotou'), text: 'O número do moleque de ontem tá no quadro, {dr}, final 8877. Esses sempre voltam.' },
     { at: '07:40', kind: 'interfone', who: 'DR. PEIXOTO', text: '{Dr}, página 3 nova, dor no peito. Só um lembrete de quem tá aqui há doze anos: metade da dor no peito dessa cidade é azia. Quarta-feira, então... Não sai mandando USA pra toda queimação, tá?' },
-    { at: '12:30', kind: 'simone', who: 'SIMONE', text: 'Almoço hoje é marmita de feijoada que a minha vizinha mandou. Não me olha assim, {dr}. Eu tomei o remédio da pressão.' },
     {
       at: '16:20',
       kind: 'script',
@@ -128,25 +219,29 @@ export const DAY = day({
       note: 'Aquele número de novo. Final 8877.',
       noteFixed: true,
       addr: { rua: 'Rua Ipê', n: 1180, bairro: 'Jardim Norte', ref: 'No ponto de ônibus da Rua Ipê, perto da Estadual.' },
-      amb: ['onibus', 'risadas'],
+      // 1.1 (trotes-folgados.md): sem risada. O Biel tenta "voz de adulto"; a pista é a cor que ele não sabe dizer,
+      // o cochicho e o número no quadro (que não prova nada sozinho: a Simone avisa).
+      amb: ['onibus'],
       open: [
-        'Ô, emergência! Corre! Tem um véio aqui no ponto de ônibus que {{engoliu a dentadura|dentadura}}! Tá ficando roxo, tá ficando ROXO!',
-        '[{{freio de ônibus, risada de três ou quatro adolescentes|risadas}}]',
+        { t: 'Alô. Emergência. {{Aqui é um senhor adulto|voz_adulto}}. Tem um véio aqui no ponto de ônibus que {{engoliu a dentadura|dentadura}}. Tá ficando roxo.', style: 'calma' },
+        '[{{freio de ônibus; a voz grossa demais escorrega pra fina no fim da frase|risadas}}]',
       ],
       q: {
         oque: ['Ele tava comendo pão de queijo, espirrou e... glup! A dentadura foi junto!', '[voz ao fundo: {{"fala que ele tá azul!"|cochicho}}]'],
         consciencia: '{{Tá acordado, tá xingando a gente|xingando}}... digo, tá desmaiado! Desmaiou!',
-        respira: 'Tá assobiando! Fiu-fiu! [risadas]',
+        respira: 'Tá... respirando. Assobiando. Fiu-fiu.',
         idade: 'Uns cem anos. Cento e dez.',
         inicio: 'Agora, agora! Corre!',
         sangramento: 'Só na gengiva. Que ele não tem.',
         historico: 'Sei lá, mano. Dentadura frouxa.',
-        paciente: ['[ônibus arrancando]', 'Ele não pode falar, tá sem dente! [gargalhada]'],
-        referencia: 'No ponto da Rua Ipê, perto da Estadual. Hoje tem aula, tá ligado? [risadas]',
+        paciente: ['[ônibus arrancando]', 'Ele não pode falar, tá sem dente.', '[cochicho perto do fone: "engrossa a voz, mano"]'],
+        referencia: 'No ponto da Rua Ipê, perto da Estadual. Hoje tem aula, tá ligado? Quer dizer... o senhor está ligado?',
         seguranca: 'Seguro! Só o véio e a dentadura.',
-        confronto_quadro: ['Ihhh, {m:o tio|a tia} tem meu número no quadro! [risadas]', 'Sou famoso! Fala aí pro Biel! [desliga]'],
+        confronto_quadro: ['...Que quadro? [a voz grossa some] ...Ih.', 'Fala aí pro Biel. [desliga]'],
+        pele: ['O véio tá roxo... ou verde, sei lá.', '[cochicho: "fala azul, azul é pior"]', 'Azul. Azul-marinho.'],
+        pulso: 'Pulso? Ah... deve ter. Ele tá xingando, então tem, né?',
       },
-      callback: ['[chama...]', '[{{caixa postal de novo: "Fala aí, é o Biel..." e uma risada|retorno_caixa}}]'],
+      callback: ['[chama...]', '[{{caixa postal de novo: "Fala aí, é o Biel..."|retorno_caixa}}]'],
       links: [
         { a: 'xingando', b: 'dentadura', insight: 'Quem engoliu a dentadura e está "ficando roxo" não consegue xingar ninguém.' },
         { a: 'cochicho', b: 'risadas', insight: 'Risadas e alguém soprando o que ele deve dizer: trote montado em grupo (Manual p.2).' },
@@ -190,6 +285,8 @@ export const DAY = day({
         referencia: 'Rua São João, 1240. Do lado do campinho de várzea, portão marrom.',
         seguranca: 'Seguro, só eu e a Rosa.',
         dorpeito: ['Pro braço? É... {{o braço esquerdo tá formigando|formiga}}, {{mas eu dormi em cima dele|dormi}}.', '{{Tô suando um pouco, mas tá calor|suor}}, né, {dr}? Trinta e três graus.'],
+        pulso: ['ROSA (pegando o telefone): Eu sei achar, {dr}, eu fui atendente de posto. ...Tá rápido. E falhando. Bate, para, bate.', 'ANTÔNIO: Tá vendo? Ela fica apurando.'],
+        pele: 'ROSA (ao fundo): Fala que você tá cinza, Antônio! Cinza e molhado! ...Ele não fala, {dr}. Ele tá cinza.',
       },
       extra: [
         { id: 'peso', label: 'É queimação ou aperto?', say: 'Me descreve a dor: queima, aperta, pesa?', a: 'É... {{um peso. Tipo um tijolo em cima do peito|tijolo}}. Mas é queimação, né? Deve ser.' },
@@ -255,8 +352,8 @@ export const DAY = day({
       at: '09:00',
       pool: 'leve,cardio',
       num: '(17) 99352-4471',
-      caller: 'Patrícia',
-      callerName: 'Patrícia',
+      caller: 'Pâmela',
+      callerName: 'Pâmela',
       type: 'comum',
       voice: 'mulher',
       note: 'Moça com dor no peito em pontada. Calma.',
@@ -285,7 +382,7 @@ export const DAY = day({
         { a: 'sofa', b: 'pontada', insight: 'Subiu um sofá três andares ontem e acordou com pontada no peito: esforço físico, dor de músculo.' },
         { a: 'pontinho', b: 'manual:peito', kind: 'confirma', insight: 'Sem suor, sem irradiar, dor em ponto: não fecha o critério de infarto da p.3. A mãe infartou aos 72 — não aos 35.' },
       ],
-      patient: { name: 'Patrícia Gonçalves', age: 35, sex: 'F' },
+      patient: { name: 'Pâmela Gonçalves', age: 35, sex: 'F' },
       truth: { dx: 'Dor muscular na parede do tórax (esforço)', sev: 'verde', ok: ['ORI', 'USB'], best: 'ORI', ref: ['UBS', 'CASA', 'UPA'] },
       radio: { excess: '{central}, {unit}. Dor muscular, piora à palpação. Ela pediu desculpa pra equipe. Liberamos no local, {dr}.' },
       diary: { ori: 'Pontada no peito depois de carregar um sofá três andares. Músculo. Orientada repouso, compressa e UBS se não passar.' },
@@ -319,6 +416,8 @@ export const DAY = day({
         paciente: 'Sou eu mesma, {meu} {filho}.',
         sangramento: 'Não, credo.',
         seguranca: 'Seguro. O Bolinha tá dormindo em cima da TV.',
+        pulso: 'Batendo, batendo. Contei no relógio do micro-ondas, que esse não para. Setenta e pouco.',
+        pele: 'Normal, {meu} {filho}. Só a cara de quem perdeu a hora.',
       },
       extra: [
         {
@@ -384,18 +483,20 @@ export const DAY = day({
         historico: ['{{Diabetes, há vinte anos. Tomo insulina|diabetes}}. E pressão.', 'O médico do postinho falou que o açúcar "come os nervos". {{Eu nem sinto mais o pé direito.|nervos}}'],
         paciente: 'Sou eu mesma, {dr}.',
         referencia: 'Casa com varal na frente e um pé de mamão.',
-        seguranca: 'Seguro. A Neusa, minha vizinha, tá aqui comigo.',
+        seguranca: 'Seguro. A Leonor, minha vizinha, tá aqui comigo.',
+        pulso: ['A Leonor tá contando... [pausa]', 'LEONOR: Tá fraquinho, {m:moço|moça}. Fininho. E rápido. Eu tô com medo de errar a conta.'],
+        pele: 'LEONOR (pegando o telefone): Ela tá {{cinza|cinza_pele}}, {m:moço|moça}. Cinza e molhada. Eu nunca vi ela dessa cor.',
         dorpeito: ['Dor no peito não, {dr}. Nem no braço. {{É uma agonia, uma canseira|agonia}}.', '{{Suor frio sim. Tô molhada|suor_frio}}, e a casa nem tá quente, fechei a janela.'],
       },
       extra: [
-        { id: 'glicemia', label: 'Mediu o açúcar?', say: 'A senhora mediu o açúcar agora?', a: 'A Neusa mediu no aparelhinho: {{deu cento e oitenta|glicemia}}. Tá alto, mas pra mim é normal.' },
+        { id: 'glicemia', label: 'Mediu o açúcar?', say: 'A senhora mediu o açúcar agora?', a: 'A Leonor mediu no aparelhinho: {{deu cento e oitenta|glicemia}}. Tá alto, mas pra mim é normal.' },
         { id: 'azia', label: 'Queimação no estômago?', say: 'Está com queimação no estômago, azia?', a: 'Uma queimaçãozinha aqui em cima da barriga. Tomei um chá de boldo. Não adiantou.' },
         {
-          id: 'falar_neusa',
+          id: 'falar_leonor',
           kind: 'fala',
           label: 'Falar com a vizinha',
           say: 'Pode passar o telefone pra sua vizinha um instante?',
-          a: ['NEUSA: Ela tá {{cinza, {m:moço|moça}|cinza}}. Cinza. Conheço a Conceição há trinta anos, ela nunca sentou no meio da roupa.', 'NEUSA: E ela é teimosa. Se deixar, ela vai fazer o almoço.'],
+          a: ['LEONOR: Ela tá {{cinza, {m:moço|moça}|cinza}}. Cinza. Conheço a Conceição há trinta anos, ela nunca sentou no meio da roupa.', 'LEONOR: E ela é teimosa. Se deixar, ela vai fazer o almoço.'],
         },
       ],
       links: [
@@ -404,7 +505,7 @@ export const DAY = day({
         { a: 'nervos', b: 'agonia', insight: 'O diabetes "come os nervos": ela não sente o pé, e pode não sentir a dor do infarto. Por isso "só uma agonia".' },
         { a: 'ladeira', b: 'nao_terminou', insight: 'Falta de ar e canseira em repouso, sem esforço nenhum: o coração não está dando conta.' },
       ],
-      worsen: [{ after: 110, lines: ['CONCEIÇÃO: {Dr}... tá tudo rodando... vou deitar um pouquinho...', 'NEUSA: Conceição? Conceição! {{Ela tá desmaiando, {m:moço|moça}!|desmaiando}}'] }],
+      worsen: [{ after: 110, lines: ['CONCEIÇÃO: {Dr}... tá tudo rodando... vou deitar um pouquinho...', 'LEONOR: Conceição? Conceição! {{Ela tá desmaiando, {m:moço|moça}!|desmaiando}}'] }],
       patient: { name: 'Conceição Aparecida Lopes', age: 67, sex: 'F' },
       truth: { dx: 'Infarto atípico (sem dor) em diabética', sev: 'vermelho', ok: ['USA'], risk: { good: 60, bad: 150 } },
       radio: {
@@ -412,7 +513,7 @@ export const DAY = day({
         saved: '{central}, {unit}. Ela apagou quando a gente entrou, mas voltou com soro e oxigênio. Infarto sem dor. Seguimos pro Regional.',
         under: 'Central, {unit}! O eletro é infarto! Senhora instável, pressão caindo! Precisamos de USA!',
         dead: 'Central... {unit}. Infarto. Ela tava sentada no banquinho do varal. Óbito às {hora}.',
-        dismissed: 'NEUSA: {m:Moço|Moça}! É a vizinha da Dona Conceição! Ela desmaiou no banquinho! Tá gelada, tá cinza!',
+        dismissed: 'LEONOR: {m:Moço|Moça}! É a vizinha da Dona Conceição! Ela desmaiou no banquinho! Tá gelada, tá cinza!',
       },
       diary: {
         alive: 'Infarto sem dor nenhuma, "só um cansaço". Diabética. A vizinha disse que ela estava cinza.',
@@ -435,7 +536,7 @@ export const DAY = day({
       voice: 'menino',
       note: 'Criança no telefone. Amigo caiu de bicicleta.',
       noteWrong: 'Criança. Acho que é trote.',
-      addr: { rua: 'Rua Sabiá', n: 820, bairro: 'Vila Esperança', ref: 'Na descida da Sabiá, perto da quitanda, depois da escola Monteiro Lobato.' },
+      addr: { rua: 'Rua Sabiá', n: 820, bairro: 'Vila Esperança', ref: 'Na descida da Sabiá, perto da quitanda da Quitéria, depois da escola Monteiro Lobato.' },
       amb: ['rua', 'choro'],
       open: [
         '{m:Moço|Moça}! {m:Moço|Moça} da ambulância! O Enzo caiu da bicicleta na descida e {{o braço dele ficou torto|torto}}! Ele tá chorando muito!',
@@ -446,12 +547,12 @@ export const DAY = day({
         consciencia: 'Tá acordado, tá chorando e chamando a mãe.',
         respira: 'Tá, tá respirando. Chorando.',
         idade: 'Ele tem nove. Eu tenho dez.',
-        inicio: 'Agora! Eu corri na quitanda e peguei o telefone da Dona Cleide!',
+        inicio: 'Agora! Eu corri na quitanda e peguei o telefone da Dona Quitéria!',
         sangramento: 'Ralou o joelho. {{O braço não tá saindo sangue, mas tá tipo um S|tipo_s}}.',
         historico: 'Ele tem bronquite. Só.',
         paciente: ['ENZO: Tá doendo muito! Eu quero a minha mãe!', '[choro]'],
-        referencia: 'Na descida da Sabiá, na frente da quitanda da Dona Cleide.',
-        seguranca: 'Seguro. A Dona Cleide tirou as bicicletas da rua.',
+        referencia: 'Na descida da Sabiá, na frente da quitanda da Dona Quitéria.',
+        seguranca: 'Seguro. A Dona Quitéria tirou as bicicletas da rua.',
       },
       extra: [
         {
@@ -459,9 +560,9 @@ export const DAY = day({
           label: 'Tem algum adulto aí?',
           say: 'Tem algum adulto aí perto? Pode passar o telefone pra ele?',
           a: [
-            'Tem a Dona Cleide da quitanda! Dona Cleide! É {m:o moço|a moça} da ambulância!',
-            'CLEIDE: Alô, {m:moço|moça}? Aqui é a Cleide. O menino tá com o antebraço {{entortado e inchado, mas a pele tá inteirinha, não furou|deformidade}}. Ele bateu a cabeça não, caiu de mão.',
-            'CLEIDE: A mãe dele tá vindo correndo do serviço. Eu fico com ele.',
+            'Tem a Dona Quitéria da quitanda! Dona Quitéria! É {m:o moço|a moça} da ambulância!',
+            'QUITÉRIA: Alô, {m:moço|moça}? Aqui é a Quitéria. O menino tá com o antebraço {{entortado e inchado, mas a pele tá inteirinha, não furou|deformidade}}. Ele bateu a cabeça não, caiu de mão.',
+            'QUITÉRIA: A mãe dele tá vindo correndo do serviço. Eu fico com ele.',
           ],
         },
         { id: 'cabeca', label: 'Bateu a cabeça?', say: 'Ele bateu a cabeça? Estava de capacete?', a: 'Capacete ele não tem. Mas não bateu a cabeça, caiu de mão. Ele lembra de tudo, até xingou a corrente.' },
@@ -471,7 +572,7 @@ export const DAY = day({
         { a: 'deformidade', b: 'manual:amarelo', insight: 'Braço deformado, sem ferida aberta, criança acordada e respirando bem: fratura. Amarelo → USB (Manual p.1).' },
         { a: 'tipo_s', b: 'choro', kind: 'confirma', insight: 'Choro forte e braço "em S": dor real, criança alerta. Não é trote, é fratura.' },
       ],
-      patient: { name: 'Enzo Batista', age: 9, sex: 'M' },
+      patient: { name: 'Enzo Matias', age: 9, sex: 'M' },
       truth: { dx: 'Fratura fechada de antebraço', sev: 'amarelo', ok: ['USB'], risk: { good: 100, bad: 280, needs: 'USB' } },
       radio: {
         ok: 'Central, {unit} na Sabiá. Fratura de antebraço fechada, criança estável e muito brava com a bicicleta. Imobilizamos. A mãe chegou. Removendo.',
@@ -609,7 +710,7 @@ export const DAY = day({
         inicio: 'A confusão desde ontem de tarde. A febre desde a noite.',
         sangramento: 'Não.',
         historico: ['Derrame, pressão, próstata. Usa fralda.', '{{O xixi tá escuro, com cheiro forte|xixi}}. E tá comendo quase nada.'],
-        paciente: ['SEU OSMAR: Cadê a Lurdinha? Fala pra Lurdinha que eu vou...', 'VALÉRIA: É a Lurdinha que ele chama. A minha sogra. Morreu faz seis anos.'],
+        paciente: ['SEU OSMAR: Cadê a Dita? Fala pra Dita que eu vou...', 'VALÉRIA: É a Dita que ele chama. A minha sogra. Morreu faz seis anos.'],
         referencia: 'Muro chapiscado, cadeira de rodas na varanda.',
         seguranca: 'Seguro. Eu e ele. Meu marido tá na usina.',
       },
@@ -651,12 +752,16 @@ export const DAY = day({
       nodes: {
         start: {
           lines: [
-            { who: 'NARRADOR', t: 'Onze da noite. Do quarto do Liam vem uma tosse seca, abafada no travesseiro.' },
+            { who: 'NARRADOR', t: 'Onze da noite. Do quarto do Liam vem uma tosse seca, abafada no travesseiro.', when: is.not('bombinha_volta') },
+            { who: 'NARRADOR', t: 'Você entra com a sacolinha da farmácia 24 horas pingando de garoa. Do quarto do Liam vem uma tosse seca, abafada no travesseiro.', when: is.flag('bombinha_volta') },
             { who: 'NARRADOR', t: 'A água voltou hoje cedo. {Oconj} não disse como. Em cima da geladeira, o pote de margarina está vazio.', when: (c) => c.flag('lucia_pagou_agua') },
-            { who: 'LUCIA', t: '(chacoalhando a bombinha perto do ouvido) Acabou. Fazia três dias que ele tava usando "só um pouquinho", pra render.' },
+            { who: 'LUCIA', t: '(chacoalhando a bombinha perto do ouvido) Acabou. Fazia três dias que ele tava usando "só um pouquinho", pra render.', when: is.not('bombinha_volta') },
+            { who: 'LUCIA', t: '(abrindo a sacola) Você adivinhou ou ele te ligou escondido? A dele acabou hoje. Tava usando "só um pouquinho", pra render.', when: is.flag('bombinha_volta') },
             { who: 'DAVI', t: '(da porta do quarto, de pijama) Eu não tô tossindo. É a garganta.' },
-            { who: 'ZELIA', t: 'Volta pra cama, meu anjo. A vó já vai fazer um chá de guaco.' },
-            { who: 'LUCIA', t: 'Oitenta reais na farmácia, com o espaçador. O dele rachou, tá com fita crepe.' },
+            { who: 'ZELIA', t: 'Volta pra cama, meu anjo. A vó já vai fazer um chá de guaco.', when: is.not('bombinha_volta') },
+            { who: 'LUCIA', t: 'Oitenta reais na farmácia, com o espaçador. O dele rachou, tá com fita crepe.', when: is.not('bombinha_volta') },
+            { who: 'NARRADOR', t: 'Dois jatos com o espaçador novo, sem fita crepe. Ele conta até dez segurando o ar, de olho em você. A tosse vai espaçando.', when: is.flag('bombinha_volta') },
+            { who: 'ZELIA', t: 'Oitenta reais. O seu pai ia reclamar do preço e comprar duas.', when: is.flag('bombinha_volta') },
           ],
           onEnter: (e) => {
             // a conta de água que ficou sem pagar no dia 2: a Lúcia resolveu com as economias da máquina
@@ -667,10 +772,11 @@ export const DAY = day({
             }
           },
           choices: [
-            { label: '"E a Farmácia Popular? Saiu no jornal que é de graça."', next: 'popular' },
-            { label: '"Amanhã cedo eu compro. Prometo."', next: 'promessa', effect: fx.set('prometeu_bombinha') },
-            { label: '"Esse mês não fecha, {c:Lú|Alex}. A gente segura até o pagamento."', next: 'segura' },
+            { label: '"E a Farmácia Popular? Saiu no jornal que é de graça."', next: 'popular', when: is.not('bombinha') },
+            { label: '"Amanhã cedo eu compro. Prometo."', next: 'promessa', effect: fx.set('prometeu_bombinha'), when: is.not('bombinha') },
+            { label: '"Esse mês não fecha, {c:Lú|Alex}. A gente segura até o pagamento."', next: 'segura', when: is.not('bombinha') },
             { label: 'Ir até o quarto do Liam.', next: 'quarto', affectionate: true },
+            { label: '(Sentar na cozinha e ouvir a tosse sumir.)', next: 'fim', when: is.flag('bombinha') },
           ],
         },
         popular: {
@@ -715,7 +821,7 @@ export const DAY = day({
             { who: 'DAVI', t: '{Pai}, quando a bombinha acaba, o ar acaba também?' },
           ],
           choices: [
-            { label: '"Não, filho. O ar não acaba. Amanhã eu compro outra."', next: 'fim', effect: fx.all(fx.set('prometeu_bombinha'), fx.add('lacos', 1, 'ficou com o Liam')) },
+            { label: '"Não, filho. O ar não acaba. Amanhã eu compro outra."', next: 'fim', when: is.not('bombinha'), effect: fx.all(fx.set('prometeu_bombinha'), fx.add('lacos', 1, 'ficou com o Liam')) },
             { label: '"O ar não acaba. Respira devagar comigo: entra pelo nariz..."', next: 'respira', effect: fx.add('lacos', 1, 'ficou com o Liam') },
           ],
         },
@@ -729,6 +835,9 @@ export const DAY = day({
         fim: {
           lines: [
             { who: 'NARRADOR', t: 'Você faz a conta de cabeça: aluguel, comida, luz, gás, o remédio da sua mãe. E oitenta reais. O número não fecha de nenhum jeito que não doa.', when: (c) => !c.flag('bombinha') },
+            // flags.md: d3_segurou_bombinha (eco imediato) e zelia_ofereceu_remedio
+            { who: 'NARRADOR', t: 'Meia-noite. Você passa pela porta do quarto: ele dormiu sentado, encostado na parede, com a mão na frente da boca. Segurando a tosse até no sono.', when: is.flag('d3_segurou_bombinha') },
+            { who: 'NARRADOR', t: 'Na sala, a Dona Zélia tira um comprimido da cartela e devolve. Tira de novo. Devolve. Três vezes, sem saber que você está vendo.', when: is.flag('zelia_ofereceu_remedio') },
             { who: 'ZELIA', t: '(da cozinha) O chá de guaco tá pronto. Não cura nada, mas é quentinho.' },
           ],
         },
