@@ -1,6 +1,7 @@
 import { store, useStore } from '../../store';
 import { fmtTime } from '../../../engine/util';
 import { audio } from '../../audio';
+import { POSTIT_LABEL, postitClass } from './CallPanel';
 
 export function Queue() {
   const s = useStore();
@@ -49,14 +50,14 @@ export function Queue() {
                 sh.answer(c.id);
                 store.notify();
               }}
-              title={c.noteText ? `Atender · TARM: ${c.noteText}` : 'Atender'}
+              title={c.noteText ? `Atender · TARM${c.noteBox ? ` (post-it ${POSTIT_LABEL[c.noteBox]})` : ''}: ${c.noteText}` : 'Atender'}
             >
               <span className="slip-num">{def.num}</span>
               <span className="slip-wait">
                 {c.status === 'espera' ? 'em espera' : c.followOf ? 'retorno' : `${fmtTime(c.arrived)} · ${wait} min`}
               </span>
               {c.noteText ? (
-                <span className={'postit' + (c.noteUrgent ? ' red' : '')}>
+                <span className={'postit' + postitClass(c) + (c.noteUrgent ? ' red' : '')}>
                   {c.noteUrgent && !c.followOf && <b>Pega essa agora. </b>}
                   {c.noteText}
                 </span>

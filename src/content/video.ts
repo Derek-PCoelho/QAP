@@ -775,8 +775,8 @@ function prankVideo(def: CallDef, t: TruthDef, callId: string): VideoDef {
   // trote de verdade: recusa e desliga, recusa e insiste, ou aceita e se entrega
   // >>> 0: hashString tem sinal; com resto negativo quase 70% caía em "recusa e desliga" (era para ser 40/30/30)
   const r = ((hashString(callId + ':trote') >>> 0) % 100) / 100;
-  if (r < 0.4) return { refuse: { lines: ['Vídeo?! [risadas] {m:Tá maluco, tio|Tá maluca, tia}?', '[desliga]'], hangup: true } };
-  if (r < 0.7) return { refuse: { lines: ['Ih... a câmera tá quebrada. Manda logo a ambulância, pô!', '[alguém ri perto do telefone]'] } };
+  if (r < 0.4) return { refuse: { lines: ['Vídeo?! {m:Tá maluco, tio|Tá maluca, tia}? Não tem vídeo nenhum.', '[desliga]'], hangup: true } };
+  if (r < 0.7) return { refuse: { lines: ['Ih... a câmera tá quebrada. Manda logo a ambulância, pô!', '[alguém cochicha perto do telefone: "fala que quebrou"]'] } };
   // onde a turma está (ajuste da ligação): quarto por padrão
   const aj = AJUSTE[def.id] ?? def.cena;
   return {
@@ -792,7 +792,7 @@ function prankVideo(def: CallDef, t: TruthDef, callId: string): VideoDef {
     },
     first: [`[${aj?.first ?? 'Três adolescentes num quarto. Um segura o celular, os outros riem. {{Ninguém no chão|video_trote}}.'}]`],
     spots: [
-      { id: 'vitima', label: 'Mostrar a vítima', focus: 'chao', cost: 3, see: [`[${aj?.corpo ?? 'A câmera aponta para o chão: um travesseiro com uma camiseta por cima e ketchup.'}]`, 'Ó a vítima aí, {dr}! [gargalhadas]'] },
+      { id: 'vitima', label: 'Mostrar a vítima', focus: 'chao', cost: 3, see: [`[${aj?.corpo ?? 'A câmera aponta para o chão: um travesseiro com uma camiseta por cima e ketchup.'}]`, 'Ó a vítima aí, {dr}. Tá vendo? Tá mal.'] },
       { id: 'volta', label: 'Mostrar em volta', focus: 'pessoas', cost: 3, see: [`[${aj?.volta ?? 'Pôster na parede, videogame ligado. Um deles tapa a câmera com a mão.'}]`] },
     ],
     proof: true,

@@ -8,7 +8,8 @@ import type {
   PendingRequest, Color, Support, Referral, AnswerIn, CallOutcome, DayDef, RegId, TarmShiftState, ShownLine, BoxId, OutrosAct,
 } from './types';
 import type { Content } from './content-api';
-import { callBox, extraBox } from './categories';
+import { callBox, extraBox, noteBoxFor, simoneBox } from './categories';
+import { hasBleep } from './bleep';
 import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL, recordIncome } from './state';
 import { hm, fmtTime, clamp, Rng, hashString } from './util';
 import { normLines, txt, cluesIn, resolveTokens, stripMarkup, beneForm } from './text';
@@ -248,7 +249,7 @@ export class ShiftSim {
           gen = g.gen;
           id = g.id;
           this.genDefs.set(id, g.def);
-        }
+        } else if (def.dropIfNoVariant) continue;
       }
       this.addCall(id, def.id, hm(gen ? def.at : def.at), gen);
     }
@@ -283,13 +284,26 @@ export class ShiftSim {
     if (this.day.almoco && this.st.mode === 'campanha') this.schedule(hm(this.day.almocoAt ?? '13:00'), 'notice', 'almoco');
   }
 
+  /** grupos de modelo (`TemplateDef.once`) já sorteados neste plantão: um folgado por plantão */
+  private onceUsed = new Set<string>();
+
   private pickVariant(def: CallDef, idx: number, force = false) {
     const tags = def.pool!.split(',').map((t) => t.trim());
-    const pool = this.c.bank.filter((t) => t.tags.some((x) => tags.includes(x)) && (t.minDay ?? 1) <= this.st.day);
+    const day = this.st.day;
+    const pool = this.c.bank.filter(
+      (t) =>
+        t.tags.some((x) => tags.includes(x)) &&
+        (t.minDay ?? 1) <= day &&
+        // 1.1: dias proibidos (campanha) e "um por plantão" (folgados)
+        !(this.st.mode === 'campanha' && t.notDays?.includes(day)) &&
+        !(t.once && this.onceUsed.has(t.once)),
+    );
     if (!pool.length) return null;
     const rng = new Rng(hashString(`${this.st.seed}:${this.st.day}:${def.id}:${idx}`));
     if (!force && rng.chance(0.35)) return null; // às vezes mantém a ligação de referência
-    const tpl = rng.pick(pool);
+    // com peso em algum modelo (folgados), sorteio ponderado; sem peso, o sorteio de sempre
+    const tpl = pool.some((t) => t.weight !== undefined) ? rng.weighted(pool, (t) => t.weight ?? 1) : rng.pick(pool);
+    if (tpl.once) this.onceUsed.add(tpl.once);
     const truths = tpl.truths.filter((t) => (t.minDay ?? 1) <= this.st.day);
     if (!truths.length) return null;
     const tr = rng.weighted(truths, (t) => t.weight ?? 1);
@@ -563,6 +577,8 @@ export class ShiftSim {
       call.noteRight = randOf(this.st) < acc;
       call.noteText = resolveTokens(call.noteRight ? txt(def.note, this.ctx()) : this.wrongNote(call, def), this.st.gender, this.st);
       call.noteUrgent = call.noteRight ? this.truthOf(call).sev === 'vermelho' : /grave|morrendo|urgente|pega/i.test(call.noteText);
+      // 1.1: a cor do post-it (a caixa que ela marcou) erra junto com a nota
+      call.noteBox = noteBoxFor(call.id, simoneBox(def, this.truthOf(call), resolveTokens(txt(def.note, this.ctx()), this.st.gender, this.st)), call.noteRight);
       this.tarmAddress(call, def);
     }
     if (!def.anchor && def.patience !== 0) {
@@ -782,7 +798,7 @@ export class ShiftSim {
     }
     // o número já está no quadro de trotes: dá para dizer isso a quem liga
     if (this.onBoard(call)) {
-      out.push({ id: 'confronto_quadro', label: '"Esse número já passou trote aqui."', cost: this.questionCost(6), group: 'confronto', asked: call.asked.includes('confronto_quadro') });
+      out.push({ id: 'confronto_quadro', label: 'Esse número já ligou aqui antes?', cost: this.questionCost(6), group: 'confronto', asked: call.asked.includes('confronto_quadro') });
     }
     return out;
   }
@@ -889,7 +905,7 @@ export class ShiftSim {
     if (qid === 'confronto_quadro') {
       if (call.asked.includes(qid) || !this.onBoard(call)) return false;
       call.asked.push(qid);
-      this.regLine(call, 'Esse número já passou trote aqui na central.');
+      this.regLine(call, 'Esse número já ligou aqui antes? Ele está no nosso quadro.');
       const a = def.q?.[qid] ?? this.c.defaults(qid, def, c);
       this.pushLines(call, a, def);
       this.advance(this.questionCost(6));
@@ -924,6 +940,9 @@ export class ShiftSim {
     const id = this.c.questions.find((q) => q.act === act)?.id ?? act;
     const t = this.truthOf(call);
     const urgent = t.sev === 'vermelho' || t.sev === 'amarelo';
+    // conflito (1.1, "encerro por motivo de conflitos"): quem liga xingou (#%!#@$ na fala) ou
+    // insistiu depois de duas negativas ("não é perfil" e "meios próprios" já ditos)
+    const conflictBefore = this.conflict(call);
     const a = def.q?.[id];
     this.pushLines(call, a !== undefined ? a : this.c.defaults(id, def, c), def);
     if (act === 'gravada') call.patience = clamp(call.patience + (urgent ? -10 : 10), 0, 100);
@@ -932,11 +951,32 @@ export class ShiftSim {
     this.advance(this.questionCost(cost));
     if (act === 'encerra' && !call.decision && this.active()?.id === call.id) {
       const meios = call.unlocked.includes('meios');
-      const ref: Referral = meios ? (t.ref?.find((r) => r !== 'CASA') ?? 'UPA') : 'CASA';
+      // com meios próprios: o encaminhamento da verdade (UPA/UBS; "casa" quando é só transporte); sem: ficar em casa
+      const ref: Referral = meios ? (t.ref?.find((r) => r !== 'CASA') ?? (t.ref?.includes('CASA') ? 'CASA' : 'UPA')) : 'CASA';
       const r = this.stamp({ color: t.sev === 'azul' ? 'azul' : 'verde', resource: 'ORI', support: [], referral: ref });
-      if (r.ok) this.sysLine(call, '☎ Você encerrou a ligação. Registrado como orientação' + (meios ? ' (meios próprios).' : '.'));
+      if (r.ok) {
+        this.sysLine(call, '☎ Você encerrou a ligação. Registrado como orientação' + (meios ? ' (meios próprios).' : '.'));
+        const e = this.eff();
+        if (t.sev !== 'trote' && !conflictBefore) {
+          // sem briga, "encerro por motivo de conflitos" é desligar na cara de quem pediu ajuda
+          e.add('humanidade', -1, 'desligou na cara sem ter havido conflito');
+        } else if (conflictBefore && this.hadBleep(call) && call.verdict && (call.verdict.kind === 'correto' || call.verdict.kind === 'defensavel')) {
+          // o xingamento criativo vira piada da central: alívio cômico
+          e.add('desgaste', -2, 'a central inteira riu do xingamento');
+        }
+      }
     }
     return true;
+  }
+
+  /** quem liga xingou nesta ligação (o palavrão censurado, #%!#@$, numa fala) */
+  hadBleep(call: CallRT): boolean {
+    return call.lines.some((l) => l.kind === 'caller' && hasBleep(l.text));
+  }
+
+  /** houve conflito: xingamento, ou o regulador já disse "não é perfil" e "meios próprios" */
+  conflict(call: CallRT): boolean {
+    return this.hadBleep(call) || (call.asked.includes('nao_perfil') && call.asked.includes('meios_proprios')) || call.unlocked.includes('conflito');
   }
 
   private defaultCallback(call: CallRT, def: CallDef): LineIn[] {
@@ -2028,6 +2068,7 @@ export class ShiftSim {
       call.noteText = 'LIGOU DE NOVO. Diz que piorou muito.';
       call.noteRight = true;
       call.noteUrgent = true;
+      call.noteBox = simoneBox(def, t);
       this.pushLines(call, txt(def.radio?.dismissed, this.ctx()) || DEFAULT_FOLLOWUP[t.sev === 'vermelho' ? 'vermelho' : 'amarelo'], def);
       call.verdict = { ...call.verdict!, revealed: true };
       (call as CallRT & { reopened?: boolean }).reopened = true;
@@ -2422,8 +2463,31 @@ export class ShiftSim {
     if (T.log.length > 40) T.log.splice(0, T.log.length - 40);
   }
 
-  /** a TARM passa a ligação ativa para uma mesa de regulação */
-  tarmPass(color: Color, priority: boolean, to: RegId): { ok: boolean; error?: string } {
+  /**
+   * A TARM confere o endereço no cadastro (1.1: na campanha 1 é a Simone quem faz isso e escreve
+   * no post-it). Custa 2 min do TMA; o cadastro não erra. Devolve o que ela anotou.
+   */
+  tarmCheckAddr(): { ok: boolean; text?: string; bad?: boolean } {
+    const call = this.active();
+    if (!this.sh.tarm || !call || call.status !== 'ativa') return { ok: false };
+    if (call.noteAddr !== undefined || call.unlocked.includes('end_conferido')) return { ok: true, text: call.noteAddr ?? 'Endereço confere no cadastro.', bad: call.addrNote === 'nao_confere' };
+    const r = resolveAddress(this.defOf(call).addr);
+    const bad = r.kind === 'sem_rua' || r.kind === 'invalido' || r.kind === 'bairro';
+    call.unlocked.push('end_conferido');
+    if (bad) {
+      call.addrNote = 'nao_confere';
+      call.noteAddr = 'Endereço não confere no mapa.';
+    } else if (r.kind === 'marco' && r.landmark) {
+      call.addrNote = 'marco';
+      call.noteAddr = `No endereço: ${r.landmark.name}.`;
+    }
+    this.sysLine(call, `🗺 Cadastro: ${call.noteAddr ?? 'o endereço confere.'}`);
+    this.advance(2);
+    return { ok: true, text: call.noteAddr ?? 'Endereço confere no cadastro.', bad };
+  }
+
+  /** a TARM passa a ligação ativa para uma mesa de regulação (1.1: `box` = a cor do post-it, opcional) */
+  tarmPass(color: Color, priority: boolean, to: RegId, box?: BoxId): { ok: boolean; error?: string } {
     const sh = this.sh;
     const T = sh.tarm;
     const call = this.active();
@@ -2434,6 +2498,10 @@ export class ShiftSim {
     const def = this.defOf(call);
     const handle = Math.max(0, sh.time - (call.answered ?? sh.time));
     call.tarm = { color, priority, to, at: sh.time, handle, realSec: call.realSec };
+    if (box) {
+      call.tarm.box = box;
+      call.noteBox = box;
+    }
     call.status = 'regulacao';
     sh.activeId = undefined;
     T.passed++;
@@ -2497,7 +2565,9 @@ export class ShiftSim {
     const t = this.truthOf(call);
     const right = call.tarm?.color === colorFor(t.sev);
     if (reg === 'henrique') return 2 + Math.round(r * 3);
-    return 4 + Math.round(r * 4) + (right ? 0 : 3);
+    // 1.1: o post-it da cor certa (a caixa do chamado) poupa um minuto da Mesa 1
+    const boxRight = !!call.tarm?.box && call.tarm.box === simoneBox(this.defOf(call), t);
+    return 4 + Math.round(r * 4) + (right ? 0 : 3) - (boxRight ? 1 : 0);
   }
 
   /** chance de a mesa acertar a decisão, dada a pré-triagem */

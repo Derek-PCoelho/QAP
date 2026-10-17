@@ -14,5 +14,7 @@ import { DENGUE } from './dengue';
 import { PSIQ } from './psiq';
 import { CLINICO } from './clinico';
 import { TROTES } from './trotes';
+import { FOLGADOS } from './folgados';
 
-export const BANK: TemplateDef[] = [...NEURO, ...IDOSO, ...CARDIO, ...RESP, ...TRAUMA, ...PEDIATRIA, ...OBSTETRICIA, ...DENGUE, ...PSIQ, ...CLINICO, ...TROTES];
+// 1.1: os folgados (etiqueta `folgado`) entram no fim: o sorteio dos outros modelos não muda
+export const BANK: TemplateDef[] = [...NEURO, ...IDOSO, ...CARDIO, ...RESP, ...TRAUMA, ...PEDIATRIA, ...OBSTETRICIA, ...DENGUE, ...PSIQ, ...CLINICO, ...TROTES, ...FOLGADOS];

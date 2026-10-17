@@ -11,6 +11,7 @@ import {
   FORMANTS,
   randomRaw,
   vowelFormants,
+  type BeepSeg,
   type BreathSeg,
   type Onset,
   type Plan,
@@ -338,10 +339,38 @@ export class Speaker {
     }
   }
 
+  /**
+   * "Piii" da censura (1.1): a voz cala e entra um tom senoidal puro (~1 kHz) com envelope curto
+   * (5 ms de ataque e de soltura, sem clique). Sai pelo mesmo destino da voz (passa pela linha
+   * telefônica e soa "de TV"), num nível fixo que não depende do perfil (grito, sussurro).
+   */
+  beep(t0: number, b: BeepSeg): void {
+    if (this.stopped) return;
+    const ctx = this.rig.ctx;
+    const ts = Math.max(t0 + b.t, ctx.currentTime + 0.005);
+    const end = ts + Math.max(0.05, b.dur);
+    // a voz não fala por baixo do bipe
+    this.envTo(0, Math.max(ts, this.envT) + 0.008);
+    this.envHold(end);
+    const norm = Math.sqrt(110 / Math.max(60, this.spec.f0));
+    const lvl = (0.32 * b.amp) / Math.max(0.05, this.spec.level * norm * 1.5);
+    const g = gain(ctx, 0, this.out);
+    const o = osc(ctx, 'sine', b.f, g);
+    g.gain.setValueAtTime(0, ts);
+    g.gain.linearRampToValueAtTime(lvl, ts + 0.005);
+    g.gain.setValueAtTime(lvl, end - 0.005);
+    g.gain.linearRampToValueAtTime(0, end);
+    o.start(ts);
+    o.stop(end + 0.02);
+    this.srcs.push(o);
+    cleanup(o, g);
+  }
+
   /** Agenda um plano inteiro a partir de t0. */
   play(t0: number, plan: Plan): void {
     for (const s of plan.segs) {
       if (s.kind === 'syl') this.syl(t0, s);
+      else if (s.kind === 'beep') this.beep(t0, s);
       else this.breath(t0, s);
     }
   }

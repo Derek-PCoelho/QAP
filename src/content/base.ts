@@ -54,11 +54,11 @@ export const MANUAL: ManualPage[] = [
   },
   {
     id: 'p2', day: 2, code: 'p.2', title: 'Protocolo de trote',
-    intro: 'O trote tira a ambulância de quem precisa. Mas tratar emergência real como trote é a falha mais grave da regulação.',
+    intro: 'O trote tira a ambulância de quem precisa. Mas tratar emergência real como trote é a falha mais grave da regulação. O endereço quem confere é a TARM (está no post-it); o regulador desconfia pelo que ouve. Na dúvida, liga de volta. Custa meia hora.',
     rules: [
-      { id: 'trote_sinais', text: 'Sinais de trote: risadas ao fundo, relato cinematográfico, endereço inexistente, horário incompatível, número já no quadro.' },
+      { id: 'trote_sinais', text: 'Sinais de trote (o que o regulador ouve): relato de cinema sem nenhum detalhe do corpo; respostas rápidas demais ou que se contradizem nas perguntas fixas (pulso, respiração, cor da pele, acordado); fundo que não combina (silêncio onde devia ter desespero, TV, videogame, sinal de escola, eco de banheiro); recusa em pôr o paciente ou alguém perto na linha; pressa pela sirene ("manda com a sirene ligada!"); vídeo recusado ou "câmera quebrada". Risada ao fundo é raro — e às vezes é de nervoso.' },
       { id: 'trote_quadro', text: 'Números marcados como trote vão para o quadro de cortiça. Número no quadro NÃO prova trote: pessoas reais também ligam de números marcados.' },
-      { id: 'ligar_volta', text: 'Ferramenta "Ligar de volta": desliga e retorna para o número (custa 30 min). Número inexistente ou caixa postal reforçam a suspeita.' },
+      { id: 'ligar_volta', text: 'Ferramenta "Ligar de volta": desliga e retorna para o número (custa 30 min). Número inexistente, desligado ou caixa postal de adolescente reforçam a suspeita; quem precisa de ajuda atende na hora.' },
       { id: 'crianca', text: 'Criança ao telefone: peça para falar com um adulto. Se não houver adulto consciente, regule pelo que a criança descreve.' },
     ],
   },

@@ -164,6 +164,8 @@ function checkState(st: Obj, w: string, nested: boolean): void {
   arrayOf(st.board, `${w}.board`, (x, ww) =>
     need(isObj(x) && isStr(x.id) && isStr(x.kind) && isStr(x.title) && isStr(x.text) && isNum(x.day) && isNum(x.count) && (x.num === undefined || isStr(x.num)), `${ww}: anotação inválida`),
   );
+  // quadro de cortiça (1.1): opcional; o conteúdo é conferido e limpo por engine/cork.ts ao usar
+  need(st.cork === undefined || isObj(st.cork), `${w}.cork inválido`);
   for (const k of ['docs', 'manual', 'achievements']) arrayOf(st[k], `${w}.${k}`, strItem);
   arrayOf(st.history, `${w}.history`, (x, ww) => {
     need(isObj(x), `${ww}: devia ser um objeto`);

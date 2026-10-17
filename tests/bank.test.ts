@@ -18,9 +18,9 @@ import type { CallDef, GenParams, AnswerIn, LineIn, Ctx, DayDef, TruthDef, Resou
 import type { Content, TemplateDef } from '../src/engine/content-api';
 
 const KNOWN_TOKENS = new Set(['dr', 'Dr', 'DR', 'tit', 'nome', 'NOME', 'filho', 'Filho', 'pai', 'Pai', 'o', 'O', 'ele', 'Ele', 'dele', 'um', 'sozinho', 'cansado', 'obrigado', 'querido', 'menino', 'meu', 'Meu', 'seu', 'Seu', 'regulador', 'medico', 'Medico', 'esposo', 'conj', 'CONJ', 'oconj', 'Oconj', 'doconj', 'proconj', 'bene', 'sobrenome', 'central', 'unit', 'dx', 'Dx', 'name', 'hora', 'dest']);
-const POOL_TAGS = ['leve', 'moderado', 'grave', 'trote', 'pediatria', 'respiratorio', 'cardio', 'trauma_moderado', 'trauma', 'obstetricia', 'dengue', 'psiq', 'intox', 'neuro', 'idoso'];
+const POOL_TAGS = ['leve', 'moderado', 'grave', 'trote', 'pediatria', 'respiratorio', 'cardio', 'trauma_moderado', 'trauma', 'obstetricia', 'dengue', 'psiq', 'intox', 'neuro', 'idoso', 'folgado'];
 /** dia em que cada etiqueta precisa ter pelo menos um modelo disponível */
-const TAG_FROM: Record<string, number> = { obstetricia: 7, dengue: 11, psiq: 12, intox: 13 };
+const TAG_FROM: Record<string, number> = { obstetricia: 7, dengue: 11, psiq: 12, intox: 13, folgado: 3 };
 const DAYS = [1, 6, 9, 12, 15, 20];
 const SEEDS = [1, 7, 42, 1234, 99991, 31337];
 

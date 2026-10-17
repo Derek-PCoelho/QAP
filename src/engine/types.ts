@@ -569,6 +569,8 @@ export interface CallDef {
   pool?: string;
   /** sempre sorteada do banco (pool), mesmo sem "ligações variáveis": o que está escrito aqui é só reserva */
   genOnly?: boolean;
+  /** 1.1: sem variante sorteada (ex.: o folgado do dia já saiu), a ligação não acontece (em vez de usar a reserva) */
+  dropIfNoVariant?: boolean;
   num: string;
   caller: string;
   callerName?: string;
@@ -1023,6 +1025,12 @@ export interface CallRT {
   noteText: string;
   /** a Simone marcou "Pega essa agora" (post-it vermelho) */
   noteUrgent?: boolean;
+  /**
+   * cor do post-it da Simone (1.1): a caixa que ela marcou — Clínico azul, GO rosa, Trauma verde,
+   * Outros branco (quando ela não soube classificar). Erra junto com a nota (às vezes a cor fica
+   * certa mesmo com a nota errada). Sem nota (ligação `raw`, Simone ausente, campanha da TARM) = sem cor.
+   */
+  noteBox?: BoxId;
   /** conferência do endereço pela Simone: 'nao_confere' (não existe no cadastro) ou 'marco' (há um marco no endereço) */
   addrNote?: 'nao_confere' | 'marco';
   /** a linha que a Simone escreveu sobre o endereço (vai no post-it) */
@@ -1063,6 +1071,8 @@ export type RegId = 'moura' | 'henrique';
 
 export interface TarmInfo {
   color: Color;
+  /** 1.1: a cor do post-it (caixa) que a TARM escreveu; opcional */
+  box?: BoxId;
   priority: boolean;
   to: RegId;
   /** hora (jogo) em que passou para o regulador */
@@ -1223,6 +1233,27 @@ export interface BoardEntryIn {
 }
 export interface BoardEntry extends BoardEntryIn { day: number; count: number }
 
+/** cor do post-it que o jogador cola no quadro de cortiça (1.1) */
+export type CorkColor = 'amarelo' | 'azul' | 'rosa' | 'verde' | 'branco';
+/** papel ou adesivo do jogador no quadro de cortiça (posição em fração da área, 0–1) */
+export interface CorkItem {
+  id: string;
+  kind: 'postit' | 'adesivo';
+  x: number;
+  y: number;
+  text?: string;
+  color?: CorkColor;
+  /** adesivo do Ozzy: feliz, dormindo, latindo, coracao, festa, sirene */
+  sticker?: string;
+}
+/** quadro de cortiça (1.1): papéis do jogador e onde ele pôs as fichas da central (ver engine/cork.ts) */
+export interface CorkState {
+  items: CorkItem[];
+  /** posição das fichas da central (`b:ID`) e dos documentos (`d:ID`) que o jogador arrastou */
+  pos: Record<string, [number, number]>;
+  seq: number;
+}
+
 export interface MemberState {
   status: MemberStatus;
   hunger: number;
@@ -1281,6 +1312,8 @@ export interface GameState {
   bills: BillsState;
   diary: DiaryEntry[];
   board: BoardEntry[];
+  /** 1.1: o que o jogador fez no quadro de cortiça (opcional: saves antigos não têm; ver engine/cork.ts) */
+  cork?: CorkState;
   docs: string[];
   manual: string[];
   achievements: string[];
