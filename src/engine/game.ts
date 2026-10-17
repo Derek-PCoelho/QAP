@@ -4,6 +4,7 @@
 // =============================================================================
 import type { GameState, SceneDef, NewspaperDef, Ctx, EffCtx, ReportField, Phase } from './types';
 import type { Content } from './content-api';
+import { migrate } from './migrate';
 import { newGameState, makeCtx, makeEffCtx, SAVE_VERSION, type NewGameOpts } from './state';
 import { parseSave, checkSave } from './save-check';
 import { ShiftSim, type ShiftEvent } from './shift';
@@ -169,7 +170,8 @@ export class Game {
   static load(c: Content, json: string): Game {
     // JSON puro, conferido antes de usar (save-check.ts): um arquivo corrompido vira mensagem, não trava
     const st = parseSave(json);
-    if (st.v !== SAVE_VERSION) throw new Error('Save incompatível com esta versão.');
+    // saves de versões anteriores são convertidos (migrate.ts); versão futura/desconhecida = incompatível
+    migrate(st, SAVE_VERSION);
     checkSave(st);
     return new Game(st, c);
   }

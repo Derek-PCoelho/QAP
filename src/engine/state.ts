@@ -4,9 +4,9 @@ import type {
   BoardEntryIn, FamilyMember, MemberStatus, Toast,
 } from './types';
 import { rngNext, clamp, hashString } from './util';
-import { resolveTokens } from './text';
+import { resolveTokens, cleanName } from './text';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export const VAR_RANGE: Record<VarName, [number, number]> = {
   desgaste: [0, 100],
@@ -42,6 +42,8 @@ export interface NewGameOpts {
   variable?: boolean;
   /** começa a campanha neste dia (seleção de capítulo / testes) */
   startDay?: number;
+  /** primeiro nome do protagonista (vazio = padrão do gênero) */
+  name?: string;
 }
 
 export function newGameState(o: NewGameOpts): GameState {
@@ -54,6 +56,7 @@ export function newGameState(o: NewGameOpts): GameState {
     mode: o.mode ?? 'campanha',
     difficulty: o.difficulty,
     gender: o.gender,
+    ...(cleanName(o.name) ? { name: cleanName(o.name) } : {}),
     variable: o.variable ?? false,
     day: Math.max(1, Math.min(20, Math.floor(o.startDay ?? 1))),
     phase: 'jornal',

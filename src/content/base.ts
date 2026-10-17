@@ -2,7 +2,7 @@
 // Orientações clínicas simplificadas para jogo — revisar com a equipe médica (ver docs/VALIDAR_MEDICO.md).
 import type { QuestionDef, ManualPage, FleetSpec, GameState } from '../engine/types';
 import type { DeskDoc } from '../engine/content-api';
-import { PROTAGONIST_FIRST } from '../engine/text';
+import { protagonistFirst } from '../engine/text';
 
 export const QUESTIONS: QuestionDef[] = [
   { id: 'oque', label: 'O que aconteceu?', say: 'O que aconteceu?', cost: 5, group: 'base', hint: 'Relato base' },
@@ -219,7 +219,7 @@ export const DOCS: Record<string, DeskDoc> = {
   bilhete_marcia: {
     id: 'bilhete_marcia',
     title: 'Bilhete da professora',
-    text: (c) => `"${PROTAGONIST_FIRST[c.g]}, o Liam leu a redação mais bonita da turma. Ele tem muito orgulho de você. — Tia Márcia, 3º B (Márcia Albuquerque Reis)"`,
+    text: (c) => `"${protagonistFirst(c.g, c.s)}, o Liam leu a redação mais bonita da turma. Ele tem muito orgulho de você. — Tia Márcia, 3º B (Márcia Albuquerque Reis)"`,
     clues: [{ id: 'doc:marcia', text: 'Bilhete: "Tia Márcia, 3º B — Márcia Albuquerque Reis"' }],
   },
   jornal_rosangela: {

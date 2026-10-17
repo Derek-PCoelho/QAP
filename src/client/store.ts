@@ -2,6 +2,7 @@
 import { useSyncExternalStore } from 'react';
 import { Game, type GameEvent } from '../engine/game';
 import { SaveError } from '../engine/save-check';
+import { setActiveProtagonist } from '../engine/text';
 import { CONTENT } from '../content/index';
 import type { Difficulty, Gender, Mode } from '../engine/types';
 import { audio } from './audio';
@@ -174,9 +175,9 @@ class Store {
   }
 
   // ------------------------------------------------------------------ jogos
-  newGame(o: { gender: Gender; difficulty: Difficulty; variable: boolean; mode?: Mode; seed?: number; startDay?: number }) {
+  newGame(o: { gender: Gender; difficulty: Difficulty; variable: boolean; mode?: Mode; seed?: number; startDay?: number; name?: string }) {
     audio.stopTheme();
-    const g = Game.create(CONTENT, { gender: o.gender, difficulty: o.difficulty, variable: o.variable, mode: o.mode ?? 'campanha', seed: o.seed, startDay: o.startDay ?? DEV_DAY });
+    const g = Game.create(CONTENT, { gender: o.gender, difficulty: o.difficulty, variable: o.variable, mode: o.mode ?? 'campanha', seed: o.seed, startDay: o.startDay ?? DEV_DAY, name: o.name });
     this.attach(g);
     if ((o.mode ?? 'campanha') === 'campanha') {
       api.track('campaign_start', { difficulty: o.difficulty, gender: o.gender, variable: o.variable, first: !this.meta.firstCampaignStarted });
@@ -246,6 +247,7 @@ class Store {
   recoverToTitle() {
     this.unsubGame?.();
     this.game = null;
+    setActiveProtagonist(null);
     this.paused = false;
     try {
       audio.stopAll();
@@ -336,6 +338,7 @@ class Store {
       difficulty: st.difficulty,
       gameId: st.id,
       playSeconds: st.playSeconds ?? 0,
+      ...(st.name ? { name: st.name } : {}),
     };
     writeLocalSave(slot, data, summary);
     if (this.serverOk && this.settings.profileId) api.putSave(this.settings.profileId, slot, data, summary);
@@ -359,6 +362,7 @@ class Store {
     this.saveAuto();
     this.unsubGame?.();
     this.game = null;
+    setActiveProtagonist(null);
     this.paused = false;
     audio.stopAll();
     this.setScreen('titulo');
@@ -367,6 +371,7 @@ class Store {
   private attach(g: Game) {
     this.unsubGame?.();
     this.game = g;
+    setActiveProtagonist(g.st.mode === 'simone' ? g.st.shadow ?? g.st : g.st);
     const u1 = g.subscribe(() => this.notify(false));
     const u2 = g.onEvent((e) => this.onGameEvent(e));
     this.unsubGame = () => {

@@ -113,7 +113,7 @@ export function TriagePanel() {
         {regBtn('moura')}
         {regBtn('henrique')}
       </div>
-      <p className="tri-foot">{REG_LABEL.moura}: {protagonistName(g.st.gender)} · {REG_LABEL.henrique}: Dr. Henrique Lacerda</p>
+      <p className="tri-foot">{REG_LABEL.moura}: {protagonistName(g.st.gender, g.st)} · {REG_LABEL.henrique}: Dr. Henrique Lacerda</p>
     </section>
   );
 }

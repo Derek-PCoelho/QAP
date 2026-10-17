@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { store } from '../store';
 import { Portrait } from '../ui/Portrait';
 import type { Difficulty, Gender } from '../../engine/types';
-import { protagonistName, PROTAGONIST_FIRST } from '../../engine/text';
+import { PROTAGONIST_FIRST, SURNAME, NAME_MAX, cleanName } from '../../engine/text';
 
 const DIFFS: { id: Difficulty; name: string; desc: string }[] = [
   { id: 'narrativo', name: 'Narrativo', desc: 'O relógio anda 40% mais devagar e as anotações da Simone estão sempre certas. Para viver a história.' },
@@ -12,6 +12,14 @@ const DIFFS: { id: Difficulty; name: string; desc: string }[] = [
 
 export function NewGame() {
   const [gender, setGender] = useState<Gender>('M');
+  // nome do protagonista: vem preenchido com o padrão do gênero e pode ser trocado
+  const [name, setName] = useState<string>(PROTAGONIST_FIRST.M);
+  const pickGender = (gd: Gender) => {
+    setGender(gd);
+    // só troca o nome junto se o jogador não digitou outro
+    if (!cleanName(name) || name.trim() === PROTAGONIST_FIRST[gender]) setName(PROTAGONIST_FIRST[gd]);
+  };
+  const shown = (gd: Gender) => (gd === gender ? cleanName(name) ?? PROTAGONIST_FIRST[gd] : PROTAGONIST_FIRST[gd]);
   const [diff, setDiff] = useState<Difficulty>('padrao');
   const [variable, setVariable] = useState(store.meta.campaignsFinished > 0);
   // já há uma campanha em andamento: avisa e pede um segundo clique (a atual fica guardada)
@@ -28,13 +36,26 @@ export function NewGame() {
       <p className="lead">Santa Aurora, 300 mil habitantes. Um contrato precário de {gender === 'M' ? 'médico regulador' : 'médica reguladora'}, a dívida do FIES e uma família esperando em casa. Vinte plantões.</p>
       <section className="pick-row">
         {(['M', 'F'] as Gender[]).map((gd) => (
-          <button key={gd} className={'pick-card' + (gender === gd ? ' on' : '')} onClick={() => setGender(gd)}>
+          <button key={gd} className={'pick-card' + (gender === gd ? ' on' : '')} onClick={() => pickGender(gd)}>
             <Portrait id={gd === 'M' ? 'EU_M' : 'EU_F'} size={128} />
-            <strong>{protagonistName(gd)}</strong>
+            <strong>{gd === 'M' ? 'Dr.' : 'Dra.'} {shown(gd)} {SURNAME}</strong>
             <span>29 anos, recém-formad{gd === 'M' ? 'o' : 'a'}</span>
           </button>
         ))}
       </section>
+      <label className="name-row">
+        <span>Nome {gender === 'M' ? 'do médico' : 'da médica'}:</span>
+        <input
+          type="text"
+          value={name}
+          maxLength={NAME_MAX}
+          spellCheck={false}
+          aria-label="Nome do protagonista"
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => setName(cleanName(name) ?? PROTAGONIST_FIRST[gender])}
+        />
+        <span className="name-sur">{SURNAME}</span>
+      </label>
       <section className="diff-row">
         {DIFFS.map((d) => (
           <button key={d.id} className={'diff-card' + (diff === d.id ? ' on' : '')} onClick={() => setDiff(d.id)}>
@@ -49,7 +70,7 @@ export function NewGame() {
       </label>
       {current && (
         <p className="newgame-warn">
-          Você tem uma campanha em andamento ({PROTAGONIST_FIRST[current.gender === 'F' ? 'F' : 'M']}, dia {current.day}). Começar outra não apaga essa: ela sai do "Continuar
+          Você tem uma campanha em andamento ({current.mode === 'simone' ? 'Simone' : current.name ?? PROTAGONIST_FIRST[current.gender === 'F' ? 'F' : 'M']}, dia {current.day}). Começar outra não apaga essa: ela sai do "Continuar
           campanha" e fica em Carregar → "Saves guardados" por 30 dias.
         </p>
       )}
@@ -65,7 +86,7 @@ export function NewGame() {
               setSure(true);
               return;
             }
-            store.newGame({ gender, difficulty: diff, variable });
+            store.newGame({ gender, difficulty: diff, variable, name: cleanName(name) ?? PROTAGONIST_FIRST[gender] });
           }}
         >
           {current && sure ? 'Começar mesmo assim' : 'Começar o primeiro plantão'}

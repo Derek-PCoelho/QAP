@@ -1204,6 +1204,8 @@ export interface GameState {
   mode: Mode;
   difficulty: Difficulty;
   gender: Gender;
+  /** primeiro nome escolhido pelo jogador (sem ele, o padrão do gênero: Thiago/Camille) */
+  name?: string;
   variable: boolean;
   day: number;
   phase: Phase;
@@ -1229,7 +1231,7 @@ export interface GameState {
   infinite?: InfiniteState;
   createdAt: number;
   playSeconds: number;
-  /** dia em que a família está fora (o cônjuge + o Liam na irmã / Rio Claro) */
+  /** momento (ms) do último save */
   lastSave?: number;
   /** campanha da Simone: o mundo visto pela mesa do regulador (protagonista controlado pela IA) */
   shadow?: GameState;

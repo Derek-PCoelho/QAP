@@ -82,7 +82,7 @@ RELATÓRIO DE TURNO DA TARM — DIA ${rec.day}
 SIMONE APARECIDA CAMPOS · 07:00–19:00`
               : `SAÚDE+ GESTÃO · REGULAÇÃO SANTA AURORA
 RELATÓRIO DE PLANTÃO — ${inf ? `INFINITO · TURNO ${inf.shifts}` : `DIA ${rec.day}`}
-${protagonistName(g.st.gender).toUpperCase()} · 07:00–19:00`}
+${protagonistName(g.st.gender, g.st).toUpperCase()} · 07:00–19:00`}
             {`
 --------------------------------------------------------------`}
           </pre>

@@ -15,9 +15,9 @@ function slotName(slot: string): string {
   return simone ? `Simone · ${base}` : base;
 }
 
-/** "Dia 6 · em casa · R$ 260 · Amber · Padrão" */
+/** "Dia 6 · em casa · R$ 260 · Camille · Padrão" */
 function describe(sv: SaveSummary): string {
-  const who = sv.mode === 'simone' ? 'Simone' : PROTAGONIST_FIRST[sv.gender === 'M' ? 'M' : 'F'];
+  const who = sv.mode === 'simone' ? 'Simone' : sv.name ?? PROTAGONIST_FIRST[sv.gender === 'M' ? 'M' : 'F'];
   return `Dia ${sv.day} · ${PHASE[sv.phase] ?? sv.phase} · R$ ${sv.money} · ${who} · ${DIFF[sv.difficulty] ?? sv.difficulty}`;
 }
 

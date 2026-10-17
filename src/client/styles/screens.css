@@ -1056,3 +1056,27 @@
   color: var(--c-pale);
   margin: 0 0 6px;
 }
+/* Nova campanha: nome do protagonista (1.1) */
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--c-pale);
+}
+.name-row input {
+  font-family: var(--f-ui);
+  font-size: 16px;
+  width: 220px;
+  padding: 6px 8px;
+  background: var(--c-panel);
+  color: var(--c-light);
+  border: 0;
+  box-shadow: 0 0 0 2px #0a0f0d, inset 0 0 0 1px var(--c-postit);
+}
+.name-row input:focus {
+  outline: 2px solid var(--c-postit);
+}
+.name-row .name-sur {
+  color: var(--c-soft);
+}

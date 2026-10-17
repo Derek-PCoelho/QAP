@@ -148,8 +148,9 @@ describe('saves: recusas', () => {
       reject(JSON.stringify({ ...o, [k]: v }));
     }
   });
-  it('versão diferente continua com a mensagem de incompatível', () => {
-    expect(() => Game.load(CONTENT, base.replace('"v":3', '"v":2'))).toThrow(/incompatível/);
+  it('versão desconhecida (anterior à 3 ou futura) continua com a mensagem de incompatível', () => {
+    expect(() => Game.load(CONTENT, base.replace(/"v":\d+/, '"v":2'))).toThrow(/incompatível/);
+    expect(() => Game.load(CONTENT, base.replace(/"v":\d+/, '"v":99'))).toThrow(/incompatível/);
   });
 });
 

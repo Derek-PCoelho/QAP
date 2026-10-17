@@ -1,9 +1,11 @@
 // Texto: tokens de gênero/nome, marcação de pistas {{trecho|id}}, falantes.
 //
 // Família do protagonista (os nomes moram só aqui):
-//   protagonista: Dr. Luan Moura (M) ou Dra. Amber Moura (F) — {nome}, {NOME};
+//   protagonista: Dr. Thiago Moura (M) ou Dra. Camille Moura (F) — {nome}, {NOME};
+//   o jogador pode renomear (GameState.name); use sempre {nome} ou protagonistFirst(),
+//   nunca o nome escrito direto;
 //   filho: Liam, 8 anos (o mesmo nas duas versões; escreva "Liam" direto no texto);
-//   cônjuge: com o Luan, a esposa Lúcia; com a Amber, o marido Alex. Mesmo papel na
+//   cônjuge: com o Thiago, a esposa Lúcia; com a Camille, o marido Alex. Mesmo papel na
 //   história (mesmas cenas, mesmo ateliê, mesmas escolhas), muda só nome, gênero e
 //   concordância. A Dona Zélia é a mãe do protagonista nas duas versões.
 //
@@ -22,8 +24,41 @@ export interface Segment {
   clue?: string;
 }
 
-/** Primeiro nome do protagonista (M: Luan · F: Amber). */
-export const PROTAGONIST_FIRST: Record<Gender, string> = { M: 'Luan', F: 'Amber' };
+/** Primeiro nome PADRÃO do protagonista (M: Thiago · F: Camille). O nome em uso mora no
+ *  estado (`GameState.name`): leia com `protagonistFirst(g, s)`. */
+export const PROTAGONIST_FIRST: Record<Gender, string> = { M: 'Thiago', F: 'Camille' };
+/** Sobrenome da família. */
+export const SURNAME = 'Moura';
+/** Tamanho máximo do nome escolhido pelo jogador. */
+export const NAME_MAX = 20;
+
+/** Limpa um nome digitado (sem tokens, sem quebras, até NAME_MAX). Vazio → undefined. */
+export function cleanName(raw: string | undefined | null): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const t = raw.replace(/[{}|<>\n\r\t]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX).trim();
+  return t || undefined;
+}
+
+let activeName: string | undefined;
+let activeGender: Gender = 'F';
+/** O cliente avisa qual partida está aberta (para telas/arte que não recebem o estado). */
+export function setActiveProtagonist(s: Pick<GameState, 'gender' | 'name'> | null | undefined): void {
+  activeName = s ? cleanName(s.name) : undefined;
+  activeGender = s?.gender === 'M' ? 'M' : 'F';
+}
+
+/** Primeiro nome do protagonista em uso: o escolhido no estado, senão o padrão do gênero.
+ *  Sem estado, usa a partida aberta no cliente (setActiveProtagonist). */
+export function protagonistFirst(g?: Gender, s?: Pick<GameState, 'gender' | 'name' | 'shadow'> | null): string {
+  if (s) {
+    const n = cleanName(s.name) ?? cleanName(s.shadow?.name);
+    const gg = g ?? (s.gender === 'M' ? 'M' : 'F');
+    return n ?? PROTAGONIST_FIRST[gg];
+  }
+  const gg = g ?? activeGender;
+  if (activeName && gg === activeGender) return activeName;
+  return PROTAGONIST_FIRST[gg];
+}
 /** Nome do filho (igual nas duas versões). */
 export const SON_NAME = 'Liam';
 
@@ -42,8 +77,6 @@ const GENDERED: Record<string, [string, string]> = {
   Dr: ['Doutor', 'Doutora'],
   DR: ['DOUTOR', 'DOUTORA'],
   tit: ['Dr.', 'Dra.'],
-  nome: [PROTAGONIST_FIRST.M, PROTAGONIST_FIRST.F],
-  NOME: [PROTAGONIST_FIRST.M.toUpperCase(), PROTAGONIST_FIRST.F.toUpperCase()],
   filho: ['filho', 'filha'],
   Filho: ['Filho', 'Filha'],
   pai: ['pai', 'mãe'],
@@ -81,7 +114,7 @@ const SPOUSE: Record<string, [string, string]> = {
 
 export function beneForm(s: GameState): string {
   const i = s.vars.intimBene;
-  if (i >= 7) return PROTAGONIST_FIRST[s.gender === 'F' ? 'F' : 'M'];
+  if (i >= 7) return protagonistFirst(s.gender === 'F' ? 'F' : 'M', s);
   if (i >= 3) return s.gender === 'M' ? 'Doutor' : 'Doutora';
   return 'Central';
 }
@@ -135,7 +168,9 @@ function resolveOne(tok: string, g: Gender, s?: GameState): string | undefined {
     return spouseIsWife(g) ? a : b ?? a;
   }
   if (tok === 'bene') return s ? beneForm(s) : 'Central';
-  if (tok === 'sobrenome') return 'Moura';
+  if (tok === 'sobrenome') return SURNAME;
+  if (tok === 'nome') return protagonistFirst(g, s);
+  if (tok === 'NOME') return protagonistFirst(g, s).toUpperCase();
   const pair = GENDERED[tok];
   if (pair) return g === 'M' ? pair[0] : pair[1];
   const sp = SPOUSE[tok];
@@ -223,7 +258,13 @@ export function normLines(a: LineIn | LineIn[] | undefined, c: Ctx): NormLine[] 
   return out;
 }
 
-/** Nome por extenso do protagonista */
-export function protagonistName(g: Gender): string {
-  return g === 'M' ? `Dr. ${PROTAGONIST_FIRST.M} Moura` : `Dra. ${PROTAGONIST_FIRST.F} Moura`;
+/** Nome por extenso do protagonista ("Dra. Camille Moura"), com o nome escolhido. */
+export function protagonistName(g: Gender, s?: Pick<GameState, 'gender' | 'name' | 'shadow'> | null): string {
+  return `${g === 'M' ? 'Dr.' : 'Dra.'} ${protagonistFirst(g, s)} ${SURNAME}`;
+}
+
+/** Troca, num texto já gravado, o nome antigo do protagonista pelo atual (migração de save). */
+export function replaceOldNames(text: string, g: Gender, name: string): string {
+  const old = g === 'M' ? ['Luan', 'LUAN'] : ['Amber', 'AMBER'];
+  return text.replace(new RegExp(`\\b${old[0]}\\b(?! Cardoso)(?!, 7)`, 'g'), name).replace(new RegExp(`\\b${old[1]}\\b`, 'g'), name.toUpperCase());
 }

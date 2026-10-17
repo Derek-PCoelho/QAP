@@ -163,6 +163,8 @@ export interface SaveSummary {
    *  saber se outra campanha, ou um ponto anterior da mesma, vai gravar por cima */
   gameId?: string;
   playSeconds?: number;
+  /** nome escolhido para o protagonista (saves antigos não têm: usa o padrão do gênero) */
+  name?: string;
 }
 
 const SAVE_PREFIX = 'qap.save.';
@@ -181,6 +183,7 @@ function cleanSummary(o: Raw, slot: string): SaveSummary | null {
     difficulty: strOr(o.difficulty, 'padrao', 16),
     gameId: typeof o.gameId === 'string' ? o.gameId.slice(0, 40) : undefined,
     playSeconds: typeof o.playSeconds === 'number' && Number.isFinite(o.playSeconds) ? Math.max(0, o.playSeconds) : undefined,
+    name: typeof o.name === 'string' && o.name.trim() ? o.name.slice(0, 40) : undefined,
   };
 }
 

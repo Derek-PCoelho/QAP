@@ -133,6 +133,7 @@ function checkState(st: Obj, w: string, nested: boolean): void {
   need(MODES.includes(st.mode as string), `${w}.mode inválido`);
   need(DIFFICULTIES.includes(st.difficulty as string), `${w}.difficulty inválido`);
   need(st.gender === 'M' || st.gender === 'F', `${w}.gender inválido`);
+  need(st.name === undefined || (isStr(st.name) && (st.name as string).length <= 40), `${w}.name inválido`);
   need(isBool(st.variable), `${w}.variable inválido`);
   need(isInt(st.day, 1, 60), `${w}.day inválido`);
   need(PHASES.includes(st.phase as string), `${w}.phase inválido`);
