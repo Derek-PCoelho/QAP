@@ -565,6 +565,8 @@ export class FieldSim {
     for (const a of this.actionsOf(d)) {
       if (a.after && !a.after.every((x) => rt.done.includes(x))) continue;
       if (a.until && a.until.some((x) => rt.done.includes(x)) && !rt.done.includes(a.id)) continue;
+      // depois que o pulso volta, as condutas de parada saem da tela
+      if (d.arrest && rt.rhythm === 'SINUSAL' && (a.when || a.until) && !rt.done.includes(a.id)) continue;
       let state: FieldActionView['state'] = 'ok';
       let reason: string | undefined;
       let progress: number | undefined;
@@ -746,7 +748,11 @@ export class FieldSim {
     const crit = this.criticals();
     if (crit.length && crit.every((c) => this.isDone(c))) {
       rt.stable = true;
-      if (d.arrest) rt.rhythm = 'SINUSAL';
+      if (d.arrest) {
+        rt.rhythm = 'SINUSAL';
+        // pós-parada: o monitor passa a mostrar tudo
+        for (const k of ['pa', 'fc', 'fr', 'sat'] as FieldVital[]) if (d.vitalsAfter?.[k] && !rt.shown.includes(k)) rt.shown.push(k);
+      }
       if (d.oxy && rt.sat !== undefined) rt.sat = Math.min(d.oxy.copd ? 92 : 99, rt.sat + (d.oxy.copd ? 0 : 1));
       rt.log.push({
         t: rt.t,
