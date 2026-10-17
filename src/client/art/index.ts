@@ -18,6 +18,8 @@ export * from './dog';
 export * from './scenes';
 export * from './newsPhotos';
 export * from './endingArt';
+/** nome do protagonista desenhado na arte (crachá) — padrões Thiago/Camille Moura */
+export * from './names';
 /** objetos/móveis desenháveis num Pix (uso avançado) */
 export * as props from './props';
 

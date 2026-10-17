@@ -617,8 +617,12 @@ export function deskPhone(p: Pix, x: number, y: number, ring = false, t = 0): vo
   for (let i = 0; i < 6; i++) p.px(x - 2 - (i % 2), y + 10 + i * 2, '#3a3a3a');
 }
 
-/** porta-retrato da família (quente) */
-export function familyPhoto(p: Pix, x: number, y: number, w = 16, h = 12): void {
+/**
+ * porta-retrato da família (quente): você, o cônjuge (de vermelho) e o Liam.
+ * gender = gênero do protagonista ('M' → a Lúcia, de cabelo preto comprido;
+ * 'F' → o Alex); sem ele, o cônjuge sai neutro (cabelo preto curto).
+ */
+export function familyPhoto(p: Pix, x: number, y: number, w = 16, h = 12, gender?: 'M' | 'F'): void {
   p.rect(x, y, w, h, '#7a5030');
   p.frame(x, y, w, h, '#5a3a22');
   p.hl(x, x + w - 1, y, '#a8763f');
@@ -628,19 +632,25 @@ export function familyPhoto(p: Pix, x: number, y: number, w = 16, h = 12): void 
   const ih = h - 4;
   p.rect(ix, iy, iw, ih, '#ffe2a3');
   p.rect(ix, iy + ih - 3, iw, 3, '#e8b860');
-  // três figurinhas: você, o cônjuge (de vermelho) e o Liam
-  const fig = (fx: number, hair: string, shirt: string, skin: string, small = false) => {
+  const fig = (fx: number, hair: string, shirt: string, skin: string, small = false, longHair = false) => {
     const top = iy + (small ? 3 : 1);
     p.px(fx, top, hair);
     p.px(fx + 1, top, hair);
     p.px(fx, top + 1, skin);
     p.px(fx + 1, top + 1, skin);
     p.rect(fx - (small ? 0 : 1), top + 2, small ? 2 : 4, ih - (small ? 5 : 3), shirt);
+    if (longHair) {
+      // cabelo liso caindo dos dois lados do rosto até o ombro
+      p.px(fx - 1, top + 1, hair);
+      p.px(fx + 2, top + 1, hair);
+      p.px(fx - 1, top + 2, hair);
+      p.px(fx + 2, top + 2, hair);
+    }
   };
   const step = Math.max(3, Math.floor(iw / 3));
   fig(ix + 1, '#1c1410', '#4f8a6e', '#d9a57e');
-  fig(ix + 1 + step, '#1c1410', '#a8413a', '#8d5634');
-  fig(ix + 1 + step * 2 - 1, '#1c1410', '#3f5f8a', '#b97b52', true);
+  fig(ix + 1 + step, '#1c1410', '#a8413a', gender === 'M' ? '#f3d3b5' : '#f1c7a5', false, gender === 'M');
+  fig(ix + 1 + step * 2 - 1, '#3b2516', '#3f5f8a', '#f1c7a5', true);
   // pé do porta-retrato
   p.px(x + w - 3, y + h, '#5a3a22');
 }

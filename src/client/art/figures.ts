@@ -22,7 +22,7 @@ interface Body {
   top2?: string;
   bottom: string;
   shoes: string;
-  hairStyle: 'curly_big' | 'short_m' | 'bun_low' | 'kid' | 'bun_top' | 'bucket_hat' | 'curly_short';
+  hairStyle: 'curly_big' | 'straight_long' | 'wavy_m' | 'kid_straight' | 'short_m' | 'bun_low' | 'kid' | 'bun_top' | 'bucket_hat' | 'curly_short';
   topStyle: 'blouse_tape' | 'shirt_tape' | 'scrubs' | 'stripes' | 'floral' | 'plaid';
   bottomStyle: 'skirt' | 'pants' | 'shorts' | 'long_skirt';
   glasses?: boolean;
@@ -46,19 +46,23 @@ const EXTRA: Record<ExtraId, Body> = {
   },
 };
 
+/** mesma pele clara do retrato da Lúcia */
+export const LUCIA_SKIN = '#f3d3b5';
+
 const BODIES: Record<CastId, Body> = {
+  // a esposa (protagonista homem): asiática de pele clara, cabelo preto liso e comprido, costureira
   LUCIA: {
-    kind: 'adult_f', skin: SKIN[3], hair: HAIR[0], top: HOME.fabricRed, bottom: '#3a4660', shoes: '#2a1a12',
-    hairStyle: 'curly_big', topStyle: 'blouse_tape', bottomStyle: 'skirt', earrings: true,
+    kind: 'adult_f', skin: LUCIA_SKIN, hair: HAIR[0], top: HOME.fabricRed, bottom: '#3a4660', shoes: '#2a1a12',
+    hairStyle: 'straight_long', topStyle: 'blouse_tape', bottomStyle: 'skirt',
   },
   // o marido (protagonista mulher): mesmo papel e mesma paleta da Lúcia, costureiro de fita no pescoço
   ALEX: {
-    kind: 'adult_m', skin: SKIN[3], hair: HAIR[0], top: HOME.fabricRed, bottom: '#3a4660', shoes: '#2a1a12',
-    hairStyle: 'curly_short', topStyle: 'shirt_tape', bottomStyle: 'pants', beard: true,
+    kind: 'adult_m', skin: SKIN[0], hair: HAIR[0], top: HOME.fabricRed, bottom: '#3a4660', shoes: '#2a1a12',
+    hairStyle: 'wavy_m', topStyle: 'shirt_tape', bottomStyle: 'pants', stubble: true,
   },
   DAVI: {
-    kind: 'child', skin: SKIN[2], hair: HAIR[0], top: HOME.fabricBlue, top2: '#e9e2cf', bottom: '#b49a6a', shoes: '#c8302a',
-    hairStyle: 'kid', topStyle: 'stripes', bottomStyle: 'shorts',
+    kind: 'child', skin: SKIN[0], hair: HAIR[1], top: HOME.fabricBlue, top2: '#e9e2cf', bottom: '#b49a6a', shoes: '#c8302a',
+    hairStyle: 'kid_straight', topStyle: 'stripes', bottomStyle: 'shorts',
   },
   ZELIA: {
     kind: 'elder_f', skin: SKIN[1], hair: HAIR[3], top: '#7a5c8e', bottom: '#40343e', shoes: '#5a3a2a',
@@ -201,6 +205,74 @@ function drawHeadAndHair(p: Pix, b: Body, g: Geo, c: Paint, o: { blink: boolean;
       for (let x = fx0; x <= fx1; x++) H(x, g.fy0, (x & 1) === 0 ? c.hair : c.hairD);
       H(fx0, g.fy0 + 1);
       H(fx1, g.fy0 + 1);
+      break;
+    }
+    case 'straight_long': {
+      // liso e comprido: copa lisa com risca de lado, franja varrida para a
+      // direita e duas cortinas retas caindo pela frente dos ombros até o peito
+      for (let x = fx0; x <= fx1; x++) {
+        H(x, g.fy0 - 2, x === fx0 + 1 || x === fx0 + 2 ? c.hairL : c.hair);
+        H(x, g.fy0 - 1, x === fx0 + 2 ? c.hairD : c.hair);
+      }
+      H(fx0 - 1, g.fy0 - 1);
+      H(fx1 + 1, g.fy0 - 1, c.hairD);
+      // franja: cobre o lado esquerdo da testa e afina para a direita
+      for (let x = fx0; x <= fx1; x++) H(x, g.fy0, x <= fx0 + 2 ? c.hair : x === fx1 ? c.hairD : c.hair);
+      H(fx0, g.fy0 + 1, c.hair);
+      H(fx0 + 1, g.fy0 + 1, c.hairD);
+      // cortinas laterais (1 px de cada lado do rosto, 2 px abaixo do queixo)
+      const end = g.torsoY0 + 4;
+      for (let y = g.fy0; y <= end; y++) {
+        const below = y > g.fy1;
+        H(fx0 - 1, y, y % 4 === 1 ? c.hairL : c.hair);
+        H(fx1 + 1, y, c.hairD);
+        if (below || y > g.fy0 + 3) {
+          H(fx0 - 2, y, c.hairD);
+          H(fx1 + 2, y, c.hairD);
+        }
+        if (below && y < end) {
+          H(fx0, y, c.hair);
+          H(fx1, y, c.hairD);
+        }
+      }
+      // pontas retas
+      H(fx0 - 2, end + 1, c.hairD);
+      H(fx0 - 1, end + 1, c.hairD);
+      H(fx1 + 1, end + 1, c.hairD);
+      H(fx1 + 2, end + 1, c.hairD);
+      break;
+    }
+    case 'wavy_m': {
+      // curto liso com onda: topo cheio penteado para trás, uma mecha caindo na testa
+      for (let x = fx0; x <= fx1; x++) {
+        H(x, g.fy0 - 2, x < fx0 + 2 ? c.hairL : c.hair);
+        H(x, g.fy0 - 1);
+      }
+      for (let x = fx0 + 1; x <= fx1 + 1; x++) H(x, g.fy0 - 3, x === fx0 + 2 ? c.hairL : x === fx1 + 1 ? c.hairD : c.hair);
+      for (let x = fx0; x <= fx1 - 1; x++) H(x, g.fy0, x === fx0 + 2 ? c.hairD : c.hair);
+      H(fx0 - 1, g.fy0 - 1);
+      H(fx1 + 1, g.fy0 - 2, c.hairD);
+      H(fx1 + 1, g.fy0 - 1, c.hairD);
+      H(fx0 - 1, g.fy0, c.hairD);
+      H(fx1 + 1, g.fy0, c.hairD);
+      // a onda
+      H(fx0 + 1, g.fy0 + 1, c.hair);
+      H(fx0 + 2, g.fy0 + 1, c.hairD);
+      break;
+    }
+    case 'kid_straight': {
+      // menino de cabelo liso: cuia com franja reta até a sobrancelha
+      for (let x = fx0; x <= fx1; x++) {
+        H(x, g.fy0 - 2, x < fx0 + 2 ? c.hairL : c.hair);
+        H(x, g.fy0 - 1);
+        H(x, g.fy0, x === fx0 + 3 ? c.hairL : c.hair);
+        if (x !== fx0 + 2 && x !== fx1 - 1) H(x, g.fy0 + 1, (x & 1) ? c.hairD : c.hair);
+      }
+      for (let x = fx0 + 1; x <= fx1 - 1; x++) H(x, g.fy0 - 3, x === fx0 + 1 ? c.hairL : c.hair);
+      for (let y = g.fy0 - 1; y <= g.fy0 + 2; y++) {
+        H(fx0 - 1, y, y === g.fy0 + 2 ? c.hairD : c.hair);
+        H(fx1 + 1, y, c.hairD);
+      }
       break;
     }
     case 'short_m': {
@@ -615,6 +687,16 @@ function lying(b: Body, c: Paint, o: FigOpts): Pix {
   }
   if (b.hairStyle === 'curly_short') {
     for (let y = 3; y <= 8; y++) p.px(1, y, (y & 1) ? c.hairL : c.hair);
+  }
+  if (b.hairStyle === 'straight_long') {
+    // o liso espalhado no travesseiro, acima e abaixo da cabeça
+    for (let y = 2; y <= 9; y++) p.px(1, y, y === 4 ? c.hairL : c.hair);
+    for (let x = 0; x <= 5; x++) {
+      p.px(x, 2, x === 2 ? c.hairL : c.hair);
+      p.px(x, 9, c.hairD);
+    }
+    p.px(4, 1, c.hairD);
+    p.px(3, 10, c.hairD);
   }
   if (b.beard) {
     // barba (rosto deitado: queixo à direita)

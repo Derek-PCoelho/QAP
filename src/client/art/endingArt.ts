@@ -9,7 +9,8 @@ import { drawText, textWidth } from './font';
 import type { Rect } from './scenes';
 import { figurePix, extraFigurePix } from './figures';
 import { drawDog } from './dog';
-import { PROTAGONIST_FIRST, SON_NAME } from '../../engine/text';
+import { SON_NAME } from '../../engine/text';
+import { firstNameOr, fitLines, DEFAULT_SURNAME } from './names';
 import { portraitThumbPix } from './portraits';
 import { renderCityMap } from './mapRender';
 import { deskPhone, familyPhoto, papers, manualBinder, postit, corkBoard, pushPin, cornCake, floorShadow, kidDrawing, monitorFrame, fridge, sewingMachine, woodChair, housePlate, cardBox } from './props';
@@ -47,6 +48,10 @@ export interface EndingOpts {
   /** ms */
   time: number;
   gender: 'M' | 'F';
+  /** primeiro nome do protagonista, como o jogador escolheu (padrão Thiago/Camille) — vai desenhado no crachá */
+  name?: string;
+  /** sobrenome no crachá (padrão Moura) */
+  surname?: string;
 }
 
 const W = 320;
@@ -285,6 +290,9 @@ function crayonDog(p: Pix, cx: number, base: number, seed: number): void {
 interface Ctx {
   g: 'M' | 'F';
   blend: number;
+  /** primeiro nome (já com o padrão aplicado) e sobrenome do crachá */
+  name: string;
+  surname: string;
 }
 
 /** traço reto de giz entre dois pontos */
@@ -684,11 +692,10 @@ function crachaPrego(p: Pix, c: Ctx, sway = 0): void {
   p.rect(bx + 5, by + 21, 28, 34, '#8a948f');
   p.blit(face.crop(3, 0, 26, 32), bx + 6, by + 22);
   // nome e função
-  const name1 = c.g === 'F' ? 'DRA.' : 'DR.';
-  const name2 = PROTAGONIST_FIRST[c.g].toUpperCase();
-  drawText(p, name1, bx + 37, by + 24, '#1b1a17');
-  drawText(p, name2, bx + 37, by + 31, '#1b1a17');
-  drawText(p, 'MOURA', bx + 37, by + 38, '#1b1a17');
+  // título + nome escolhido em até 2 linhas de 32 px, sobrenome na 3ª
+  const nameLines = fitLines([c.g === 'F' ? 'DRA.' : 'DR.', ...c.name.split(' ')], 31, 2);
+  const surLine = fitLines([c.surname], 31, 1)[0] ?? '';
+  [...nameLines, surLine].forEach((ln, i) => drawText(p, ln, bx + 37, by + 24 + i * 7, '#1b1a17'));
   drawText(p, c.g === 'F' ? 'MÉDICA' : 'MÉDICO', bx + 37, by + 48, '#5f7a6c');
   drawText(p, c.g === 'F' ? 'REGULADORA' : 'REGULADOR', bx + 6, by + 59, '#5f7a6c');
   // código de barras e matrícula
@@ -788,10 +795,10 @@ function calcadaMoveis(p: Pix, c: Ctx, t: number): void {
     draw.px(3, 6, '#2a2a2a');
     draw.px(7, 6, '#2a2a2a');
     s.blit(draw, fx + 1, fy + 10);
-    s.px(fx + 1, fy + 14, '#b97b52');
-    s.px(fx + 2, fy + 15, '#b97b52');
-    s.px(fx + 10, fy + 14, '#9a6340');
-    s.px(fx + 9, fy + 15, '#9a6340');
+    s.px(fx + 1, fy + 14, '#f1c7a5');
+    s.px(fx + 2, fy + 15, '#f1c7a5');
+    s.px(fx + 10, fy + 14, '#d4a585');
+    s.px(fx + 9, fy + 15, '#d4a585');
     // sol baixo vindo da esquerda e os cantos mais escuros
     s.glow(-20, 10, 140, '#ffd8a0', 0.16, 4);
     darkBands(s, 80, 40, 110, 70, '#1a1a20', 0.4, 0.62);
@@ -1404,6 +1411,7 @@ const WARM: Partial<Record<EndingKind, boolean>> = {
   desenho_davi: false,
   desenho_cadeira: false,
   cracha_prego: true,
+  calcada_moveis: true,
   mural: true,
   bolo_porta: true,
 };
@@ -1411,13 +1419,16 @@ const WARM: Partial<Record<EndingKind, boolean>> = {
 const cache = new Map<string, Pix>();
 const out = new Pix(W, H);
 
-/** Renderiza a vinheta num Pix 320×180 (puro, sem DOM). */
-export function renderEnding(kind: EndingKind | string, o: EndingOpts): Pix {
+/** desenha a vinheta no Pix de trabalho `out` (reutilizado a cada quadro) */
+function renderInto(kind: EndingKind | string, o: EndingOpts): Pix {
   const k = (ENDING_KINDS as string[]).includes(kind) ? (kind as EndingKind) : 'telefone_escuro';
   const blend = quantize(o.blend ?? 0, 20);
-  const c: Ctx = { g: o.gender === 'F' ? 'F' : 'M', blend };
+  const g: 'M' | 'F' = o.gender === 'F' ? 'F' : 'M';
+  const c: Ctx = { g, blend, name: firstNameOr(g, o.name), surname: (o.surname ?? '').trim() || DEFAULT_SURNAME };
   const t = o.time;
   const map = WARM[k] && blend > 0 ? homeGrader(blend) : null;
+  // o mapa do Pix de trabalho nunca fica "grudado" de uma chamada para outra
+  out.setMap(null);
   const st = STATIC[k];
   if (st) {
     const key = `${k}|${c.g}|${map ? blend : 0}`;
@@ -1433,41 +1444,46 @@ export function renderEnding(kind: EndingKind | string, o: EndingOpts): Pix {
   switch (k) {
     case 'cracha_prego': {
       const sway = Math.floor(t / 1700) % 4 === 1 ? 1 : 0;
-      const key = `${k}|${c.g}|${map ? blend : 0}|${sway}`;
+      const key = `${k}|${c.g}|${map ? blend : 0}|${sway}|${c.name}|${c.surname}`;
       let p = cache.get(key);
       if (!p) {
         p = new Pix(W, H).setMap(map);
         crachaPrego(p, c, sway);
+        if (cache.size > 48) cache.clear();
         cache.set(key, p);
       }
       out.copyFrom(p);
-      // poeira na luz
+      // poeira na luz (gradada como o resto da vinheta)
+      out.setMap(map);
       for (let i = 0; i < 6; i++) {
         const x = (i * 53 + t / 40) % 200;
         const y = (i * 29 + t / 70) % 140;
         out.pxa(x, y, '#fff4d0', 0.35);
       }
+      out.setMap(null);
       return out;
     }
     case 'calcada_moveis':
-      out.setMap(null).clear();
+      out.setMap(map).clear();
       calcadaMoveis(out, c, t);
+      out.setMap(null);
       return out;
     case 'escritorio_ar':
-      out.setMap(null).clear();
+      out.clear();
       escritorioAr(out, c, t);
       return out;
     case 'telefone_escuro':
-      out.setMap(null).clear();
+      out.clear();
       telefoneEscuro(out, c, t);
       return out;
     case 'quarto_alugado':
-      out.setMap(null).clear();
+      out.clear();
       quartoAlugado(out, c, t);
       return out;
     case 'bolo_porta': {
       out.setMap(map).clear();
       boloPorta(out, c, t);
+      out.setMap(null);
       return out;
     }
     case 'titulo':
@@ -1479,16 +1495,24 @@ export function renderEnding(kind: EndingKind | string, o: EndingOpts): Pix {
         titulo(p, c, 0);
         cache.set(key, p);
       }
-      out.setMap(null).copyFrom(p);
+      out.copyFrom(p);
       tituloAnim(out, t);
       return out;
     }
   }
 }
 
+/**
+ * Renderiza a vinheta num Pix 320×180 NOVO (puro, sem DOM; pode ser guardado).
+ * `o.name` = primeiro nome escolhido pelo jogador (vai no crachá do `cracha_prego`).
+ */
+export function renderEnding(kind: EndingKind | string, o: EndingOpts): Pix {
+  return renderInto(kind, o).copy();
+}
+
 /** Desenha a vinheta no contexto 2D em (0,0), pixels nativos 320×180. */
 export function drawEnding(ctx: CanvasRenderingContext2D, kind: EndingKind | string, o: EndingOpts): void {
-  presentPix(ctx, renderEnding(kind, o), 0, 0, 1, 'ending');
+  presentPix(ctx, renderInto(kind, o), 0, 0, 1, 'ending');
 }
 
 void CRAYON;

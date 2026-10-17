@@ -12,7 +12,8 @@
 // =============================================================================
 import { Pix, hasDOM, pack, unpackRgb, hash2, mulberry } from './pix';
 import { CENTRAL, HOME, SKIN, HAIR, homeGrader, quantize, rgbToHex } from './palette';
-import { PROTAGONIST_FIRST, SON_NAME } from '../../engine/text';
+import { SON_NAME } from '../../engine/text';
+import { protagonistLabel } from './names';
 import {
   Layer,
   Mask,
@@ -190,12 +191,12 @@ const LUCIA_SKIN = '#f3d3b5';
 
 const CH: Record<CharacterId, Look> = {
   EU_M: {
-    name: `Dr. ${PROTAGONIST_FIRST.M} Moura`, role: 'médico regulador (você)', age: 29,
+    name: protagonistLabel('M'), role: 'médico regulador (você)', age: 29,
     sex: 'M', face: 'oval', skin: SKIN[1], hair: HAIR[0], style: 'short', eyes: 'tired', facial: 'stubble', iris: '#4a2e1c',
     clothes: 'scrubs', c1: '#4f8a6e', acc: ['dark_circles', 'pocket_pen'], bg: 'central',
   },
   EU_F: {
-    name: `Dra. ${PROTAGONIST_FIRST.F} Moura`, role: 'médica reguladora (você)', age: 29,
+    name: protagonistLabel('F'), role: 'médica reguladora (você)', age: 29,
     sex: 'F', face: 'fem', skin: SKIN[1], hair: HAIR[0], style: 'bun_low', eyes: 'tired', iris: '#4a2e1c',
     clothes: 'scrubs', c1: '#4f8a6e', acc: ['dark_circles', 'studs', 'pocket_pen'], bg: 'central',
   },
@@ -319,6 +320,17 @@ export const CHARACTERS: Record<CharacterId, CharacterInfo> = Object.fromEntries
 ) as Record<CharacterId, CharacterInfo>;
 
 export const CHARACTER_IDS = Object.keys(CH) as CharacterId[];
+
+/**
+ * Nome de exibição do personagem. Para o protagonista (EU_M/EU_F), passe o
+ * primeiro nome escolhido pelo jogador: characterName('EU_F', 'Ana') → "Dra. Ana Moura".
+ * (CHARACTERS[...].name guarda só o padrão Thiago/Camille.)
+ */
+export function characterName(id: CharacterId, first?: string | null): string {
+  if (id === 'EU_M') return protagonistLabel('M', first);
+  if (id === 'EU_F') return protagonistLabel('F', first);
+  return CH[id]?.name ?? id;
+}
 
 /** Dados visuais compartilhados com os sprites de corpo inteiro. */
 export function characterColors(id: CharacterId): { skin: string; hair: string; c1: string; c2?: string; sex: 'M' | 'F' } {
