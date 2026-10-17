@@ -44,16 +44,7 @@ export const DOCS_EXTRA: Record<string, DeskDoc> = {
     // 1.1: ler a ficha (no quadro, ou na hora do interfone) é o que conta
     onRead: fx.set('viu_ficha_sindicancia'),
   },
-  // ROTEIRO 3.2: o papel da noite da Dona Zélia, na mesa no dia da sindicância
-  bilhete_henrique: {
-    id: 'bilhete_henrique',
-    title: 'Papel de pão dobrado em quatro',
-    text: (c) =>
-      c.val('bilhete_origem') === 'desenho'
-        ? 'A sua letra, tremida, escrita depois de olhar o desenho do Liam: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias." Atrás, um pedacinho de giz de cera azul grudado.'
-        : 'A sua letra, tremida: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias."',
-    until: 12,
-  },
+  // ROTEIRO 3.2: o papel da noite da Dona Zélia (bilhete_henrique) mora em src/content/base.ts
 };
 
 // Conferido (campo A12: posição de recuperação, não provocar vômito, nada pela boca, guardar as embalagens; MASTER/RM2:

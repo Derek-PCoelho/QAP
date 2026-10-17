@@ -283,8 +283,12 @@ export const DOCS: Record<string, DeskDoc> = {
           : c.flag('zelia_tarm_corrigiu')
             ? ' Embaixo, menor: "A TARM corrigiu. ' + esp + ' min."'
             : ' Embaixo, menor: "USB: ' + esp + ' min."';
-      return 'A sua letra, tremida: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias."' + fim;
+      const nota = '"22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias."';
+      return c.val('bilhete_origem') === 'desenho'
+        ? 'A sua letra, tremida, escrita depois de olhar o desenho do Liam: ' + nota + fim + ' Atrás, um pedacinho de giz de cera azul grudado.'
+        : 'A sua letra, tremida: ' + nota + fim;
     },
+    until: 12,
     clues: [{ id: 'doc:bilhete_henrique', text: 'Bilhete: "22:07. Henrique. Voz arrastada. Passou Palmeiras em vez de Acácias."' }],
   },
   postit_cida: {
