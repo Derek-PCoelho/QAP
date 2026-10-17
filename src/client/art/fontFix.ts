@@ -63,6 +63,8 @@ const UI_GLYPHS: Record<string, BitmapGlyph> = {
   z: { rows: ['#####', '...#.', '..#..', '.#...', '#####'] },
   // B com o lado esquerdo reto e cantos vivos: nunca um 8
   B: { rows: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'] },
+  // C bem aberto à direita: no negrito da Pixelify ele fechava e "Camille" lia "Oamille"
+  C: { rows: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'] },
 };
 
 // ---- "A" gótico legível (textura com a perna direita grossa e a barra marcada)
