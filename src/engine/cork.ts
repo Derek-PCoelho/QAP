@@ -23,7 +23,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 
 /** inclinação fixa por id (−3° a 3° nos post-its, −9° a 9° nos adesivos) */
 export function corkTilt(id: string, kind: CorkItem['kind']): number {
-  const h = hashString(id + ':tilt');
+  const h = hashString(id + ':tilt') >>> 0;
   return kind === 'adesivo' ? (h % 19) - 9 : (h % 7) - 3;
 }
 

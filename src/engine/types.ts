@@ -569,6 +569,8 @@ export interface CallDef {
   pool?: string;
   /** sempre sorteada do banco (pool), mesmo sem "ligações variáveis": o que está escrito aqui é só reserva */
   genOnly?: boolean;
+  /** 1.1: sem variante sorteada (ex.: o folgado do dia já saiu), a ligação não acontece (em vez de usar a reserva) */
+  dropIfNoVariant?: boolean;
   num: string;
   caller: string;
   callerName?: string;

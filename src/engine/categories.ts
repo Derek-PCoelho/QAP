@@ -65,7 +65,8 @@ export function simoneBox(def: CallDef, t: TruthDef | undefined, note?: string):
  */
 export function noteBoxFor(callId: string, right: BoxId, noteRight: boolean): BoxId {
   if (noteRight) return right;
-  const h = hashString(callId + ':postit');
+  // >>> 0: hashString tem sinal (resto negativo cairia sempre em "cor certa")
+  const h = hashString(callId + ':postit') >>> 0;
   if (h % 100 < 35) return right;
   const others = BOXES.filter((b) => b !== right);
   return others[Math.floor(h / 100) % others.length];

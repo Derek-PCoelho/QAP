@@ -16,8 +16,10 @@
 // Sorteio: etiqueta `folgado` (slot próprio dos dias) e `leve` (raro, peso 0,4); no máximo um por
 // plantão (`once`), nunca nos dias pesados (9, 17, 19, 20). Ver docs/CONTEUDO.md.
 // =============================================================================
-import type { AnswerIn, Ctx, EffCtx, LineIn } from '../../engine/types';
+import type { AnswerIn, CallDef, Ctx, EffCtx, LineIn } from '../../engine/types';
+import type { TemplateParams } from '../../engine/content-api';
 import { hasBleep } from '../../engine/bleep';
+import { Rng } from '../../engine/util';
 import { tpl, ex } from './kit';
 
 /** dias pesados: nenhum folgado (bíblia: D9, D17, D19, D20) */
@@ -1109,3 +1111,42 @@ export const FOLGADOS = [UBER, FILA_UPA, EXAME, VET, CONSULTA, BEBADO, VIP, RODO
 /** ids dos modelos (para testes e para os dias que quiserem um folgado fixo) */
 export const FOLGADO_IDS = FOLGADOS.map((t) => t.id);
 
+/**
+ * Vaga de folgado num dia (para os arquivos de dia): uma ligação que é SEMPRE sorteada entre os
+ * folgados liberados no dia (`pool: 'folgado'`, `genOnly`), mesmo sem "ligações variáveis".
+ * Uso: `DAY.calls.push(folgadoSlot('d12_folgado', '10:40'))`. Some sozinha nos dias pesados (9, 17,
+ * 19, 20) e quando o dia já sorteou um folgado (no máximo um por plantão). A reserva escrita (o Seu
+ * Clodoaldo do dedinho) só serve de molde: a ligação de verdade sempre vem do banco.
+ */
+export function folgadoSlot(id: string, at: string): CallDef {
+  const rng = new Rng(7331);
+  const tp: TemplateParams = {
+    name: 'Clodoaldo Pereira',
+    first: 'Clodoaldo',
+    age: 52,
+    sex: 'M',
+    addr: { rua: 'Rua Tiradentes', n: 1180, bairro: 'Vila Nova' },
+    num: '(17) 99731-5520',
+    rel: 'proprio',
+    relName: 'Clodoaldo (o próprio paciente)',
+    day: 3,
+    rand: () => rng.next(),
+    pick: <T,>(a: readonly T[]) => rng.pick(a),
+  };
+  const built = UBER.truths[0].build(tp);
+  return {
+    num: tp.num,
+    caller: 'Seu Clodoaldo',
+    type: 'exagerador',
+    note: 'Quer carona pra UPA.',
+    addr: tp.addr,
+    patient: { name: tp.name, age: tp.age, sex: tp.sex },
+    ...built,
+    id,
+    at,
+    pool: 'folgado',
+    genOnly: true,
+    dropIfNoVariant: true,
+    when: (c) => !FOLGADO_NOT_DAYS.includes(c.day),
+  } as CallDef;
+}

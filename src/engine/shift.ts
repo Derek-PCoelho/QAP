@@ -249,7 +249,7 @@ export class ShiftSim {
           gen = g.gen;
           id = g.id;
           this.genDefs.set(id, g.def);
-        }
+        } else if (def.dropIfNoVariant) continue;
       }
       this.addCall(id, def.id, hm(gen ? def.at : def.at), gen);
     }
