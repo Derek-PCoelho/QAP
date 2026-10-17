@@ -230,9 +230,18 @@ export function coldRampAt(l: number): string {
   return COLD_RAMP[COLD_RAMP.length - 1];
 }
 
+/** tons registrados como pele (sprites de corpo): gradeHome usa gradeSkin neles */
+const SKIN_TONES = new Set<string>();
+
+/** Marca cores como pele, para o Desgaste esfriá-las por igual (gradeSkin) nas cenas. */
+export function markSkinTones(...hexes: string[]): void {
+  for (const h of hexes) SKIN_TONES.add(h.toLowerCase());
+}
+
 /** Gradua uma cor qualquer da cena doméstica para o Desgaste t (0 = casa quente, 1 = central). */
 export function gradeHome(hex: string, t: number): string {
   if (t <= 0) return hex;
+  if (SKIN_TONES.has(hex.toLowerCase())) return gradeSkin(hex, t);
   const k = Math.min(1, t);
   const c = hexToRgb(hex);
   const an = anchors();
@@ -264,6 +273,28 @@ export function gradeHome(hex: string, t: number): string {
   // e um leve puxão para a rampa fria (unifica tudo sob a mesma luz)
   const ramp = coldRampAt(luma(shifted));
   return mix(shifted, ramp, 0.35 * k * keep);
+}
+
+/**
+ * Gradação da PELE sob a luz fria: uma transformação contínua (a mesma para
+ * qualquer tom, do mais claro ao mais escuro) — mantém a luminância relativa,
+ * tira parte da cor e puxa para um cinza-esverdeado pálido. Ao contrário da
+ * transferência por âncoras, tons vizinhos da mesma rampa nunca vão para
+ * destinos diferentes, então a pele escura esfria por igual (sem placas).
+ */
+export function gradeSkin(hex: string, t: number): string {
+  if (t <= 0) return hex;
+  const k = Math.min(1, t);
+  const [r, g, b] = hexToRgb(hex);
+  const y = 0.299 * r + 0.587 * g + 0.114 * b;
+  // um pouco mais pálida (luz de tubo), sem achatar os tons escuros
+  const y2 = y + (255 - y) * 0.1 * k;
+  const f = y2 / Math.max(1, y);
+  // cinza da mesma luminância, levemente verde-azulado
+  const gr = [y2 * 0.95, y2 * 1.03, y2 * 0.99];
+  const keep = 1 - 0.62 * k; // fração da cor original que sobra
+  const out = [0, 1, 2].map((i) => [r, g, b][i] * f * keep + gr[i] * (1 - keep));
+  return rgbToHex(out[0], out[1], out[2]);
 }
 
 const graderCache = new Map<number, (hex: string) => string>();

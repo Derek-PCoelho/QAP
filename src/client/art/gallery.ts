@@ -10,9 +10,12 @@ import { route, addressTarget } from '../../engine/city/path';
 import { drawScene, SCENE_BGS, type SceneCast } from './scenes';
 import type { SceneBg } from '../../engine/types';
 import { newsPhoto, NEWS_KINDS, NEWS_W, NEWS_H, NEWS_CROP_W, NEWS_CROP_H } from './newsPhotos';
-import { drawEnding, ENDING_KINDS, MURAL_FRAMES } from './endingArt';
-import { figurePix } from './figures';
-import { drawDog, DOG_POSES, dogPortrait } from './dog';
+import { drawEnding, renderEnding as renderEndingPix, ENDING_KINDS, MURAL_FRAMES } from './endingArt';
+import { figurePix, type CastId } from './figures';
+import { drawDog, DOG_POSES, dogPortrait, dogFramePix, DOG_FRAMES, ozzyPlayDuration, OZZY_PLAY_PATHS } from './dog';
+import { ozzySticker, OZZY_STICKERS, OZZY_STICKER_LABELS } from './stickers';
+import { installFontFixes, FONT_FIX_UI, FONT_FIX_MAST } from './fontFix';
+import { renderScene } from './scenes';
 import { Pix, presentPix, gradedCopy } from './pix';
 import { homeGrader, quantize } from './palette';
 
@@ -352,6 +355,135 @@ const SAMPLE: Record<SceneBg, { objects: string[]; cast: SceneCast[] }> = {
   prow.className = 'flex';
   for (const pose of DOG_POSES) prow.appendChild(cell(img(dogPortrait(pose, { t: 1000, size: 128 }), 1, 128, 128), `retrato · ${pose}`));
   s.appendChild(prow);
+}
+
+// ---------------------------------------------------------------- família nova
+{
+  const fscale = Number(params.get('famscale') ?? 6);
+  const s = section('familia', `Família — corpo inteiro (×${fscale}): em pé, sentado, deitado; blend 0 e 0.8`);
+  for (const blend of [0, 0.8]) {
+    const row = document.createElement('div');
+    row.className = 'flex';
+    const q = quantize(blend, 20);
+    const map = q > 0 ? homeGrader(q) : null;
+    for (const id of ['LUCIA', 'ALEX', 'DAVI', 'ZELIA', 'EU_M', 'EU_F'] as CastId[]) {
+      const p = new Pix(84, 36);
+      p.setMap(map).clear('#7a5030');
+      p.blit(gradedCopy(figurePix(id, 'em_pe'), map, 'f' + q), 2, 2);
+      p.blit(gradedCopy(figurePix(id, 'sentado', { chair: true }), map, 'f' + q), 20, 36 - figurePix(id, 'sentado', { chair: true }).h - 2);
+      p.blit(gradedCopy(figurePix(id, 'deitado'), map, 'f' + q), 44, 22);
+      row.appendChild(cell(img(p.toDataURL(fscale), 1, 84 * fscale, 36 * fscale), `${id}${blend ? ' · blend .8' : ''}`));
+    }
+    s.appendChild(row);
+  }
+}
+
+// ---------------------------------------------------------------- Ozzy: quadros e brincadeira
+{
+  const k = Number(params.get('framescale') ?? 8);
+  const s = section('ozzy-quadros', `Ozzy — todos os quadros (×${k}), virado para a direita (a UI espelha)`);
+  const row = document.createElement('div');
+  row.className = 'flex';
+  for (const f of DOG_FRAMES) {
+    const d = dogFramePix(f);
+    const p = new Pix(24, 16);
+    p.clear('#c99a5e');
+    p.blit(d, 12 - Math.floor(d.w / 2), 15 - d.h);
+    row.appendChild(cell(img(p.toDataURL(k), 1, 24 * k, 16 * k), f));
+  }
+  s.appendChild(row);
+
+  const bscale = Number(params.get('playscale') ?? 2);
+  const s2 = section('ozzy-brincar', `Brincar com o Ozzy — ele corre pela sala latindo e dorme no tapete (SceneOpts.ozzyPlay; ×${bscale})`);
+  const cast: SceneCast[] = [
+    { id: 'LUCIA', pose: 'sentado', x: 176 },
+    { id: 'DAVI', pose: 'em_pe', x: 40 },
+    { id: 'ZELIA', pose: 'sentado', x: 236 },
+  ];
+  const dur = ozzyPlayDuration(OZZY_PLAY_PATHS.sala);
+  const live = canvas(320, 180, bscale);
+  s2.appendChild(cell(live, `ao vivo (repete a cada ${Math.round((dur + 4000) / 100) / 10} s)`));
+  const lctx = live.getContext('2d')!;
+  const t0 = performance.now();
+  const drawLive = (t: number) => drawScene(lctx, { bg: 'sala', blend: 0, objects: [], cast, ozzyPlay: (t - t0) % (dur + 4000), time: t });
+  drawLive(t0);
+  animations.push(drawLive);
+  const strip = document.createElement('div');
+  strip.className = 'flex';
+  const moments: [number, string][] = [
+    [600, 'correndo'],
+    [2400, 'parou e latiu: AU!'],
+    [3300, 'correndo de volta'],
+    [4620, 'late de novo'],
+    [dur - 900, 'deitando no tapete'],
+    [dur + 2600, 'dormindo (zzz)'],
+  ];
+  for (const [t, lab] of moments) {
+    const p = renderScene({ bg: 'sala', blend: 0, objects: [], cast, ozzyPlay: t, time: t }).crop(40, 92, 260, 70);
+    strip.appendChild(cell(img(p.toDataURL(2), 1, 520, 140), `${Math.round(t)} ms · ${lab}`));
+  }
+  s2.appendChild(strip);
+}
+
+// ---------------------------------------------------------------- adesivos do Ozzy
+{
+  const k = Number(params.get('stickerscale') ?? 4);
+  const s = section('adesivos', `Adesivos do Ozzy para o quadro de cortiça (30×28 ×${k})`);
+  const row = document.createElement('div');
+  row.className = 'flex';
+  row.style.background = '#a8763f';
+  row.style.padding = '12px';
+  for (const kind of OZZY_STICKERS) row.appendChild(cell(img(ozzySticker(kind, k), 1, 30 * k, 28 * k), OZZY_STICKER_LABELS[kind]));
+  s.appendChild(row);
+}
+
+// ---------------------------------------------------------------- crachá com o nome do jogador
+{
+  const s = section('cracha-nomes', 'Crachá com o nome escolhido (EndingOpts.name)');
+  const row = document.createElement('div');
+  row.className = 'flex';
+  for (const [g, name] of [
+    ['F', undefined],
+    ['M', undefined],
+    ['F', 'Maria Eduarda'],
+    ['M', 'Maximiliano'],
+  ] as ['M' | 'F', string | undefined][]) {
+    const c = canvas(140, 100, 2);
+    const ctx = c.getContext('2d')!;
+    const p = new Pix(320, 180);
+    const draw = (t: number) => {
+      const e = renderEndingPix('cracha_prego', { time: t, gender: g, name });
+      p.copyFrom(e);
+      presentPix(ctx, p.crop(90, 10, 140, 100), 0, 0, 1, 'cr' + g + name);
+    };
+    draw(1000);
+    row.appendChild(cell(c, `${g} · ${name ?? 'padrão'}`));
+  }
+  s.appendChild(row);
+}
+
+// ---------------------------------------------------------------- legibilidade das fontes
+{
+  const s = section('fontes', `Fontes — antes e depois do conserto (${FONT_FIX_UI} / ${FONT_FIX_MAST})`);
+  const sample = 'R$ 150 · Dona Zélia · 20 dias · Bem · Zona 25 · 1258 · Bebê';
+  const mk = (family: string, size: number, weight: number, text: string, lab: string) => {
+    const d = document.createElement('div');
+    d.style.fontFamily = family;
+    d.style.fontSize = size + 'px';
+    d.style.fontWeight = String(weight);
+    d.style.margin = '4px 0';
+    d.innerHTML = `<small style="font:12px monospace;color:#8fa89a;margin-right:10px">${lab}</small>${text}`;
+    s.appendChild(d);
+  };
+  for (const size of [12, 14, 16]) {
+    mk("'Pixelify Sans'", size, 400, sample, `antes ${size}px`);
+    mk(`'${FONT_FIX_UI}', 'Pixelify Sans'`, size, 400, sample, `depois ${size}px`);
+  }
+  mk("'Pixelify Sans'", 14, 600, sample, 'antes 14px 600');
+  mk(`'${FONT_FIX_UI}', 'Pixelify Sans'`, 14, 600, sample, 'depois 14px 600');
+  mk("'Jacquard 24'", 36, 400, 'A médica do telefone · Às vezes', 'antes');
+  mk(`'${FONT_FIX_MAST}', 'Jacquard 24'`, 36, 400, 'A médica do telefone · Às vezes', 'depois');
+  void installFontFixes();
 }
 
 let frozen = params.has('freeze');

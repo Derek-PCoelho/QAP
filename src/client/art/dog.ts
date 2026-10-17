@@ -16,9 +16,10 @@ import { Pix, gradedCopy, hasDOM } from './pix';
 import { homeGrader, quantize } from './palette';
 import { makeSprite, type Sprite } from './sprite';
 import { floorShadow } from './props';
+import { drawText } from './font';
 
-export type DogPose = 'sentado' | 'deitado' | 'dormindo' | 'brincando';
-export const DOG_POSES: DogPose[] = ['sentado', 'deitado', 'dormindo', 'brincando'];
+export type DogPose = 'sentado' | 'deitado' | 'dormindo' | 'brincando' | 'correndo' | 'latindo' | 'deitando';
+export const DOG_POSES: DogPose[] = ['sentado', 'deitado', 'dormindo', 'brincando', 'correndo', 'latindo', 'deitando'];
 
 /** paleta do Ozzy (laranja de lulu, creme da juba) */
 const PAL: Record<string, string> = {
@@ -151,6 +152,111 @@ const FRAMES: Record<string, string[]> = {
     '.SOOOOOOOOOOS...',
     '..SSc.....cS....',
   ],
+  // correndo de lado (galope em 4 quadros), perfil para a direita, a pluma do rabo
+  // por cima das costas: esticado — traseiras para trás, dianteiras para a frente …
+  correndo0: [
+    '.............S..S..',
+    '...oocc.....SoSSOS.',
+    '..occcco...SoOOOOOS',
+    '.ocoooocooooOOOkOcc',
+    '.oooooooOOOOOOOOcck',
+    '..oOOOOOOOOOcOOccCS',
+    '.oOOOOOOOOOOcccccS.',
+    '.OOOOOOOOOOOOcccS..',
+    '.SOOOOOOOOOOOCcS...',
+    '..SSOOOOOOOOOCS....',
+    '.cS..........Sc....',
+    'cC............Cc...',
+  ],
+  // … recolhendo (o corpo desce 1 px) …
+  correndo1: [
+    '...................',
+    '.............S..S..',
+    '...oocc.....SoSSOS.',
+    '..occcco...SoOOOOOS',
+    '.ocoooocooooOOOkOcc',
+    '.oooooooOOOOOOOOcck',
+    '..oOOOOOOOOOcOOccCS',
+    '.oOOOOOOOOOOcccccS.',
+    '.OOOOOOOOOOOOcccS..',
+    '.SOOOOOOOOOOOCcS...',
+    '..SSOOOOOOOOOCS....',
+    '...cS......Sc......',
+  ],
+  // … no ar, as patinhas encolhidas debaixo da juba …
+  correndo2: [
+    '.............S..S..',
+    '...oocc.....SoSSOS.',
+    '..occcco...SoOOOOOS',
+    '.ocoooocooooOOOkOcc',
+    '.oooooooOOOOOOOOcck',
+    '..oOOOOOOOOOcOOccCS',
+    '.oOOOOOOOOOOcccccS.',
+    '.OOOOOOOOOOOOcccS..',
+    '.SOOOOOOOOOOOCcS...',
+    '..SSOOOOOOOOOCS....',
+    '....Sc....cS.......',
+    '...................',
+  ],
+  // … pousando
+  correndo3: [
+    '...................',
+    '.............S..S..',
+    '...oocc.....SoSSOS.',
+    '..occcco...SoOOOOOS',
+    '.ocoooocooooOOOkOcc',
+    '.oooooooOOOOOOOOcck',
+    '..oOOOOOOOOOcOOccCS',
+    '.oOOOOOOOOOOcccccS.',
+    '.OOOOOOOOOOOOcccS..',
+    '.SOOOOOOOOOOOCcS...',
+    '..SSOOOOOOOOOCS....',
+    '..cS.....Scc.......',
+  ],
+  // latindo: em pé de lado, firme nas quatro patas, boca fechada …
+  latindo0: [
+    '.............S..S..',
+    '...oocc.....SoSSOS.',
+    '..occcco...SoOOOOOS',
+    '.ocoooocooooOOOkOcc',
+    '.oooooooOOOOOOOOcck',
+    '..oOOOOOOOOOcOOccCS',
+    '.oOOOOOOOOOOcccccS.',
+    '.OOOOOOOOOOOOcccS..',
+    '.SOOOOOOOOOOOCcS...',
+    '..SSOOOOOOOOOCS....',
+    '..cS.cS...cS.cS....',
+    '..cC.cC...cC.cC....',
+  ],
+  // … e o "au!": cabeça erguida, boca aberta com a língua
+  latindo1: [
+    '............S..S...',
+    '...oocc....SoSSOS..',
+    '..occcco..SoOOOOOS.',
+    '.ocoooocoooOOOkOOcc',
+    '.oooooooOOOOOOOOc.k',
+    '..oOOOOOOOOOcOOcct.',
+    '.oOOOOOOOOOOccccckS',
+    '.OOOOOOOOOOOOcccS..',
+    '.SOOOOOOOOOOOCcS...',
+    '..SSOOOOOOOOOCS....',
+    '..cS.cS...cS.cS....',
+    '..cC.cC...cC.cC....',
+  ],
+  // deitando para dormir: a esfinge de olhos pesados (entre o deitado e o dormindo)
+  deitando0: [
+    '...........S...S...',
+    '..........SOOoOOS..',
+    '..oo.....oOOOOOOOS.',
+    '.occo...oOOOOOOOOOS',
+    'ocoocooOOOODDOODDS.',
+    '.ooccoOOOOOOOckcOOS',
+    '.oooooOOOOccOOcOOcS',
+    '.ooOOOOOOOcccccccS.',
+    '.oOOOOOOOOOcccccS..',
+    '.SOOOOOOOOOOcccOccS',
+    '..SSSSSSSSSSCcCScCS',
+  ],
 };
 
 /** bolinha azul (5×5) */
@@ -176,10 +282,23 @@ function frameKey(pose: DogPose, t: number): string {
       return `deitado${Math.sin((t / 1000) * ((2 * Math.PI) / 2.6)) > 0.3 ? 1 : 0}`;
     case 'dormindo':
       return `dormindo${Math.sin((t / 1000) * ((2 * Math.PI) / 3.2)) > 0.2 ? 1 : 0}`;
+    case 'correndo':
+      // galope rápido: 4 quadros de 85 ms
+      return `correndo${Math.floor(t / 85) % 4}`;
+    case 'latindo':
+      // "au! au!": dois latidos curtos e uma pausa (ciclo de 720 ms)
+      return [1, 0, 1, 0, 0, 0][Math.floor(t / 120) % 6] ? 'latindo1' : 'latindo0';
+    case 'deitando':
+      return 'deitando0';
     case 'brincando':
     default:
       return `brincando${Math.floor(t / 320) % 2}`;
   }
+}
+
+/** o quadro (nome) que a pose mostra no tempo t — para a UI sincronizar o som do latido */
+export function dogFrameAt(pose: DogPose, t: number): string {
+  return frameKey(pose, t);
 }
 
 const cache = new Map<string, Pix>();
@@ -202,6 +321,27 @@ export function dogPix(pose: DogPose = 'sentado', t = 0, scale = 1): Pix {
   return p;
 }
 
+/** nomes de todos os quadros desenhados (sentado0, correndo2, latindo1…) */
+export const DOG_FRAMES = Object.keys(FRAMES);
+
+/** Pix de um quadro pelo nome (contorno escuro, em cache). Virado para a direita. */
+export function dogFramePix(frame: string, scale = 1): Pix {
+  const key = FRAMES[frame] ? frame : 'sentado0';
+  const sk = `#${key}@${scale}`;
+  let p = cache.get(sk);
+  if (!p) {
+    if (scale > 1) p = dogFramePix(key).scaled(scale);
+    else {
+      const s = spriteOf(key);
+      p = new Pix(s.w + 2, s.h + 2);
+      p.sprite(s, 1, 1);
+      p.outline('#120c08');
+    }
+    cache.set(sk, p);
+  }
+  return p;
+}
+
 export interface DogDrawOpts {
   /** gradação do Desgaste (ex.: homeGrader(q)); a mesma das cenas da casa */
   map?: ((hex: string) => string) | null;
@@ -213,6 +353,57 @@ export interface DogDrawOpts {
   noShadow?: boolean;
   /** ampliação inteira (as vinhetas de final usam ×2) */
   scale?: number;
+  /** balão "AU!" no quadro do latido (padrão: sim, na pose latindo) */
+  bark?: boolean;
+  /** "z z z" subindo quando dorme (padrão: não — as cenas antigas não tinham) */
+  zzz?: boolean;
+}
+
+/** balão de fala 15×9 com "AU!" (cabo apontando para baixo, do lado de quem late) */
+function barkBubble(p: Pix, x: number, y: number, flip: boolean, k: number): void {
+  const b = new Pix(17, 12);
+  const ink = '#1b1a17';
+  b.rect(1, 1, 15, 8, '#fffaf0');
+  b.hl(2, 14, 0, ink);
+  b.hl(2, 14, 9, ink);
+  b.vl(0, 2, 7, ink);
+  b.vl(16, 2, 7, ink);
+  b.px(1, 1, ink);
+  b.px(15, 1, ink);
+  b.px(1, 8, ink);
+  b.px(15, 8, ink);
+  // cabo do balão
+  const cx = flip ? 11 : 4;
+  b.px(cx, 9, '#fffaf0');
+  b.px(cx + 1, 9, '#fffaf0');
+  b.px(cx + (flip ? 2 : -1), 9, ink);
+  b.px(cx + (flip ? -1 : 2), 9, ink);
+  b.px(cx + (flip ? 1 : 0), 10, ink);
+  b.px(cx + (flip ? 2 : -1), 10, ink);
+  b.px(cx + (flip ? 2 : -1), 11, ink);
+  drawText(b, 'AU!', 3, 3, '#c8302a');
+  p.blit(k > 1 ? b.scaled(k) : b, x, y);
+}
+
+/** "z Z z" subindo devagar sobre quem dorme */
+function drawZzz(p: Pix, x: number, y: number, t: number, k: number): void {
+  const ink = '#e6efd9';
+  const shadow = '#1b1a17';
+  for (let i = 0; i < 3; i++) {
+    const ph = ((t / 2400 + i / 3) % 1 + 1) % 1; // 0..1: nasce embaixo, sobe e some
+    if (ph > 0.92) continue;
+    const big = i === 1;
+    const zx = Math.round(x + (i * 4 + Math.sin(ph * 6.3) * 1.5) * k);
+    const zy = Math.round(y - ph * 14 * k);
+    const z = new Pix(big ? 5 : 4, big ? 5 : 4);
+    const n = z.w;
+    z.hl(0, n - 1, 0, ink);
+    z.hl(0, n - 1, n - 1, ink);
+    for (let j = 1; j < n - 1; j++) z.px(n - 1 - j, j, ink);
+    const zz = k > 1 ? z.scaled(k) : z;
+    p.blit(zz, zx + k, zy + k, { tint: shadow, tintAmount: 1, alpha: 0.5 });
+    p.blit(zz, zx, zy, { alpha: ph < 0.7 ? 1 : 0.6 });
+  }
 }
 
 /**
@@ -235,6 +426,134 @@ export function drawDog(p: Pix, x: number, y: number, pose: DogPose = 'sentado',
     const bx = o.flip ? left - ball.w - k : left + g.w + k;
     p.blit(ball, bx, Math.round(y) - ball.h + 2 * k - hop);
   }
+  if (pose === 'latindo' && (o.bark ?? true) && frameKey(pose, t) === 'latindo1') {
+    // balão por cima da cabeça, do lado do focinho
+    const bx = o.flip ? left - 9 * k : left + g.w - 8 * k;
+    barkBubble(p, bx, top - 12 * k, !!o.flip, k);
+  }
+  if (pose === 'dormindo' && o.zzz) drawZzz(p, o.flip ? left + 1 * k : left + g.w - 6 * k, top - 3 * k, t, k);
+}
+
+// -----------------------------------------------------------------------------
+// Brincadeira: o Ozzy dá voltas correndo pela sala, para e late, e depois deita
+// no tapete e pega no sono. Animação por tempo; quem chama só passa os ms desde
+// o começo da brincadeira (e, se quiser, o caminho).
+// -----------------------------------------------------------------------------
+export type OzzyPlayPhase = 'correndo' | 'latindo' | 'deitando' | 'dormindo';
+
+export interface OzzyPlayFrame {
+  /** centro horizontal e linha das patas (pixels da cena) */
+  x: number;
+  y: number;
+  /** pose para drawDog */
+  pose: DogPose;
+  /** virado para a esquerda (drawDog flip) */
+  flip: boolean;
+  /** nome do quadro (dogFramePix) */
+  frame: string;
+  phase: OzzyPlayPhase;
+  /** true no quadro do "au!" (a UI pode tocar o latido quando mudar para true) */
+  bark: boolean;
+  /** já dormiu (a brincadeira acabou; ele fica dormindo no último ponto) */
+  done: boolean;
+  /** tempo (ms) para passar ao drawDog e obter exatamente este quadro */
+  t: number;
+}
+
+export interface OzzyPlayOpts {
+  /** velocidade da corrida em px/s (padrão 95) */
+  speed?: number;
+  /** quanto tempo late em cada parada (padrão 760 ms) */
+  barkMs?: number;
+  /** quanto tempo leva para deitar antes de dormir (padrão 1300 ms) */
+  settleMs?: number;
+}
+
+/**
+ * Caminho padrão da brincadeira por cômodo (pixels da cena 320×180, linha das patas).
+ * O último ponto é onde ele dorme (na sala, o tapete vermelho); ele late em cada
+ * ponto do meio.
+ */
+export const OZZY_PLAY_PATHS: Record<string, [number, number][]> = {
+  sala: [
+    [70, 148],
+    [262, 150],
+    [118, 140],
+    [282, 140],
+    [196, 140],
+  ],
+  cozinha: [
+    [70, 150],
+    [250, 150],
+    [120, 142],
+    [112, 136],
+  ],
+  quarto: [
+    [110, 148],
+    [250, 146],
+    [140, 146],
+    [180, 140],
+  ],
+  porta: [
+    [80, 160],
+    [240, 160],
+    [150, 158],
+  ],
+};
+
+/** duração total (ms) até ele pegar no sono, para o caminho dado */
+export function ozzyPlayDuration(path: [number, number][] = OZZY_PLAY_PATHS.sala, o: OzzyPlayOpts = {}): number {
+  const speed = (o.speed ?? 95) / 1000;
+  let d = 0;
+  for (let i = 1; i < path.length; i++) d += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]) / speed;
+  return d + Math.max(0, path.length - 2) * (o.barkMs ?? 760) + (o.settleMs ?? 1300);
+}
+
+/**
+ * Onde o Ozzy está e o que faz `elapsed` ms depois de começar a brincadeira.
+ * Corre de um ponto ao outro (virando para o lado do movimento), late parado em
+ * cada ponto do meio, no último deita (`deitando`) e depois dorme para sempre.
+ */
+export function ozzyPlayAt(elapsed: number, path: [number, number][] = OZZY_PLAY_PATHS.sala, o: OzzyPlayOpts = {}): OzzyPlayFrame {
+  const pts = path.length ? path : OZZY_PLAY_PATHS.sala;
+  const speed = (o.speed ?? 95) / 1000;
+  const barkMs = o.barkMs ?? 760;
+  const settleMs = o.settleMs ?? 1300;
+  let t = Math.max(0, elapsed);
+  let flip = false;
+  const mk = (x: number, y: number, pose: DogPose, phase: OzzyPlayPhase, tt: number, done = false): OzzyPlayFrame => {
+    const frame = frameKey(pose, tt);
+    return { x: Math.round(x), y: Math.round(y), pose, flip, frame, phase, bark: frame === 'latindo1', done, t: tt };
+  };
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    const dur = Math.hypot(x1 - x0, y1 - y0) / speed;
+    if (x1 !== x0) flip = x1 < x0;
+    if (t < dur) {
+      const u = dur > 0 ? t / dur : 1;
+      return mk(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, 'correndo', 'correndo', elapsed);
+    }
+    t -= dur;
+    if (i < pts.length - 1) {
+      if (t < barkMs) {
+        // late virado para o centro da sala
+        flip = x1 > 160;
+        return mk(x1, y1, 'latindo', 'latindo', t);
+      }
+      t -= barkMs;
+    }
+  }
+  const [lx, ly] = pts[pts.length - 1];
+  if (t < settleMs) return mk(lx, ly, 'deitando', 'deitando', t);
+  return mk(lx, ly, 'dormindo', 'dormindo', elapsed, true);
+}
+
+/** Desenha o quadro da brincadeira num Pix (balão "AU!" e "zzz" incluídos). */
+export function drawOzzyPlay(p: Pix, elapsed: number, o: DogDrawOpts & OzzyPlayOpts & { path?: [number, number][] } = {}): OzzyPlayFrame {
+  const f = ozzyPlayAt(elapsed, o.path, o);
+  drawDog(p, f.x, f.y, f.pose, f.t, { ...o, flip: f.flip, zzz: true });
+  return f;
 }
 
 const ballCache = new Map<number, Pix>();

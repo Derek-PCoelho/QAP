@@ -11,7 +11,7 @@ import { Pix, presentPix, hash2, bayerOn, gradedCopy } from './pix';
 import { HOME, CENTRAL, mix, shade, homeGrader, quantize } from './palette';
 import { drawText, textWidth } from './font';
 import { figurePix, figureHeight, type CastId, type Pose } from './figures';
-import { drawDog, type DogPose } from './dog';
+import { drawDog, ozzyPlayAt, OZZY_PLAY_PATHS, type DogPose } from './dog';
 import { statusIconPix } from './icons';
 import { renderCityMap } from './mapRender';
 import {
@@ -117,6 +117,15 @@ export interface SceneOpts {
   cast?: SceneCast[];
   /** Ozzy, o lulu da família, no lugar dele no chão (só nos cômodos da casa: cozinha, sala, quarto, porta) */
   ozzy?: DogPose | false;
+  /**
+   * Brincadeira com o Ozzy: ms desde que o jogador escolheu "Brincar com o Ozzy".
+   * Enquanto existir, ignora `ozzy` e o Ozzy corre pelo cômodo latindo (balão "AU!"),
+   * depois deita e dorme no tapete com "zzz" (ver ozzyPlayAt em dog.ts).
+   * Cômodos com caminho: sala (o principal), cozinha, quarto, porta.
+   */
+  ozzyPlay?: number;
+  /** caminho próprio para a brincadeira (pixels da cena; o último ponto é onde ele dorme) */
+  ozzyPath?: [number, number][];
   /** ms */
   time: number;
 }
@@ -2257,24 +2266,27 @@ function escritorioBack(p: Pix): void {
   p.px(88, 12, '#7fd17a');
   // painel de metas
   metricsScreen(p, 62, 28, 124, 46, '94');
-  // mesa executiva
-  p.rect(70, 100, 180, 12, '#3a2a22');
-  p.hl(70, 249, 100, '#5a4234');
-  p.rect(72, 112, 176, 34, '#2a1e18');
-  p.hl(72, 247, 112, '#1a120e');
   floorShadow(p, 160, 147, 92, 3, 0.4);
   // cadeira executiva (encosto acima da mesa)
   p.rect(146, 74, 28, 26, '#1e1e22');
   p.hl(146, 173, 74, '#3a3a40');
-  // objetos na mesa
-  p.rect(84, 94, 12, 6, '#c8d4dc');
-  p.rect(226, 90, 6, 10, '#bfe3f2');
-  p.hl(226, 231, 90, '#ffffff');
   // planta
   p.rect(292, 126, 16, 20, '#c8c4bc');
   p.disc(300, 112, 12, '#3f6a4a');
   p.disc(295, 104, 7, '#4f7a5a');
   p.disc(306, 116, 6, '#2f5a3a');
+}
+
+/** a mesa executiva vai na frente: quem senta atrás dela aparece só do peito para cima */
+function escritorioFront(p: Pix): void {
+  p.rect(70, 100, 180, 12, '#3a2a22');
+  p.hl(70, 249, 100, '#5a4234');
+  p.rect(72, 112, 176, 34, '#2a1e18');
+  p.hl(72, 247, 112, '#1a120e');
+  // objetos na mesa
+  p.rect(84, 94, 12, 6, '#c8d4dc');
+  p.rect(226, 90, 6, 10, '#bfe3f2');
+  p.hl(226, 231, 90, '#ffffff');
 }
 
 function escritorioLight(p: Pix, front: boolean): void {
@@ -2296,7 +2308,7 @@ function escritorioAnim(p: Pix, has: Has, t: number): void {
 
 function escritorioPlace(c: SceneCast): Placement {
   const x = clampX(c.x);
-  if (c.pose === 'sentado') return { x: x >= 80 && x <= 240 ? 160 : x, bottom: x >= 80 && x <= 240 ? 112 : 168, layer: x >= 80 && x <= 240 ? 'back' : 'top', chair: !(x >= 80 && x <= 240) };
+  if (c.pose === 'sentado') return { x: x >= 80 && x <= 240 ? 160 : x, bottom: x >= 80 && x <= 240 ? 107 : 168, layer: x >= 80 && x <= 240 ? 'back' : 'top', chair: !(x >= 80 && x <= 240) };
   return { x, bottom: 168, layer: 'top' };
 }
 
@@ -2566,8 +2578,8 @@ const OBJECTS: Partial<Record<SceneBg, Record<string, ObjDef>>> = {
     bombinha: o(79, 74, 17, 9, 'back', (p, r) => inhaler(p, r.x + 1, r.y + 1)),
     isopor: o(208, 99, 22, 15, 'back', (p, r) => styrofoam(p, r.x + 1, r.y + 1)),
     meia_mancha: o(37, 90, 16, 19, 'back'),
-    // os pés da Dona Zélia, sentada na cabeceira dela (o sapato fechado é o que ela calça)
-    sapato_fechado: o(195, 129, 18, 11, 'back'),
+    // os sapatos fechados da Zélia (de sair), arrumados ao lado da cadeira dela
+    sapato_fechado: o(213, 134, 16, 9, 'back', (p, r) => closedShoes(p, r.x + 1, r.y + 3)),
     goteira: o(292, 32, 16, 14, 'back', leakStain(300, 147, 40), leakAnim(300, 147, 44)),
     balde: o(293, 135, 14, 14, 'front', DRAW.balde),
     mesa_vazia: o(124, 112, 72, 30, 'front'),
@@ -2805,7 +2817,7 @@ const BGS: Record<SceneBg, BgDef> = {
     marks: { ZELIA: 264, LUCIA: 214, ALEX: 214, DAVI: 196, EU_M: 140, EU_F: 140 },
     objects: {},
   },
-  escritorio: { warm: false, back: escritorioBack, light: escritorioLight, anim: escritorioAnim, place: escritorioPlace, objects: OBJECTS.escritorio ?? {} },
+  escritorio: { warm: false, back: escritorioBack, front: escritorioFront, light: escritorioLight, anim: escritorioAnim, place: escritorioPlace, objects: OBJECTS.escritorio ?? {} },
   igreja: { warm: true, back: igrejaBack, front: igrejaFront, light: igrejaLight, anim: igrejaAnim, place: igrejaPlace, objects: OBJECTS.igreja ?? {} },
   mesa: { warm: false, back: mesaBack, light: mesaLight, anim: mesaAnim, place: noPlace, objects: OBJECTS.mesa ?? {} },
   preto: { warm: false, back: (p) => p.clear('#050505'), place: noPlace, objects: {} },
@@ -2900,8 +2912,8 @@ function drawCastMember(p: Pix, c: SceneCast, pl: Placement, t: number, map: Lay
 const work = new Pix(SCENE_W, SCENE_H);
 let workKey = '';
 
-/** Renderiza a cena num Pix 320×180 (puro, sem DOM). */
-export function renderScene(o: SceneOpts): Pix {
+/** desenha a cena no Pix de trabalho `work` (reutilizado a cada quadro) */
+function renderSceneInto(o: SceneOpts): Pix {
   const bg: SceneBg = BGS[o.bg] ? o.bg : 'preto';
   const def = BGS[bg];
   const L = layersFor(bg, o.blend, o.objects ?? []);
@@ -2921,7 +2933,12 @@ export function renderScene(o: SceneOpts): Pix {
   const occupied = new Set(cast.map((x) => x.pl.seat).filter((s): s is string => !!s));
   const placed: { bottom: number; layer: Placement['layer']; draw: () => void }[] = cast.map(({ c, pl }) => ({ bottom: pl.bottom, layer: pl.layer, draw: () => drawCastMember(work, c, pl, t, L.map, L.q, icons) }));
   const pose = o.ozzy;
-  if (pose && def.ozzy?.length) {
+  const playPath = o.ozzyPath ?? OZZY_PLAY_PATHS[bg];
+  if (o.ozzyPlay != null && playPath) {
+    const f = ozzyPlayAt(o.ozzyPlay, playPath);
+    const layer: Placement['layer'] = bg === 'cozinha' && (f.phase === 'deitando' || f.phase === 'dormindo') ? 'back' : 'top';
+    placed.push({ bottom: f.y, layer, draw: () => drawDog(work, f.x, f.y, f.pose, f.t, { map: L.map, mapKey: 'q' + L.q, flip: f.flip, zzz: true }) });
+  } else if (pose && def.ozzy?.length) {
     // o primeiro lugar livre (sem ninguém do elenco em cima); dormindo, o cantinho dele
     const free = def.ozzy.find((s) => cast.every(({ c, pl }) => Math.abs(pl.x - s.x) > 17 || s.y < pl.bottom - castHeight(c) - 2 || s.y - 13 > pl.bottom + 1)) ?? def.ozzy[0];
     const at = pose === 'dormindo' && def.ozzySleep ? { ...def.ozzySleep, layer: 'back' as const, flip: false } : { x: free.x, y: free.y, layer: free.layer ?? 'back', flip: !!free.flip };
@@ -2945,12 +2962,17 @@ export function renderScene(o: SceneOpts): Pix {
   return work;
 }
 
+/** Renderiza a cena num Pix 320×180 NOVO (puro, sem DOM; pode ser guardado). */
+export function renderScene(o: SceneOpts): Pix {
+  return renderSceneInto(o).copy();
+}
+
 /**
  * Desenha a cena no contexto 2D em (0,0), em pixels nativos 320×180
  * (amplie com CSS image-rendering: pixelated, ex.: ×4).
  */
 export function drawScene(ctx: CanvasRenderingContext2D, o: SceneOpts): void {
-  presentPix(ctx, renderScene(o), 0, 0, 1, 'scene');
+  presentPix(ctx, renderSceneInto(o), 0, 0, 1, 'scene');
 }
 
 void mix;

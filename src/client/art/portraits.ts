@@ -11,8 +11,9 @@
 // ×2 ou ×3 com image-rendering: pixelated). Puro até a conversão final.
 // =============================================================================
 import { Pix, hasDOM, pack, unpackRgb, hash2, mulberry } from './pix';
-import { CENTRAL, HOME, SKIN, HAIR, homeGrader, quantize, rgbToHex } from './palette';
-import { PROTAGONIST_FIRST, SON_NAME } from '../../engine/text';
+import { CENTRAL, HOME, SKIN, HAIR, homeGrader, gradeSkin, quantize, rgbToHex } from './palette';
+import { SON_NAME } from '../../engine/text';
+import { protagonistLabel } from './names';
 import {
   Layer,
   Mask,
@@ -82,6 +83,8 @@ export type CharacterId =
 type FaceShape = 'oval' | 'fem' | 'round' | 'square' | 'long' | 'child' | 'teen';
 type HairStyle =
   | 'short'
+  | 'wavy'
+  | 'kid_straight'
   | 'bun_low'
   | 'curly'
   | 'kid'
@@ -100,7 +103,7 @@ type HairStyle =
   | 'under_hat'
   | 'none';
 type Hat = 'samu_cap' | 'cap' | 'cap_back' | 'fedora' | 'bucket' | 'helmet' | 'scrub_cap';
-type Facial = 'stubble' | 'heavy' | 'gray_stubble' | 'mustache' | 'mustache_white' | 'mustache_thin';
+type Facial = 'shadow' | 'stubble' | 'heavy' | 'gray_stubble' | 'mustache' | 'mustache_white' | 'mustache_thin';
 type Glasses = 'round' | 'rect' | 'half_chain' | 'sun_head';
 type Clothes =
   | 'scrubs'
@@ -161,6 +164,8 @@ interface Look extends CharacterInfo {
   hat?: Hat;
   hatColor?: string;
   eyes?: 'normal' | 'tired' | 'big' | 'small' | 'narrow';
+  /** formato do olho (sobrepõe o formato escolhido por idade/sexo) */
+  eyeShape?: 'almond';
   iris?: string;
   brows?: 'thin' | 'normal' | 'thick';
   browColor?: string;
@@ -181,31 +186,34 @@ interface Look extends CharacterInfo {
   lips?: 'thin' | 'full';
 }
 
+/** pele da Lúcia: clara, um tom de marfim levemente dourado */
+const LUCIA_SKIN = '#f3d3b5';
+
 const CH: Record<CharacterId, Look> = {
   EU_M: {
-    name: `Dr. ${PROTAGONIST_FIRST.M} Moura`, role: 'médico regulador (você)', age: 29,
+    name: protagonistLabel('M'), role: 'médico regulador (você)', age: 29,
     sex: 'M', face: 'oval', skin: SKIN[1], hair: HAIR[0], style: 'short', eyes: 'tired', facial: 'stubble', iris: '#4a2e1c',
     clothes: 'scrubs', c1: '#4f8a6e', acc: ['dark_circles', 'pocket_pen'], bg: 'central',
   },
   EU_F: {
-    name: `Dra. ${PROTAGONIST_FIRST.F} Moura`, role: 'médica reguladora (você)', age: 29,
+    name: protagonistLabel('F'), role: 'médica reguladora (você)', age: 29,
     sex: 'F', face: 'fem', skin: SKIN[1], hair: HAIR[0], style: 'bun_low', eyes: 'tired', iris: '#4a2e1c',
     clothes: 'scrubs', c1: '#4f8a6e', acc: ['dark_circles', 'studs', 'pocket_pen'], bg: 'central',
   },
   LUCIA: {
     name: 'Lúcia', role: 'esposa, costureira', age: 31,
-    sex: 'F', face: 'fem', skin: SKIN[3], hair: HAIR[0], style: 'curly', iris: '#2e1a10', lips: 'full', nose: 'broad',
-    clothes: 'blouse', c1: HOME.fabricRed, acc: ['earrings', 'tape'], bg: 'home', rest: 'soft',
+    sex: 'F', face: 'fem', skin: LUCIA_SKIN, hair: HAIR[0], style: 'long', eyeShape: 'almond', iris: '#3a2418', nose: 'small', brows: 'thin',
+    clothes: 'blouse', c1: HOME.fabricRed, acc: ['studs', 'tape'], bg: 'home', rest: 'soft',
   },
   // o marido, quando a protagonista é mulher: o mesmo papel da Lúcia (costura, ateliê) e a mesma paleta
   ALEX: {
-    name: 'Alex', role: 'marido, costureiro', age: 32,
-    sex: 'M', face: 'oval', skin: SKIN[3], hair: HAIR[0], style: 'curly_short', iris: '#2e1a10', lips: 'full', nose: 'broad',
-    facial: 'heavy', clothes: 'shirt', c1: HOME.fabricRed, acc: ['tape'], bg: 'home', rest: 'soft',
+    name: 'Alex', role: 'marido, costureiro', age: 37,
+    sex: 'M', face: 'long', skin: SKIN[0], hair: HAIR[0], style: 'wavy', iris: '#3e5a70', nose: 'medium', brows: 'thick',
+    facial: 'shadow', clothes: 'shirt', c1: HOME.fabricRed, acc: ['tape'], bg: 'home', rest: 'soft',
   },
   DAVI: {
     name: SON_NAME, role: 'filho, 8 anos', age: 8,
-    sex: 'M', face: 'child', skin: SKIN[2], hair: HAIR[0], style: 'kid', eyes: 'big', iris: '#3a2414', nose: 'button',
+    sex: 'M', face: 'child', skin: SKIN[0], hair: HAIR[1], style: 'kid_straight', eyes: 'big', iris: '#3a2414', nose: 'button',
     clothes: 'stripes', c1: HOME.fabricBlue, c2: '#e9e2cf', acc: ['blush'], bg: 'home',
   },
   ZELIA: {
@@ -312,6 +320,17 @@ export const CHARACTERS: Record<CharacterId, CharacterInfo> = Object.fromEntries
 ) as Record<CharacterId, CharacterInfo>;
 
 export const CHARACTER_IDS = Object.keys(CH) as CharacterId[];
+
+/**
+ * Nome de exibição do personagem. Para o protagonista (EU_M/EU_F), passe o
+ * primeiro nome escolhido pelo jogador: characterName('EU_F', 'Ana') → "Dra. Ana Moura".
+ * (CHARACTERS[...].name guarda só o padrão Thiago/Camille.)
+ */
+export function characterName(id: CharacterId, first?: string | null): string {
+  if (id === 'EU_M') return protagonistLabel('M', first);
+  if (id === 'EU_F') return protagonistLabel('F', first);
+  return CH[id]?.name ?? id;
+}
 
 /** Dados visuais compartilhados com os sprites de corpo inteiro. */
 export function characterColors(id: CharacterId): { skin: string; hair: string; c1: string; c2?: string; sex: 'M' | 'F' } {
@@ -427,7 +446,7 @@ function geoFor(l: Look): Geo {
       break;
   }
   const eyes = l.eyes ?? 'normal';
-  const shape = eyes === 'big' ? EYE_SHAPES.big : eyes === 'small' ? EYE_SHAPES.small : l.sex === 'F' ? EYE_SHAPES.fem : EYE_SHAPES.adult;
+  const shape = l.eyeShape === 'almond' ? EYE_SHAPES.almond : eyes === 'big' ? EYE_SHAPES.big : eyes === 'small' ? EYE_SHAPES.small : l.sex === 'F' ? EYE_SHAPES.fem : EYE_SHAPES.adult;
   const w = shape.lid.length;
   // olhos: 7 px com 6 px entre eles; pequenos (6 px) um pouco mais afastados
   const eyeLX = w === 7 ? 22 : 23;
@@ -498,7 +517,7 @@ function makeMats(L: Layer, l: Look): Mats {
   const flush = L.mat(skinRamp(mixLab(l.skin, '#c83838', sL > 0.6 ? 0.3 : 0.24)));
   const circles = L.mat(skinRamp(mixLab(l.skin, '#6a4a78', sL > 0.6 ? 0.2 : 0.16)));
   const beardC = l.facial === 'gray_stubble' ? '#d4d0c8' : mixLab(l.hair, '#2a3040', 0.2);
-  const beardK = l.facial === 'heavy' ? 0.62 : l.facial === 'gray_stubble' ? 0.34 : sL > 0.6 ? 0.3 : 0.26;
+  const beardK = l.facial === 'heavy' ? 0.62 : l.facial === 'gray_stubble' ? 0.34 : l.facial === 'shadow' ? 0.15 : sL > 0.6 ? 0.3 : 0.26;
   const stubble = L.mat(skinRamp(mixLab(l.skin, beardC, beardK)));
   const lipBase = l.acc?.includes('lipstick')
     ? '#b8323a'
@@ -1336,6 +1355,43 @@ function drawHairFront(L: Layer, g: Geo, l: Look, m: Mats): void {
   const t = g.top;
   const hairPart = (mk: Mask, h: HairPaint) => paintHair(L, mk, m.hair, P.HAIR, h);
   switch (s) {
+    case 'wavy': {
+      // curto liso com onda: laterais baixas, topo cheio penteado para trás e
+      // para a direita, uma mecha ondulada caindo na testa do lado esquerdo
+      const sil = new Mask().ellipse(32.5, t + 8.5, 16.2, 11.8);
+      sil.ellipse(31, t - 1.6, 11, 4.8).ellipse(40, t, 7, 3.6);
+      sil.and(new Mask().rect(0, 0, 64, t + 16));
+      const win = belowLine([
+        [16.5, t + 15],
+        [18, t + 10],
+        [20.5, t + 8.2],
+        [23, t + 9.2],
+        [25.5, t + 7.4],
+        [29, t + 5.6],
+        [34, t + 5.2],
+        [39, t + 6],
+        [42.5, t + 7.6],
+        [45, t + 10],
+        [47.5, t + 15],
+      ]);
+      win.rect(14, g.earY0, 4, 13).rect(46, g.earY0, 4, 13);
+      sil.sub(win);
+      sil.rect(17, t + 10, 2, 5).rect(45, t + 10, 2, 5);
+      hairPart(sil, { src: [24, t - 3], ball: [32, t + 6, 17, 14], tex: 'strand', clump: 3, band: [5, 7.5], seed: 8 });
+      // risca à esquerda e a onda: um gancho de fios escuros sobre a testa
+      for (let y = t - 5; y <= t + 1; y++) L.tone(24, y, 0, P.HAIR);
+      for (const [x, y, tt] of [
+        [23, t + 2, 1],
+        [22, t + 3, 1],
+        [22, t + 4, 0],
+        [21, t + 5, 1],
+        [27, t + 4, 1],
+        [26, t + 5, 0],
+        [25, t + 6, 1],
+      ] as [number, number, number][])
+        if (L.part(x, y) === P.HAIR) L.tone(x, y, tt, P.HAIR);
+      return;
+    }
     case 'short': {
       // corte curto masculino: volume no alto penteado para o lado, laterais
       // baixas acima da orelha, entradas nas têmporas (linha em M) e risca à esquerda
@@ -1423,6 +1479,33 @@ function drawHairFront(L: Layer, g: Geo, l: Look, m: Mats): void {
         [47, t + 26],
       ]));
       paintCurls(L, mask, m.hair, P.HAIR, { r: 2.8, seed: 21, ball: [32, t + 10, 20, 20], centers });
+      return;
+    }
+    case 'kid_straight': {
+      // menino de cabelo liso: copa redonda, franja reta e um pouco desfiada
+      // caindo para o lado, laterais cobrindo o alto da orelha, redemoinho no alto
+      const sil = new Mask().ellipse(32, t + 7.5, 15.6, 10.6).ellipse(30, t - 1, 9, 3.6);
+      sil.and(new Mask().rect(0, 0, 64, t + 17));
+      const win = belowLine([
+        [16.5, t + 15],
+        [18, t + 11],
+        [20, t + 9.6],
+        [23, t + 10.2],
+        [25, t + 9.4],
+        [28, t + 10.2],
+        [31, t + 9.4],
+        [34, t + 10],
+        [37, t + 9.2],
+        [40, t + 9.6],
+        [43, t + 8.6],
+        [45.5, t + 10],
+        [47.5, t + 15],
+      ]);
+      win.rect(14, g.earY0 + 2, 4, 11).rect(46, g.earY0 + 2, 4, 11);
+      sil.sub(win);
+      hairPart(sil, { src: [35, t - 2], ball: [32, t + 6, 16, 13], tex: 'strand', clump: 2.4, band: [4, 6.5], seed: 33 });
+      // pontas da franja (fios separando)
+      for (const x of [24, 30, 36, 41]) if (L.part(x, t + 9) === P.HAIR) L.tone(x, t + 9, 1, P.HAIR);
       return;
     }
     case 'kid': {
@@ -1650,7 +1733,7 @@ function drawHairFront(L: Layer, g: Geo, l: Look, m: Mats): void {
         [46, t + 30],
       ]);
       sil.sub(win);
-      hairPart(sil, { src: [32, t + 2], ball: [32, t + 10, 18, 22], tex: 'strand', clump: 2.6, band: [8, 10.5], fallY: t + 18, seed: 4 });
+      hairPart(sil, { src: [32, t - 7], ball: [32, t + 10, 18, 22], tex: 'strand', clump: 2.6, band: [8, 10.5], fallY: t + 18, seed: 4 });
       for (let y = t - 3; y <= t + 3; y++) L.tone(32, y, 0, P.HAIR);
       return;
     }
@@ -3016,6 +3099,7 @@ function render(id: CharacterId, mood: Mood, withBg: boolean): Pix {
   L.despeckle([P.FACE, P.HAIR, P.BACK, P.BODY, P.HAT, P.NECK], 2);
   drawGlasses(L, g, l);
   drawAccessories(L, g, l, m);
+  skinMasks.set(`${id}|${mood}|${withBg ? 1 : 0}`, skinMask(L));
   const bg = withBg ? background(l.bg) : null;
   return compose(L, bg, { ink: BG_INK[l.bg], rim: BG_RIM[l.bg], rimK: 0.32, openBottom: true });
 }
@@ -3045,22 +3129,44 @@ function makeMatsInto(aux: Layer, src: Layer, m: Mats): Mats {
   return { ...m, skin: re(m.skin), blush: re(m.blush), circles: re(m.circles), stubble: re(m.stubble), hair: re(m.hair), flush: re(m.flush) };
 }
 
-function gradePix(p: Pix, t: number): Pix {
+/**
+ * Desgaste no retrato: o fundo, o cabelo e a roupa seguem a gradação da casa
+ * (homeGrader); a pele (rosto, orelhas, pescoço — máscara `skin`) usa gradeSkin,
+ * contínua, para qualquer tom esfriar por igual.
+ */
+function gradePix(p: Pix, t: number, skin?: Uint8Array): Pix {
   if (t <= 0) return p;
   const g = homeGrader(t);
   const memo = new Map<number, number>();
-  return p.remap((v) => {
-    let o = memo.get(v);
+  const memoS = new Map<number, number>();
+  for (let i = 0; i < p.data.length; i++) {
+    const v = p.data[i];
+    if (!(v >>> 24)) continue;
+    const isSkin = !!skin?.[i];
+    const mm = isSkin ? memoS : memo;
+    let o = mm.get(v);
     if (o === undefined) {
       const [r, gg, b, a] = unpackRgb(v);
-      const hex = g(rgbToHex(r, gg, b));
-      const n = pack(hex);
+      const src = rgbToHex(r, gg, b);
+      const n = pack(isSkin ? gradeSkin(src, t) : g(src));
       o = ((n & 0x00ffffff) | (a << 24)) >>> 0;
-      memo.set(v, o);
+      mm.set(v, o);
     }
-    return o;
-  });
+    p.data[i] = o;
+  }
+  return p;
 }
+
+/** máscara (1 por pixel) das partes de pele de uma camada de retrato */
+function skinMask(L: Layer): Uint8Array {
+  const out = new Uint8Array(L.w * L.h);
+  for (let i = 0; i < out.length; i++) {
+    const part = L.p[i];
+    if (part === P.FACE || part === P.NECK || part === P.EAR || part === P.FEAT) out[i] = 1;
+  }
+  return out;
+}
+const skinMasks = new Map<string, Uint8Array>();
 
 const pixCache = new Map<string, Pix>();
 
@@ -3077,7 +3183,7 @@ export function portraitPix(id: CharacterId, mood: Mood = 'neutro', opts: { blen
       base = render(id, mood, bg);
       pixCache.set(baseKey, base);
     }
-    p = blend > 0 ? gradePix(base.copy(), blend) : base;
+    p = blend > 0 ? gradePix(base.copy(), blend, skinMasks.get(`${id}|${mood}|${bg ? 1 : 0}`)) : base;
     pixCache.set(key, p);
   }
   return p.copy();
