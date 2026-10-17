@@ -121,7 +121,7 @@ export const DAY = day({
           { who: 'NARRADOR', t: 'A Simone já está na mesa. Não diz bom dia. No seu monitor, um post-it com a letra dura dela: "Ligações."', when: is.flag('d7_wesley_dispensado') },
         ],
         choices: [
-          { label: '"Uns minutinhos, Henrique. Hoje à noite eu não posso ficar: tem apresentação do meu filho na escola."', next: 'aviso' },
+          { label: '"Uns minutinhos, Henrique. Hoje à noite eu não posso ficar: tem apresentação do meu filho na escola."', next: 'aviso', effect: fx.set('avisou_sarau') },
           { label: '"Tranquilo."', next: 'ok' },
         ],
       },
@@ -136,12 +136,82 @@ export const DAY = day({
       },
     },
   }),
+  // 1.1 — ida (o Seu Aílton de mau humor; o Seu Ademir no ponto), almoço (a Rose e os "minutinhos" do Henrique)
+  // e volta (o sobrado verde da Rua Ipê, 112: R1, pista 2)
+  ida: (c) => ({
+    id: 'd08_ida',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:40. Garoa fina. O Seu Aílton está de mau humor e com o rádio AM desligado, o que é pior.' },
+          { who: 'AÍLTON', t: 'Ontem um menino desmaiou aqui dentro, em jejum pra exame. Hoje vai ser outro, {dr}, eu sinto no joelho. Esse ônibus já viu de tudo. Já viu até casamento.' },
+          ...(c.flag('d6_avc_regional') && c.s.diary.some((d) => (d.id === 'd06_avc' || d.callDef === 'd06_avc') && d.kind === 'vivo')
+            ? [
+                { who: 'NARRADOR', t: 'No ponto da Rua Rui Barbosa sobe um senhor de bengala, devagar, com a esposa segurando o cotovelo.' },
+                { who: 'NEIDE', t: '{Dr} do telefone? A gente reconheceu a voz no rádio do ônibus... mentira, foi o Aílton que contou que era você.' },
+                { who: 'ADEMIR', t: '(a boca ainda puxa um pouquinho pro lado quando ele sorri) Café. Eu já tomo café. Reclamo do café. Tô bom.' },
+              ]
+            : []),
+        ],
+      },
+    },
+  }),
+  almoco: (c) => ({
+    id: 'd08_almoco',
+    bg: 'central',
+    cast: ['ROSE', 'SIMONE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Segunda-feira. A Rose, do RH, entra com a prancheta e o perfume de talco.' },
+          { who: 'ROSE', t: 'Bom dia, meu bem. Ponto do noturno. O Dr. Henrique tá com uns "minutinhos" no mês. Muitos minutinhos. Vocês viram ele chegar sábado?' },
+          { who: 'SIMONE', t: 'Eu não vi nada. Eu nunca vejo nada.' },
+          { who: 'ROSE', t: 'Ai, Simone. (para você) E você, {dr}? Ele chega no horário pra te render?' },
+        ],
+        choices: [
+          { label: '"Chega. Ele me avisa quando atrasa."', next: 'cobriu', effect: fx.all(fx.add('lealHenrique', 1, 'cobriu o Henrique com a Rose'), fx.set('rose_ponto_henrique', 'cobriu')) },
+          { label: '"Chega atrasado. Pergunta pra ele, não pra mim."', next: 'falou', effect: fx.set('rose_ponto_henrique', 'falou') },
+          { label: '"Hoje é a apresentação do meu filho." (mudar de assunto)', next: 'sarau' },
+        ],
+      },
+      cobriu: { lines: [{ who: 'ROSE', t: 'Que bom. Eu só carimbo, meu bem.' }, { who: 'NARRADOR', t: 'Ela anota alguma coisa na prancheta. Não é o seu nome. Ou é.' }] },
+      falou: { lines: [{ who: 'ROSE', t: 'Pergunto. Eu só carimbo.' }, { who: 'NARRADOR', t: 'A Simone para de mastigar e olha pra você por cima dos óculos. Não diz nada.' }] },
+      sarau: {
+        lines: [
+          { who: 'SIMONE', t: 'Vai. Às sete eu te enxoto daqui.', when: (cc) => !cc.flag('avisou_sarau') },
+          { who: 'SIMONE', t: 'Você me contou na passagem. Tá vendo, Rose? Avisa. Às sete eu enxoto {m:ele|ela} daqui.', when: (cc) => cc.flag('avisou_sarau') },
+          { who: 'ROSE', t: 'Ai, que lindo. Leva lenço.' },
+        ],
+      },
+    },
+  }),
+  volta: (c) => ({
+    id: 'd08_volta',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:40. O ônibus pega a Rua Ipê por causa de uma obra na Brasil. No 112, um sobrado verde. A luz da cozinha acesa. Um carro preto parado na frente, de vidro escuro.' },
+          { who: 'NARRADOR', t: 'Sobrado verde. Luz da cozinha acesa. Você não sabe por que guardou essa imagem.' },
+          { who: 'NARRADOR', t: 'Você desce dois pontos antes e corre para a Monteiro Lobato, ainda de jaleco.', when: () => c.s.family.davi.status !== 'morto' && !c.s.family.davi.away },
+        ],
+      },
+    },
+  }),
   timeline: [
     {
       at: '07:20',
       kind: 'script',
       id: 'peixoto_vereador',
       run: (c) => {
+        // flags.md: d7_assessor_negado (eco imediato) — o Peixoto conta do assessor que você barrou na base
+        if (c.flag('d7_assessor_negado') && !c.flag('envelope_aceito') && !c.flag('envelope_lucia')) {
+          c.modal('DR. PEIXOTO', 'O assessor do vereador anotou o seu nome no domingo, {dr}. Aquele de terno, da base. Ele me ligou. Eu disse que você é teimos{m:o|a}. Ele não riu.' + (c.flag('vereador_inimigo') ? ' E o vereador ligou pro diretor da OS. Quer o seu nome numa reunião da comissão de saúde. Eu segurei, por enquanto.' : ''), 'interfone');
+          return;
+        }
         if (c.flag('envelope_aceito')) {
           c.modal('DR. PEIXOTO', 'O vereador Arlindo mandou elogio por escrito pra diretoria, {dr}. Você virou "{m:o doutor|a doutora} da confiança dele". Parabéns. Eu acho.', 'interfone');
         } else if (c.flag('envelope_lucia')) {
@@ -201,7 +271,8 @@ export const DAY = day({
       addr: { rua: 'Av. Brasil', n: 1560, bairro: 'Distrito Industrial', ref: 'Ponto de ônibus em frente à Rodoviária.' },
       amb: ['onibus', 'buzinas', 'multidao'],
       open: [
-        'Bom dia, aqui é o motorista da linha 12. {{Um rapaz desmaiou aqui no ônibus|desmaiou}}, caiu em cima de uma senhora. {{Mas já acordou|acordou}}, tá sentado, tá falando.',
+        'Bom dia, {dr}, aqui é o Aílton, motorista da linha 12. {{Um rapaz desmaiou aqui no ônibus|desmaiou}}, caiu em cima de uma senhora. {{Mas já acordou|acordou}}, tá sentado, tá falando.',
+        'Esse ônibus já viu de tudo, {dr}. Já viu até casamento. Mas desmaio às sete da manhã é a primeira vez na semana.',
         '[buzinas; passageiros reclamando do atraso]',
       ],
       q: {
@@ -265,7 +336,7 @@ export const DAY = day({
       open: [
         { t: 'Oi... {{queria pedir uma pizza|pizza}}. Grande. De calabresa.', style: 'sussurro' },
         { t: 'Pra {{Rua Ipê, 112|end_ipe}}. Jardim Norte.', style: 'sussurro' },
-        '[{{voz masculina ao fundo, gritando: "Com quem você tá falando?!"|voz_homem}}]',
+        '[{{voz masculina ao fundo, gritando: "Com quem você tá falando?! Desliga isso. Tá bom? TÁ BOM?"|voz_homem}}]',
       ],
       q: {
         oque: [{ t: '{{A pizza... só a pizza|so_pizza}}. Calabresa.', style: 'sussurro' }],
@@ -278,6 +349,8 @@ export const DAY = day({
         paciente: [{ t: 'Sou eu. A pizza é pra mim.', style: 'sussurro' }],
         referencia: [{ t: 'Sobrado verde. {{Primeira casa depois da esquina|ref_sobrado}}.', style: 'sussurro' }],
         seguranca: [{ t: '{{Não.|seguro_nao}}', style: 'sussurro' }, '[um baque, como uma porta batendo]'],
+        pulso: [{ t: '...Rápido. [pausa] A entrega. Rápida.', style: 'sussurro' }],
+        pele: [{ t: 'Roxa... [pausa] ...a berinjela. Sem berinjela. Roxo aqui no braço não.', style: 'sussurro' }],
       },
       extra: [
         {
@@ -348,7 +421,7 @@ export const DAY = day({
       worsen: [
         {
           after: 35,
-          lines: ['[{{a voz masculina, mais perto: "Desliga isso. Agora."|voz_perto}}]', { t: 'Isso... calabresa. {{Rápido, {m:moço|moça}.|rapido}}', style: 'sussurro' }],
+          lines: ['[{{a voz masculina, mais perto: "Desliga isso. Agora. Tá bom? TÁ BOM?"|voz_perto}}]', { t: 'Isso... calabresa. {{Rápido, {m:moço|moça}.|rapido}}', style: 'sussurro' }],
         },
       ],
       patient: { name: 'Rosângela Ferraz', age: 38, sex: 'F' },
@@ -514,7 +587,7 @@ export const DAY = day({
       q: {
         oque: (c: Ctx) => [
           'Fui pôr o pé pra fora do box e a perna falhou. {{Caí sentada e pus a mão no chão|mao_no_chao}}.',
-          c.flag('cida_tapete') ? 'O tapete de borracha... eu ia pedir pra Dirce comprar na feira de amanhã, {meu} {filho}.' : 'O piso tava molhado. Coisa de velha.',
+          c.flag('cida_tapete') ? 'O tapete de borracha... eu ia pedir pra Noêmia comprar na feira de amanhã, {meu} {filho}.' : 'O piso tava molhado. Coisa de velha.',
         ],
         consciencia: 'Acordada, {meu} {filho}. Com dor, mas acordada.',
         respira: 'Respirando. Meio rápido, do susto.',
@@ -525,6 +598,8 @@ export const DAY = day({
         paciente: 'Sou eu mesma, {meu} {filho}. Desculpa.',
         seguranca: 'Seguro. A porta tá trancada... a chave tá na fechadura, por dentro.',
         referencia: 'Casa amarela, portão verde, do lado da Igreja São Benedito. Você sabe.',
+        pulso: 'O do braço bom tá batendo ligeiro, {meu} {filho}. Do susto. O do braço ruim eu nem encosto.',
+        pele: 'Branca. Branca de susto. E a mão tá ficando roxinha em volta do pulso.',
       },
       extra: [
         {
@@ -545,7 +620,7 @@ export const DAY = day({
           label: 'Orientar: o braço e a porta',
           say: 'Não tenta levantar sozinha. Deixa o braço quietinho, apoiado no colo. Alguém tem a chave da sua casa?',
           // Conferido (RT6: idosa acima de 70 anos com fratura e dor → USI/USB): imobilizar no colo, não levantar.
-          a: 'A Dirce da frente tem cópia. Vou gritar pela janelinha do banheiro... DIRCE! ...Ela ouviu, {meu} {filho}. Tá vindo.',
+          a: 'A Noêmia da frente tem cópia. Vou gritar pela janelinha do banheiro... NOÊMIA! ...Ela ouviu, {meu} {filho}. Tá vindo.',
         },
         {
           id: 'conversar',
@@ -656,8 +731,8 @@ export const DAY = day({
       at: '14:00',
       pool: 'leve',
       num: '(17) 3328-0640',
-      caller: 'Kelly (neta)',
-      callerName: 'Kelly',
+      caller: 'Rayssa (neta)',
+      callerName: 'Rayssa',
       type: 'comum',
       voice: 'jovem_m',
       note: 'Neta. Avó com diarreia.',
@@ -778,29 +853,33 @@ export const DAY = day({
       caller: 'Voz de adolescente',
       type: 'trotista',
       voice: 'adolescente',
-      note: 'Pedindo pizza. Rindo.',
-      noteWrong: 'Mulher pedindo pizza de novo. Voz baixa.',
+      note: 'Pedindo pizza. Voz baixa.',
+      noteWrong: 'Mulher pedindo pizza de novo. Voz baixa. Igual a de manhã.',
+      // 1.1 (trotes-folgados.md): difícil, sem risada — o espelho da Rosângela. Voz baixinha, mas a festa ao fundo
+      // NÃO para, ninguém grita com ninguém, e a pergunta de perigo vira piada. A mesma senha não é a mesma ligação.
       addr: { rua: 'Rua dos Bem-te-vis', n: 2400, bairro: 'Bela Vista' },
-      amb: ['festa', 'risadas', 'musica'],
+      amb: ['festa', 'musica'],
       open: [
-        'Alô! {{É da pizzaria?|pizzaria}} Quero uma {{calabresa grande com borda recheada|calabresa_trote}}! E um refri de dois litros!',
-        '[{{gargalhadas|gargalhadas}}; música alta; várias vozes: "pede de frango também!"]',
+        { t: 'Oi... {{é da pizzaria?|pizzaria}} Queria uma {{calabresa grande. Com borda recheada|calabresa_trote}}.', style: 'sussurro' },
+        '[{{ao fundo, uma festa: música alta, conversa, uma panela batendo. Ninguém grita com ninguém. A música não para nem um segundo|gargalhadas}}]',
       ],
       q: {
-        oque: 'Quero pizza, ué! [risadas] Tô morrendo... de fome!',
-        consciencia: 'Acordadíssimo! [risadas]',
-        respira: 'Respirando o cheiro da pizza que não chega! [gargalhadas]',
-        idade: 'Dezoito! ...Quinze. [risadas]',
-        seguranca: 'Perigo só de fome, {m:moço|moça}! [risadas]',
-        referencia: 'Do lado da... casa do lado! [risadas]',
-        paciente: ['[vozes: "passa pra mim, passa pra mim!"]', 'OUTRO: Ô, {m:tio|tia} da pizza, capricha na calabresa! [gargalhadas]'],
+        oque: [{ t: 'A pizza. Calabresa. E um refri de dois litros.', style: 'sussurro' }],
+        consciencia: [{ t: 'Sim. Acordadíssima.', style: 'sussurro' }],
+        respira: [{ t: 'Respirando... o cheiro da pizza que não chega.', style: 'sussurro' }],
+        idade: [{ t: 'O troco é pra... dezoito. Não. Quinze.', style: 'sussurro' }],
+        seguranca: [{ t: 'Seguro... só a fome.', style: 'sussurro' }, '[a música sobe; alguém canta junto o refrão]'],
+        referencia: [{ t: 'Do lado da... casa do lado.', style: 'sussurro' }],
+        pulso: [{ t: 'O meu? Tá bom. Tá ótimo, na verdade.', style: 'sussurro' }],
+        pele: [{ t: 'Morena. Bronzeada. É do clube.', style: 'sussurro' }],
+        paciente: ['[outra voz, longe: "pede de frango também!"]', { t: 'Sou eu. A pizza é pra todo mundo.', style: 'sussurro' }],
       },
       extra: [
         {
           id: 'perigo',
           label: '"Você está em perigo? Responda só sim ou não."',
           say: 'Você está em perigo? Responda só sim ou não.',
-          a: ['{{Perigo? Só se a pizza atrasar!|perigo_piada}} [gargalhadas]', '[alguém grita: "desliga, desliga, é a ambulância de verdade!"]', '[desliga]'],
+          a: [{ t: '{{Perigo? Só se a pizza atrasar.|perigo_piada}}', style: 'sussurro' }, '[alguém do lado: "desliga, desliga, é a ambulância de verdade!"]', '[desliga]'],
         },
       ],
       callback: ['[{{caixa postal: "Fala aí, aqui é o Kauê, manda áudio!"|retorno_caixa_kaue}}]'],
@@ -824,10 +903,30 @@ export const DAY = day({
         lines: [
           { who: 'NARRADOR', t: '19:00. A cadeira do noturno está vazia. O telefone toca. A Simone veste o casaco devagar, olhando pra você.' },
           { who: 'SIMONE', t: 'O Henrique, {dr}. De novo.' },
+          // flags.md: avisou_sarau (eco imediato)
+          { who: 'NARRADOR', t: 'Ela tira o casaco de novo e pendura o seu nas costas da sua cadeira.', when: is.flag('avisou_sarau') },
+          { who: 'SIMONE', t: 'Avisou, vai. Eu seguro o Henrique. Eu fico até ele chegar.', when: is.flag('avisou_sarau') },
+        ],
+        choices: [
+          { label: 'Ir agora. (A Simone fica.)', next: 'foi', when: is.flag('avisou_sarau') },
+          { label: 'Esperar o Henrique.', next: 'espera', when: is.flag('avisou_sarau') },
+        ],
+        next: 'espera',
+      },
+      foi: {
+        onEnter: fx.all(fx.set('simone_segurou_d8'), fx.set('d8_henrique_registrado'), fx.add('lealSimone', 1, 'a Simone segurou o noturno')),
+        lines: [
+          { who: 'NARRADOR', t: '19:04. Você sai correndo para o ponto, de jaleco ainda.' },
+          { who: 'NARRADOR', t: 'Amanhã, na folha da passagem, vai estar escrito na letra redonda da Simone: "Henrique — 19:32". Ela não vê nada. Mas assina o que vê.' },
+        ],
+      },
+      espera: {
+        lines: [
           { who: 'NARRADOR', t: '19:10. 19:20. Você atende mais duas ligações que já não eram suas. O sarau do Liam é às oito.' },
           { who: 'NARRADOR', t: '19:32. A porta abre. Henrique, cabelo molhado, bala de menta na boca. O cheiro de menta é forte demais. Tem outra coisa por baixo.' },
           { who: 'HENRIQUE', t: 'Foi mal, foi mal, {nome}. Pneu furado na Beira-Rio.' },
           { who: 'HENRIQUE', t: '(baixinho) Faz um favor? Assina a passagem às sete em ponto. O Peixoto tá contando minuto. Mais um atraso e é advertência. Eu te devo uma.' },
+          { who: 'HENRIQUE', t: 'A Rose já sabe, né? Você contou pra ela no almoço. (ele sorri sem sorrir) Assina 19:00 pra mim assim mesmo?', when: (c) => c.val('rose_ponto_henrique') === 'falou' },
         ],
         choices: [
           {
@@ -835,7 +934,7 @@ export const DAY = day({
             next: 'cobriu',
             effect: fx.all(fx.set('henrique_coberto'), fx.add('desgaste', 5, 'cobriu o Henrique'), fx.add('lealHenrique', 1, 'cobriu o Henrique')),
           },
-          { label: 'Assinar "19:32". "Não dá, Henrique. Meu filho tá me esperando."', next: 'nao', effect: fx.set('d8_henrique_registrado') },
+          { label: 'Assinar "19:32". "Não dá, Henrique. Meu filho tá me esperando."', next: 'nao', effect: fx.all(fx.set('d8_henrique_registrado'), fx.set('d8_saiu_pelo_filho')) },
         ],
       },
       cobriu: {
@@ -904,6 +1003,7 @@ export const DAY = day({
           ],
         },
         caneta: {
+          onEnter: fx.set('marcia_caneta_alerta'),
           lines: [
             { who: 'MARCIA', t: '(surpresa) Olha só, {medico} mesmo! Tenho uma, que a alergista deu... faz tempo. Tá numa gaveta lá em casa. Nem sei se tá na validade.' },
             { who: 'MARCIA', t: 'Faz tanto tempo que não acontece nada que eu esqueço que ela existe. Vou olhar, prometo.' },
@@ -936,7 +1036,9 @@ export const DAY = day({
         start: {
           onEnter: fx.set('marcia_alergia'),
           lines: [
-            { who: 'NARRADOR', t: 'Às oito da noite, enquanto a USA 01 corta a Av. Brasil de sirene ligada, o Liam lê a redação numa quadra cheia de cadeiras de plástico.' },
+            { who: 'NARRADOR', t: 'Às oito da noite, enquanto a ambulância da noite corta a Av. Brasil de sirene ligada, o Liam lê a redação numa quadra cheia de cadeiras de plástico.' },
+            { who: 'NARRADOR', t: 'Às sete e meia você tinha dito ao Henrique que o seu filho estava esperando. A Simone segurou a porta pra você. "Corre." ...Pra ambulância, Simone. Não pra escola.', when: is.flag('d8_saiu_pelo_filho') },
+            { who: 'NARRADOR', t: 'A Simone ficou na sua cadeira até o Henrique chegar, para você ir à escola. Você foi para a ambulância.', when: is.flag('simone_segurou_d8') },
             { who: 'NARRADOR', t: 'Quando você chega, de madrugada, {oconj} está {c:acordada|acordado} na cozinha.' },
             { who: 'LUCIA', t: 'Ele procurou você na plateia. Duas vezes. Depois parou de procurar.' },
             { who: 'LUCIA', t: 'A redação era sobre você. "O que {m:meu pai|minha mãe} faz". Ele leu inteirinha, sem gaguejar. No final ele disse que você nunca vê se deu certo.' },
