@@ -212,7 +212,7 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
       return pick([['[resmunga alguma coisa]', '[desliga]'], ['Vocês não servem pra nada!', '[desliga]']]);
     case 'confronto_quadro':
       if (prank) return ['[um segundo de silêncio; alguém cochicha "sujou"]', '[desliga]'];
-      return kid ? 'Não é trote! Juro, {m:moço|moça}!' : 'Que trote, {dr}?! É sério! Pelo amor de Deus!';
+      return kid ? 'Não fui eu! Juro, {m:moço|moça}! É sério!' : 'Já ligou? Não sei, {dr}, o telefone é da família toda... mas agora é sério! Pelo amor de Deus!';
     case 'confronto_endereco':
       if (prank) return ['É... é que... [cochicho]', '[desliga]'];
       return `Desculpa, desculpa, é o nervoso! É ${def.addr.rua}, ${def.addr.n}, ${def.addr.bairro}!`;

@@ -229,7 +229,7 @@ const ABORDAGENS: Sec[] = [
     t: 'Trote',
     li: [
       'Sinais: risadas ao fundo, história de filme, endereço que não existe, horário que não fecha, número no quadro, hesitação em dado simples.',
-      'Ferramentas: o post-it da Simone (ela confere o endereço), "Ligar de volta" (30 min; caixa postal ou número inexistente reforçam), vídeo (trotista recusa, enrola ou desliga; trote filmado vale prova) e o quadro: se o número já está lá, aparece a fala "Esse número já passou trote aqui".',
+      'Ferramentas: o post-it da Simone (ela confere o endereço), "Ligar de volta" (30 min; caixa postal ou número inexistente reforçam), vídeo (trotista recusa, enrola ou desliga; trote filmado vale prova) e o quadro: se o número já está lá, aparece a pergunta "Esse número já ligou aqui antes?" (o quadro não prova trote).',
       'Número no quadro não prova trote: gente de verdade também liga de número marcado. Tratar emergência como trote é a falha mais grave da regulação.',
       'Para encerrar: Recurso "Trote" e carimbar.',
     ],

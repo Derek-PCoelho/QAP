@@ -2,6 +2,14 @@
 // Banco — trotes e ligações ambíguas. Cada modelo tem ao menos uma verdade REAL:
 // o padrão existe para ser quebrado (risada de nervoso, criança sozinha, calma de
 // quem está em choque, linha aberta que é um pedido de socorro).
+//
+// 1.1 (docs/roteiro-1.1/trotes-folgados.md, parte A): risada ao fundo só no trote ÓBVIO e
+// engraçado (metade dos "quarenta pastéis"); todos os outros trotes são difíceis e sem risada.
+// O endereço é a Simone que confere (vem no post-it); o regulador desconfia pelo que ouve:
+// relato de cinema sem corpo, respostas que se enrolam nas perguntas fixas (pulso, pele,
+// acordado), fundo que não combina, recusa em pôr alguém na linha, pressa pela sirene,
+// Ligar de volta (caixa postal, número inexistente), quadro e vídeo.
+// Risada que fica em ligação REAL é a armadilha inversa (o skate, o coma alcoólico na festa).
 // =============================================================================
 import { tpl, lk, lm, ex, alt, prankCallback, type P } from './kit';
 
@@ -16,8 +24,9 @@ export const TROTE_CLASSICO = tpl({
   open: (p) => [`Alô, emergência? {{Corre, corre|corre}}! ${p.Quem} tá passando muito mal aqui!`],
   truths: [
     {
+      // o ÓBVIO e engraçado do banco: o único trote com risada ao fundo
       id: 'trote',
-      weight: 4,
+      weight: 2,
       build: (p) => {
         const cb = prankCallback(p);
         return {
@@ -35,12 +44,13 @@ export const TROTE_CLASSICO = tpl({
             oque: [`${p.Ele} comeu {{quarenta pastéis|pasteis}} e tá inchando igual balão!`, '[risada]'],
             consciencia: 'Tá... tá desmaiado! Não, tá rindo. Não! Desmaiado!',
             respira: 'Respira... tipo um aspirador de pó. [risadas]',
+            pulso: 'Tem! Tem três! Um em cada pastel! [gargalhada]',
+            pele: 'Vermelho de pastel. Quer dizer, roxo! Roxo!',
             idade: 'Uns... quinze? Cinquenta? [risada]',
             referencia: 'Do lado da padaria. A rosa. Não, a azul.',
             historico: 'Alergia a... a escola! [risadas]',
             sangramento: 'Sangue? Ketchup! Quer dizer, sangue! Muito!',
             paciente: ['[cochichos: "fala você!"]', `${p.Ele} não pode falar, tá inchado! [gargalhada]`],
-            confronto_endereco: ['[risadas]', '[desliga]'],
             confronto_quadro: ['Ih, sujou! [risadas]', '[desliga]'],
           },
           callback: cb.lines,
@@ -50,6 +60,45 @@ export const TROTE_CLASSICO = tpl({
             lk(cb.id, 'num', cb.insight),
           ],
           radio: { prank: 'Central, {unit}. Ninguém aqui, só uns moleques correndo de bicicleta. Trote.' },
+        };
+      },
+    },
+    {
+      // a mesma história, sem risada: a pista é o relato impossível e as respostas às fixas
+      id: 'trote_seco',
+      weight: 2,
+      build: (p) => {
+        const cb = prankCallback(p);
+        return {
+          truth: { dx: 'Trote', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
+          note: 'Adolescente. Amigo passando mal. Falou em pastel, {dr}.',
+          noteWrong: 'Adolescente passando mal! Parece sério.',
+          caller: 'Voz de adolescente',
+          callerName: 'Voz de adolescente',
+          type: 'trotista',
+          voice: 'adolescente',
+          amb: ['videogame'],
+          noise: ['[{{um jogo pausado ao fundo: a musiquinha de pausa repetindo|pausa}}]'],
+          patient: { name: `"${p.first}, passando mal"` },
+          q: {
+            oque: `${p.Ele} comeu {{quarenta pastéis|pasteis}}. E tá inchando. Igual balão.`,
+            consciencia: 'Tá desmaiado. [pausa] É. Desmaiado.',
+            respira: 'Respira. Devagar. Bem devagar. Tipo... muito devagar.',
+            pulso: '{{Tem. Uns... duzentos?|pulso}}',
+            pele: 'Vermelho. Não, roxo. Roxo de pastel.',
+            idade: 'Quinze. Ou dezesseis.',
+            historico: 'Nada. Só fome.',
+            sangramento: 'Não. Quer dizer... um pouco. Do pastel.',
+            paciente: ['[cochicho: "faz voz de morto"]', `${p.Ele} não consegue falar, tá cheio de pastel.`],
+            seguranca: 'Seguro. Pode mandar com a sirene.',
+          },
+          callback: cb.lines,
+          links: [
+            lk('pasteis', 'pulso', 'Quarenta pastéis e um pulso de "duzentos" dito sem conferir: relato impossível, ninguém examinou ninguém.'),
+            lk('pausa', 'pasteis', 'Um videogame pausado ao fundo e nenhum desespero: o "inchado" está jogando.'),
+            lk(cb.id, 'num', cb.insight),
+          ],
+          radio: { prank: 'Central, {unit}. Casa certa, ninguém inchado. Tinha uma caixa de pastel vazia na porta, {dr}. Trote.' },
         };
       },
     },
@@ -153,28 +202,29 @@ export const TROTE_CRIANCA = tpl({
       weight: 3.5,
       build: (p) => ({
         truth: { dx: 'Trote infantil', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
-        note: 'Criança no telefone. Ouvi risadinha.',
+        note: 'Criança no telefone. Tem outra cochichando do lado, {dr}.',
         noteWrong: 'Criança sozinha, mãe desmaiada! Grave!',
         caller: 'Voz de criança',
         callerName: 'Voz de criança',
         type: 'crianca',
         voice: 'crianca',
-        amb: ['desenho', 'risadas'],
-        noise: ['[{{risadinhas; outra criança cochicha "fala que ela morreu!"|cochicho}}]', '[desenho animado alto]'],
+        amb: ['desenho'],
+        noise: ['[{{outra criança cochicha: "fala que ela morreu!"|cochicho}}]', '[desenho animado alto]'],
         patient: { name: '"Mãe"' },
         q: {
-          oque: ['Ela... ela caiu. E morreu! [risadinha]'],
-          consciencia: 'Não acorda! ...Acordou! Não, não acordou. [risadas]',
-          respira: 'Não sei... [cochicho]',
+          oque: ['Ela... ela caiu. E morreu.', '[cochicho: "fala que tem sangue!"]', 'E tem sangue.'],
+          consciencia: 'Não acorda! ...Acordou! Não, não acordou.',
+          respira: ['Não sei...', '[cochicho: "fala que não"]', 'Não.'],
+          pulso: 'Pulso? [cochicho: "o que é pulso?"] ...Tem. Não tem.',
+          pele: ['Ela tá... verde.', '[cochicho: "azul!"]', 'Azul.'],
           idade: 'Minha mãe tem... cem anos!',
           referencia: 'Na minha casa, ué.',
-          historico: 'Ela tem... dor de barriga de tanto rir! [risadas]',
+          historico: 'Ela tem... dor de barriga.',
           paciente: ['[cochicho: "desliga, desliga!"]'],
-          confronto_endereco: ['[risadinha]', '[desliga]'],
         },
         callback: ['[Atende uma mulher]', `{{"Alô? Regulação? Ai, meu Deus, desculpa! Foi ${p.cg('o meu filho', 'a minha filha')} com o meu celular! Eu tô aqui do lado ${p.cg('dele', 'dela')}, tá todo mundo bem!"|retorno_mae}}`],
         links: [
-          lk('cochicho', 'nao_acorda', 'Outra criança cochichando "fala que ela morreu" e risadinhas: brincadeira.'),
+          lk('cochicho', 'nao_acorda', 'Outra criança cochichando as respostas ("fala que ela morreu"): brincadeira.'),
           lk('retorno_mae', 'num', 'Ligar de volta: a mãe atendeu, está bem — foi a criança brincando com o celular.'),
           lm(p, 'cochicho', 'crianca', 'Criança ao telefone: peça para falar com um adulto (Manual p.2).'),
         ],
@@ -189,7 +239,7 @@ export const TROTE_CRIANCA = tpl({
         truth: { dx: 'Hipoglicemia grave (mãe diabética desacordada, criança sozinha)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 50, bad: 120 } },
         addr: { ...p.addrOk, ref: kidRef(p) },
         note: 'Criança diz que a mãe não acorda.',
-        noteWrong: 'Criança passando trote, {dr}. Risadinha.',
+        noteWrong: 'Criança passando trote, {dr}. Acho.',
         caller: 'Voz de criança',
         callerName: 'Voz de criança',
         type: 'crianca',
@@ -313,6 +363,8 @@ export const TROTE_OPORTUNISTA = tpl({
           oque: ['Passando mal, ué. {{Caído na calçada|calcada}}.', 'Pode mandar com a sirene ligada, viu? Bem alto.'],
           consciencia: 'Ah... deve tá. Sei lá.',
           respira: 'Respira, acho.',
+          pulso: 'Pulso? Ah, sei lá. Deve ter. Não vou lá medir, né.',
+          pele: 'Normal. Cor de vizinho chato.',
           idade: 'Sei lá a idade dessa pessoa.',
           historico: 'Doença? Só se for de não deixar ninguém dormir com aquele cachorro.',
           seguranca: 'Seguro, seguro. Só manda.',
@@ -413,7 +465,7 @@ export const LINHA_ABERTA = tpl({
         patient: { name: '(ligação acidental)' },
         q: {
           oque: '[ninguém responde; a conversa continua: "...não, o pastel de lá é melhor..."]',
-          consciencia: '[{{risada distante, conversa animada|conversa}}]',
+          consciencia: '[{{conversa animada, distante; alguém conta uma fofoca|conversa}}]',
           respira: '[o ônibus freia; alguém dá o sinal]',
           idade: '[ninguém responde]',
           paciente: '[farfalhar de tecido]',
@@ -556,7 +608,6 @@ export const TROTE_SOFISTICADO = tpl({
       weight: 4,
       build: (p) => {
         const cb = prankCallback(p);
-        const errado = p.addrOk.n + 12;
         return {
           truth: { dx: 'Trote sofisticado (endereço real)', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
           note: 'Idosa caiu. Voz calma demais, {dr}.',
@@ -573,6 +624,8 @@ export const TROTE_SOFISTICADO = tpl({
             oque: 'Ela caiu. Na sala. Precisa de ambulância.',
             consciencia: '{{Tá acordada... quer dizer, desmaiou|cons}}.',
             respira: 'Respira.',
+            pulso: '{{Tem. Normal. Oitenta|pulso_pronto}}.',
+            pele: 'Normal. Branca. Normal.',
             idade: '{{Uns... setenta? Setenta|idade_hesita}}.',
             inicio: 'Agora. Faz pouco.',
             historico: 'Não sei direito. Remédio de pressão, essas coisas.',
@@ -582,12 +635,12 @@ export const TROTE_SOFISTICADO = tpl({
           },
           extra: [
             ex('nome', 'Qual o nome dela?', 'Qual o nome completo dela?', '{{Dona... Maria. Maria|nome_hesita}}.'),
-            ex('confirma_end', 'Confirmar o endereço', 'Me confirma o endereço, por favor? Rua e número.', `${p.addrOk.rua}... {{${errado}|end_errado}}. Não, ${p.addrOk.n}. Isso.`),
+            ex('perto', 'Você está do lado dela?', 'Você está do lado dela agora?', '{{Tô. Quer dizer... tô no outro cômodo|longe}}. Ela tá na sala.'),
           ],
           callback: cb.lines,
           links: [
             lk('cons', 'idade_hesita', 'Hesita na idade e diz "acordada... desmaiou": quem liga não está vendo a vítima.'),
-            lk('end_dito', 'end_errado', 'Pedindo para confirmar, o número do endereço muda: quem liga está lendo de algum lugar, não está lá.'),
+            lk('pulso_pronto', 'longe', 'O pulso "oitenta" veio na hora, sem ninguém conferir — e quem liga nem está no mesmo cômodo.'),
             lk(cb.id, 'num', cb.insight),
             lm(p, 'nome_hesita', 'trote_sinais', 'Voz calma e endereço real, mas relato que não se sustenta: o trotista mais esperto (Manual p.2).'),
           ],
@@ -611,6 +664,8 @@ export const TROTE_SOFISTICADO = tpl({
           oque: 'Queda da própria altura no banheiro. Consciente, orientada. {{Encurtamento e rotação externa da perna direita|femur}}.',
           consciencia: 'Glasgow 15. Orientada.',
           respira: 'Respira bem, sem esforço.',
+          pulso: 'Radial cheio, uns noventa. Contei agora.',
+          pele: 'Corada. Um pouco pálida da dor, mas corada.',
           idade: `${p.age} anos.`,
           inicio: 'Faz uns vinte minutos.',
           historico: `{{Sou ${p.cg('técnico', 'técnica')} de enfermagem|tecnica}}. Ela é hipertensa, usa losartana. Não usa anticoagulante.`,
@@ -619,12 +674,12 @@ export const TROTE_SOFISTICADO = tpl({
         },
         extra: [
           ex('nome', 'Qual o nome dela?', 'Qual o nome completo dela?', `{{${p.name}|nome_firme}}.`),
-          ex('confirma_end', 'Confirmar o endereço', 'Me confirma o endereço, por favor? Rua e número.', `{{${p.addrOk.rua}, ${p.addrOk.n}, ${p.addrOk.bairro}|end_confirmado}}. ${p.refPoint}`),
+          ex('perto', 'Você está do lado dela?', 'Você está do lado dela agora?', '{{Do lado. Segurando a perna dela parada|ao_lado}}.'),
         ],
         callback: ['{{Alô, sou eu. Ela continua com dor, consciente.|retorno_ok}}'],
         links: [
           lk('tecnica', 'femur', `A calma é profissional: ${p.cg('técnico', 'técnica')} de enfermagem, relato objetivo de provável fratura de fêmur. Amarelo, USB.`),
-          lk('end_dito', 'end_confirmado', 'O endereço confirma igual: quem liga está no local.', { kind: 'confirma' }),
+          lk('ao_lado', 'femur', 'Está ao lado da vítima e descreve o que vê: quem liga está no local.', { kind: 'confirma' }),
           lk('retorno_ok', 'num', 'Ligar de volta: atende na hora. Não é trote.', { kind: 'confirma' }),
         ],
         radio: { ok: `Central, {unit}. Fratura de colo de fêmur, exatamente como ${p.cg('o técnico', 'a técnica')} descreveu. Seguimos pro hospital.` },
@@ -663,4 +718,368 @@ export const TROTE_SOFISTICADO = tpl({
   ],
 });
 
-export const TROTES = [TROTE_CLASSICO, TROTE_CRIANCA, TROTE_OPORTUNISTA, LINHA_ABERTA, TROTE_SOFISTICADO];
+// -----------------------------------------------------------------------------
+// 1.1 — Trote de cinema (dia 4+): acidente de filme, e o fundo é uma sala de TV.
+// Difícil: sem risada. Pistas: ninguém mais ligou (a Simone), o ambiente (TV de auditório,
+// nenhuma buzina, nenhum grito), as fixas sem corpo ("De quem? De todos"), retorno.
+// -----------------------------------------------------------------------------
+export const TROTE_CINEMA = tpl({
+  id: 'trote_cinema',
+  tags: ['trote'],
+  minDay: 4,
+  age: [20, 60],
+  rel: ['testemunha'],
+  cena: { place: 'rua', props: ['carro'] },
+  open: () => ['Alô, emergência? {{Acidente feio aqui na esquina|acidente}}! Três carros! Tem gente presa nas ferragens, sangue pra todo lado!'],
+  truths: [
+    {
+      id: 'trote',
+      weight: 3.5,
+      build: (p) => {
+        const cb = prankCallback(p);
+        return {
+          truth: { dx: 'Trote (acidente inventado)', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
+          note: 'Diz que é acidente com três carros e presos. Ninguém mais ligou daí, {dr}.',
+          noteWrong: 'Acidente grave! Três carros, gente presa!',
+          caller: 'Testemunha',
+          callerName: 'Testemunha',
+          type: 'trotista',
+          voice: p.F ? 'jovem_m' : 'jovem_h',
+          amb: ['tv', 'silencio'],
+          noise: ['[{{ao fundo, só uma TV de auditório baixinha; nenhuma buzina, nenhum grito|tv}}]'],
+          patient: { name: '"Vítimas do acidente"' },
+          q: {
+            oque: 'Bateu, capotou, quase explodiu. Igual filme. Um saiu voando.',
+            consciencia: '{{Todos. Não. Uns|todos}}.',
+            respira: 'Respiram. Os que tão vivos.',
+            pulso: '{{De quem? ...De todos. Tem, tem pulso|pulso}}.',
+            pele: 'Sei lá, tô longe. Normal.',
+            sangramento: 'Muito. Litros.',
+            historico: 'Não sei, não conheço ninguém.',
+            paciente: 'Não dá, eles tão presos.',
+            seguranca: 'Seguro, pode vir. Vem com a sirene ligada, viu?',
+            idade: 'Uns... vários.',
+          },
+          extra: [ex('quantos', 'Quantos feridos? Como estão?', 'Quantas pessoas estão feridas? Me descreve uma delas.', ['{{Cinco. Ou seis. Feridos, bem feridos|cinco}}.', 'Um tá... de olho fechado. Os outros também.'], { cat: 'trauma' })],
+          callback: cb.lines,
+          links: [
+            lk('tv', 'acidente', 'Três carros batidos na esquina e o fundo é uma TV de auditório, sem buzina, sem grito: quem liga não está na rua.'),
+            lk('pulso', 'todos', '"De quem? De todos": ninguém está do lado de vítima nenhuma.'),
+            lk(cb.id, 'num', cb.insight),
+          ],
+          radio: { prank: 'Central, {unit}. Esquina vazia, {dr}. Nem um retrovisor no chão. Trote.' },
+        };
+      },
+    },
+    {
+      id: 'janela',
+      weight: 1.2,
+      build: (p) => ({
+        // [validar] colisão com vítima consciente sangrando na testa, sem presos: USB, UPA.
+        truth: { dx: 'Colisão com um ferido consciente (testemunha vê da janela)', sev: 'amarelo', ok: ['USB'], dest: ['UPA', 'REG'] },
+        cena: { pose: 'sentado', signs: ['sangue_cabeca'], cast: [{ role: 'curioso', act: 'olhando', at: 'fundo' }] },
+        note: 'Testemunha vendo da janela. Batida, um ferido sentado na calçada.',
+        noteWrong: 'Acidente com três carros, presos! Grave, {dr}!',
+        type: 'testemunha',
+        amb: ['rua', 'buzinas'],
+        noise: ['[{{buzinas e alguém gritando "chama a ambulância!" lá embaixo|rua}}]'],
+        q: {
+          oque: ['Eu vi da janela do terceiro andar. Bateu forte. Tem um carro de lado.', '{{Um moço saiu sozinho e sentou na calçada|sentou}}. Exagerei nos três carros, desculpa. São dois.'],
+          consciencia: 'Acordado. Tá falando com o pessoal que desceu.',
+          respira: 'Respira. Tá sentado, conversando.',
+          pulso: 'Daqui da janela não dá pra eu saber, {dr}. Mas ele mexe os braços.',
+          pele: 'Daqui... tem sangue escorrendo na testa dele.',
+          sangramento: 'Na testa. Tão segurando um pano.',
+          seguranca: 'O pessoal ligou o pisca-alerta. Os carros tão parados.',
+          paciente: 'Eu tô na janela, {dr}. Mas tem gente do lado dele.',
+          idade: `Uns ${Math.round(p.age / 5) * 5} anos.`,
+        },
+        extra: [ex('quantos', 'Quantos feridos? Como estão?', 'Quantas pessoas estão feridas? Me descreve uma delas.', 'Só ele. O outro motorista tá em pé, no telefone. O moço tá com a mão na cabeça.', { cat: 'trauma' })],
+        callback: ['{{Alô? Sou eu, da janela. O moço continua sentado, apertando o pano na testa.|retorno_ok}}'],
+        links: [
+          lk('sentou', 'rua', 'Buzinas e gente gritando lá embaixo: é na rua de verdade. Um ferido consciente com corte na testa: USB.'),
+          lk('retorno_ok', 'num', 'Ligar de volta: atende na hora, ainda olhando a cena.', { kind: 'confirma' }),
+        ],
+        radio: { ok: 'Central, {unit}. Colisão, um ferido, corte no couro cabeludo, consciente. A testemunha acenou da janela. Seguimos pra UPA.' },
+        diary: { alive: 'Viu o acidente da janela e exagerou nos carros. O ferido era um só, com um corte na testa.' },
+      }),
+    },
+    {
+      id: 'presos',
+      weight: 0.8,
+      build: (p) => ({
+        truth: { dx: 'Colisão com vítima presa nas ferragens', sev: 'vermelho', ok: ['USA'], sup: ['BOMB'], dest: ['REG'], risk: { good: 45, bad: 110 } },
+        cena: { pose: 'preso', signs: ['sangue_rosto'], props: ['carro'], cast: [{ role: 'curioso', act: 'gritando', at: 'fundo' }] },
+        note: 'Acidente na esquina, gente presa. Tem gritaria aí, {dr}. Já ligaram mais dois.',
+        noteWrong: 'Diz que é acidente de três carros. Parece exagero.',
+        type: 'testemunha',
+        amb: ['rua', 'gritos', 'buzinas'],
+        noise: ['[{{gritos, buzina presa tocando sem parar|gritos}}]'],
+        q: {
+          oque: { t: 'Um carro entrou no outro na esquina! O motorista tá preso, a porta amassou toda! Ele tá gemendo!', style: 'grito' },
+          consciencia: 'Ele geme! Abre o olho e fecha! Responde pouco!',
+          respira: 'Respira rápido, tá gemendo muito.',
+          pulso: 'Eu pus a mão no pescoço dele pela janela... tá rápido, fininho!',
+          pele: 'Branco! Branco e suando, com sangue no rosto!',
+          sangramento: 'Muito sangue no rosto e na perna, preso no painel!',
+          seguranca: 'Tem gasolina no chão, {dr}! Um cheiro forte!',
+          paciente: 'Ele não consegue falar direito, {dr}!',
+          idade: `Uns ${Math.round(p.age / 5) * 5}.`,
+        },
+        extra: [ex('quantos', 'Quantos feridos? Como estão?', 'Quantas pessoas estão feridas? Me descreve uma delas.', 'Dois! O do outro carro tá andando, sangrando no braço. O preso é que tá mal!', { cat: 'trauma' })],
+        callback: ['{{Alô! Vem logo! Ele tá ficando mais branco!|retorno_ok}}'],
+        links: [
+          lk('gritos', 'acidente', 'Gritos, buzina presa, cheiro de gasolina: a cena é real. Preso nas ferragens, pálido e com pulso fino: USA + Bombeiros.'),
+          lm(p, 'gritos', 'cena', 'Gasolina no chão e vítima presa: Bombeiros (Manual p.4).'),
+        ],
+        radio: { ok: '{central}, {unit}. Bombeiros desencarceraram. Choque hemorrágico, seguimos pro Regional.', dead: 'Central... {unit}. Óbito no local. Presos demoram.' },
+        diary: { alive: 'Preso nas ferragens na esquina. Os bombeiros cortaram a porta.', dead: 'Preso nas ferragens na esquina.' },
+      }),
+    },
+  ],
+});
+
+// -----------------------------------------------------------------------------
+// 1.1 — Trote do "primo desmaiado" (dia 3+): adolescente calmo demais, respostas de internet.
+// Difícil: sem risada. Pistas: palavras de seriado ("filiforme", "Glasgow três") ditas sem
+// ninguém examinar, silêncio de quarto, retorno cai na caixa postal de adolescente. Armadilha
+// inversa: a mesma calma é choque de quem viu a primeira convulsão do primo.
+// -----------------------------------------------------------------------------
+export const TROTE_DESAFIO = tpl({
+  id: 'trote_desafio',
+  tags: ['trote'],
+  minDay: 3,
+  age: [14, 17],
+  sex: 'M',
+  rel: ['amigo'],
+  cena: { place: 'quarto' },
+  open: () => ['Alô? O meu primo {{desmaiou aqui no quarto|desmaiou}}. Não tá respondendo.'],
+  truths: [
+    {
+      id: 'trote',
+      weight: 3,
+      build: (p) => ({
+        truth: { dx: 'Trote (adolescente imitando seriado médico)', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
+        note: 'Adolescente, primo desmaiado. Tranquilo demais, {dr}.',
+        noteWrong: 'Adolescente desmaiado, não responde! Grave!',
+        caller: 'Voz de adolescente',
+        callerName: 'Voz de adolescente',
+        type: 'trotista',
+        voice: 'adolescente',
+        amb: ['ventilador', 'silencio'],
+        noise: ['[um ventilador; mais nada]'],
+        patient: { name: `"Primo do ${p.first}"` },
+        q: {
+          oque: 'Ele desmaiou. Do nada. Caiu da cadeira.',
+          consciencia: '{{Glasgow três|glasgow}}. Quer dizer... ele não acorda.',
+          respira: 'Respira. Não. Respira. Tá em... apneia intermitente.',
+          pulso: '{{Tá filiforme|filiforme}}.',
+          pele: 'Cianótico de extremidades. E pálido. Bem pálido.',
+          historico: 'Nada. Ele é atleta.',
+          inicio: 'Agora. Faz dois minutos. Três.',
+          paciente: 'Não dá. Ele tá... desmaiado.',
+          idade: 'Dezesseis. Igual eu.',
+        },
+        extra: [ex('adulto', 'Tem algum adulto aí?', 'Tem algum adulto em casa com vocês?', 'Não. Minha mãe tá no serviço. Pode mandar a ambulância. Com a sirene, se der.')],
+        callback: ['[Chama, chama...]', `{{[Caixa postal: "Fala aí, é o ${p.first}. Deixa o recado depois do bipe."]|retorno_caixa}}`, '[piii]'],
+        links: [
+          lk('filiforme', 'glasgow', '"Filiforme", "Glasgow três", "apneia intermitente": palavras de seriado, ditas sem ninguém examinar o primo. Quem está assustado não fala assim.'),
+          lk('retorno_caixa', 'num', 'Ligar de volta: caixa postal de adolescente. Ninguém pede socorro e deixa cair na caixa.'),
+        ],
+        radio: { prank: 'Central, {unit}. Dois moleques no quarto jogando, {dr}. O "desmaiado" abriu a porta.' },
+      }),
+    },
+    {
+      id: 'convulsao',
+      weight: 1.2,
+      build: (p) => ({
+        // [validar] primeira crise convulsiva em adolescente, em pós-crise: USB (amarelo), avaliação hospitalar.
+        truth: { dx: 'Primeira crise convulsiva em adolescente (pós-crise)', sev: 'amarelo', ok: ['USB'], dest: ['UPA', 'REG'], risk: { good: 100, bad: 260, needs: 'USB' } },
+        cena: { pose: 'lateral', signs: ['olhos_fechados', 'baba'] },
+        note: 'Adolescente, primo desmaiado. Voz estranha, devagar. Acho que tá em choque, {dr}.',
+        noteWrong: 'Adolescente passando trote, {dr}. Tranquilo demais.',
+        caller: `${p.first} (primo)`,
+        callerName: p.first,
+        type: 'comum',
+        voice: 'adolescente',
+        amb: ['silencio'],
+        noise: ['[uma respiração pesada, roncada, perto do telefone]'],
+        q: {
+          oque: ['Ele... tava jogando. Aí travou. {{Tremeu todo, assim, uns dois minutos|tremeu}}. E caiu.', 'Agora tá dormindo. Mas não é dormindo normal.'],
+          consciencia: 'Abre o olho quando eu chamo. Mas não fala nada. Tá meio... longe.',
+          respira: 'Respira fundo, fazendo um barulho. Tá melhorando.',
+          pulso: 'Tem... tá batendo. Rápido.',
+          pele: 'Tava roxo na boca quando tremia. Agora tá voltando a cor.',
+          historico: 'Nada. Nunca teve isso. Ele dormiu mal essa semana, jogando.',
+          inicio: 'Faz uns cinco minutos.',
+          paciente: 'Ele não consegue falar ainda.',
+          idade: `${p.anos}.`,
+          sangramento: '{{Saiu um pouco de sangue da boca. Acho que mordeu a língua|lingua}}.',
+        },
+        extra: [ex('adulto', 'Tem algum adulto aí?', 'Tem algum adulto em casa com vocês?', 'Não... a tia saiu. Eu tô sozinho com ele. Eu não sei o que fazer, {dr}.'), ex('lado', 'Orientar: virar de lado', 'Orientar: virar de lado', ['Virei. A baba saiu pela boca. Ele tá respirando melhor.'], { kind: 'fala', say: 'Vira ele de lado, com a boca para baixo. Não põe nada na boca dele. Fica do lado.' })], // [validar] pós-crise: posição lateral, nada na boca
+        callback: ['{{Alô? Sou eu. Ele abriu o olho. Perguntou onde tava.|retorno_ok}}'],
+        links: [
+          lk('tremeu', 'lingua', 'Tremeu dois minutos, mordeu a língua e agora está "longe": convulsão em pós-crise. A calma é choque. USB.'),
+          lk('retorno_ok', 'num', 'Ligar de volta: atende na hora, ainda do lado do primo.', { kind: 'confirma' }),
+        ],
+        radio: { ok: 'Central, {unit}. Pós-crise, primeira convulsão. O primo virou ele de lado sozinho. Seguimos.' },
+        diary: { alive: 'O primo ligou calmo demais. Era choque: a primeira convulsão, no meio do jogo.' },
+      }),
+    },
+    {
+      id: 'desmaio',
+      weight: 0.9,
+      build: (p) => ({
+        // [validar] desmaio ao levantar rápido, já acordado e bem, sem sinais de alarme: orientação, UPA por meios próprios.
+        truth: { dx: 'Desmaio ao levantar (vasovagal), já acordou', sev: 'verde', ok: ['ORI'], ref: ['UPA', 'UBS'] },
+        note: 'Adolescente, primo desmaiado. Agora parece que acordou.',
+        noteWrong: 'Adolescente desmaiado, não responde! Grave!',
+        caller: `${p.first} (primo)`,
+        callerName: p.first,
+        type: 'comum',
+        voice: 'adolescente',
+        amb: ['ventilador'],
+        q: {
+          oque: 'Ele levantou rápido da cadeira pra pegar água e apagou. Uns segundos. Já acordou.',
+          consciencia: 'Acordou. Tá sentado no chão, falando que tá tonto.',
+          respira: 'Respira normal.',
+          pulso: 'Tem. Normal, acho.',
+          pele: 'Tava branco. Agora tá voltando.',
+          historico: 'Nada. Não almoçou, só tomou energético.',
+          paciente: [`PRIMO: Tô bem... só tonto. Não fala pra minha mãe, {m:moço|moça}.`],
+          idade: `${p.anos}.`,
+        },
+        extra: [ex('adulto', 'Tem algum adulto aí?', 'Tem algum adulto em casa com vocês?', 'A avó tá na sala, vendo novela. Ela é surda.')],
+        callback: ['{{Alô? Ele já tá comendo bolacha.|retorno_ok}}'],
+        links: [lk('retorno_ok', 'num', 'Ligar de volta: atendem na hora. Desmaio rápido ao levantar, já acordado: orientação.', { kind: 'confirma' })],
+        radio: { excess: 'Central, {unit}. O "desmaiado" tava comendo bolacha, {dr}. Pressão ok.' },
+        diary: { ori: 'Desmaiou ao levantar, sem almoço e com energético. Comeu bolacha e melhorou.' },
+      }),
+    },
+  ],
+});
+
+// -----------------------------------------------------------------------------
+// 1.1 — "A professora caiu" (dia 5+): crianças sérias demais.
+// Difícil: sem risada. Pistas: elas cochicham a resposta antes de dizer, o sinal da escola toca
+// e não há nenhum adulto por perto em plena aula; o retorno cai na própria professora.
+// Armadilha inversa: às vezes a professora caiu mesmo (desmaio; ou a diabetes dela).
+// -----------------------------------------------------------------------------
+export const TROTE_ESCOLA = tpl({
+  id: 'trote_escola',
+  tags: ['trote'],
+  minDay: 5,
+  age: [28, 55],
+  sex: 'F',
+  rel: ['testemunha'],
+  cena: { place: 'escola' },
+  open: () => ['Alô? A professora {{caiu aqui na sala|caiu}}. Ela não levanta.'],
+  truths: [
+    {
+      id: 'trote',
+      weight: 3,
+      build: (p) => ({
+        truth: { dx: 'Trote (alunos com o celular da professora)', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
+        note: 'Criança dizendo que a professora caiu. Ouvi sinal de escola, {dr}.',
+        noteWrong: 'Professora desmaiada na sala! Criança ligando!',
+        caller: 'Voz de criança',
+        callerName: 'Voz de criança',
+        type: 'crianca',
+        voice: 'menino',
+        amb: ['escola'],
+        noise: ['[{{o sinal da escola toca; um corredor de crianças correndo|sinal}}]'],
+        patient: { name: '"A professora"' },
+        q: {
+          oque: ['[cochichos]', 'Ela caiu. Da cadeira.'],
+          consciencia: ['[cochicho: "fala que não acorda"]', 'Não acorda.'],
+          respira: ['{{Respira. [cochicho] Não. [cochicho] Respira|respira}}.'],
+          pulso: ['[cochicho: "fala que não tem"]', 'Não tem.'],
+          pele: ['[cochichos]', 'Verde.'],
+          historico: 'Ela é brava.',
+          paciente: 'Ela não pode falar. Ela tá caída.',
+          idade: 'Ela é velha. Uns trinta.',
+          seguranca: 'Seguro. Só tem a gente.',
+        },
+        extra: [ex('adulto', 'Tem algum adulto aí?', 'Tem algum adulto aí perto? Outro professor, a diretora?', ['[silêncio]', '{{Não. Só a gente. A sala inteira|sem_adulto}}.'])],
+        callback: [`[Atende uma mulher, brava]`, `{{"Alô? Aqui é a professora ${p.first}, da Monteiro Lobato. Quem ligou daqui? ...Eu tô ótima! Quem pegou o celular da minha bolsa?!"|retorno_prof}}`],
+        links: [
+          lk('respira', 'sinal', 'Cochicham a resposta antes de dizer, e "respira, não, respira": estão combinando o que falar.'),
+          lk('sem_adulto', 'sinal', '"Professora caída" no meio da aula e nenhum adulto por perto numa escola cheia: não fecha.'),
+          lk('retorno_prof', 'num', 'Ligar de volta: a própria professora atende, bem e brava.'),
+        ],
+        radio: { prank: 'Central, {unit}. A professora tava dando aula, {dr}. A sala inteira ficou de castigo.' },
+      }),
+    },
+    {
+      id: 'desmaio',
+      weight: 1.2,
+      build: (p) => ({
+        // [validar] síncope rápida em adulta jovem, já acordada, sem sinais de alarme: orientação, UPA (USB defensável).
+        truth: { dx: 'Desmaio da professora em sala (jejum), já acordando', sev: 'verde', ok: ['ORI', 'USB'], best: 'ORI', ref: ['UPA'], dest: ['UPA'] },
+        cena: { pose: 'sentado', cast: [{ role: 'aluno', act: 'olhando', at: 'fundo', age: 'crianca' }] },
+        note: 'Criança dizendo que a professora caiu. Parece assustada de verdade.',
+        noteWrong: 'Trote de criança, {dr}. Tem sinal de escola.',
+        caller: 'Voz de criança',
+        callerName: 'Voz de criança',
+        type: 'crianca',
+        voice: 'menino',
+        amb: ['escola', 'choro'],
+        noise: ['[uma criança chorando perto; alguém grita "chama a diretora!"]'],
+        q: {
+          oque: 'Ela levantou pra escrever na lousa e caiu. Bateu o braço na mesa.',
+          consciencia: 'Abriu o olho! Tá falando devagar.',
+          respira: 'Respira.',
+          pulso: 'Eu não sei achar...',
+          pele: 'Branca. Branca que nem giz.',
+          historico: 'Ela falou que não tomou café hoje.',
+          paciente: [`DIRETORA: Alô? Sou a diretora. A ${p.first} desmaiou, mas já acordou. Tá sentada, comendo um biscoito. Ela tá meio tonta.`],
+          idade: 'Não sei. Adulta.',
+        },
+        extra: [ex('adulto', 'Tem algum adulto aí?', 'Tem algum adulto aí perto? Outro professor, a diretora?', ['A diretora tá vindo! Chegou!', 'DIRETORA: Sou a diretora, {dr}. Ela acordou.'])],
+        callback: ['{{Alô? É a diretora. Ela tá melhor, sentada.|retorno_ok}}'],
+        links: [lk('retorno_ok', 'num', 'Ligar de volta: a diretora atende. A professora desmaiou de jejum e já acordou.', { kind: 'confirma' })],
+        radio: { excess: 'Central, {unit}. A professora desmaiou de jejum, {dr}. Já tava comendo biscoito com a turma.', ok: 'Central, {unit}. Síncope de jejum, a professora tá bem. Levando pra UPA pra avaliar.' },
+        diary: { ori: 'A professora desmaiou de jejum no meio da aula. Um aluno ligou; a diretora confirmou.', alive: 'A professora desmaiou de jejum no meio da aula. Um aluno ligou.' },
+      }),
+    },
+    {
+      id: 'hipoglicemia',
+      weight: 0.8,
+      minDay: 6,
+      build: (p) => ({
+        truth: { dx: 'Hipoglicemia grave (professora diabética desacordada em sala)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 50, bad: 120 } },
+        cena: { pose: 'caido', signs: ['suor', 'olhos_fechados'] },
+        note: 'Criança: a professora caiu e não acorda. Tem criança chorando, {dr}.',
+        noteWrong: 'Trote de criança, {dr}. Tem sinal de escola.',
+        caller: 'Voz de criança',
+        callerName: 'Voz de criança',
+        type: 'crianca',
+        voice: 'menino',
+        amb: ['escola', 'choro'],
+        noise: ['[crianças chorando; um adulto corre pelo corredor gritando o nome dela]'],
+        q: {
+          oque: 'Ela tava tremendo e suando, falando enrolado. Aí sentou no chão e deitou. {{Não acorda|nao_acorda}}.',
+          consciencia: 'Não acorda! A gente chama, ela não responde!',
+          respira: 'Respira, a barriga mexe.',
+          pulso: 'Tem... rápido.',
+          pele: 'Branca e molhada de suor.',
+          historico: 'Ela tem diabete. {{Toma injeção na barriga, fica na bolsa dela|insulina}}.',
+          paciente: 'Ela não fala!',
+          idade: 'Não sei... adulta.',
+        },
+        extra: [ex('adulto', 'Tem algum adulto aí?', 'Tem algum adulto aí perto? Outro professor, a diretora?', 'O professor de educação física tá vindo correndo!')],
+        callback: ['{{Alô! O professor chegou, ela ainda não acordou!|retorno_ok}}'],
+        links: [
+          lm(p, 'insulina', 'hipoglicemia', 'Diabética que suou, tremeu, falou enrolado e não acorda: hipoglicemia grave. USA (Manual p.6).'),
+          lk('retorno_ok', 'num', 'Ligar de volta: atendem na hora, desesperados.', { kind: 'confirma' }),
+        ],
+        guide: { id: 'hipoglicemia' },
+        radio: { ok: '{central}, {unit}. Glicemia 31, glicose na veia, a professora acordou. A turma inteira tava no corredor. Que crianças.' },
+        diary: { alive: 'Um aluno ligou: a professora diabética não acordava. Hipoglicemia. Acordou com a turma no corredor.', dead: 'Um aluno ligou: a professora diabética não acordava.' },
+      }),
+    },
+  ],
+});
+
+export const TROTES = [TROTE_CLASSICO, TROTE_CRIANCA, TROTE_OPORTUNISTA, LINHA_ABERTA, TROTE_SOFISTICADO, TROTE_CINEMA, TROTE_DESAFIO, TROTE_ESCOLA];
+

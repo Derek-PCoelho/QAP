@@ -798,7 +798,7 @@ export class ShiftSim {
     }
     // o número já está no quadro de trotes: dá para dizer isso a quem liga
     if (this.onBoard(call)) {
-      out.push({ id: 'confronto_quadro', label: '"Esse número já passou trote aqui."', cost: this.questionCost(6), group: 'confronto', asked: call.asked.includes('confronto_quadro') });
+      out.push({ id: 'confronto_quadro', label: 'Esse número já ligou aqui antes?', cost: this.questionCost(6), group: 'confronto', asked: call.asked.includes('confronto_quadro') });
     }
     return out;
   }
@@ -905,7 +905,7 @@ export class ShiftSim {
     if (qid === 'confronto_quadro') {
       if (call.asked.includes(qid) || !this.onBoard(call)) return false;
       call.asked.push(qid);
-      this.regLine(call, 'Esse número já passou trote aqui na central.');
+      this.regLine(call, 'Esse número já ligou aqui antes? Ele está no nosso quadro.');
       const a = def.q?.[qid] ?? this.c.defaults(qid, def, c);
       this.pushLines(call, a, def);
       this.advance(this.questionCost(6));
