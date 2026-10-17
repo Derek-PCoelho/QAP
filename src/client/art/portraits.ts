@@ -78,7 +78,8 @@ export type CharacterId =
   | 'WESLEY'
   | 'MARCIA'
   | 'PAULA'
-  | 'PLANTONISTA';
+  | 'PLANTONISTA'
+  | 'SAULO';
 
 type FaceShape = 'oval' | 'fem' | 'round' | 'square' | 'long' | 'child' | 'teen';
 type HairStyle =
@@ -143,7 +144,8 @@ type Acc =
   | 'freckles'
   | 'tiepin'
   | 'pocket_pen'
-  | 'necklace';
+  | 'necklace'
+  | 'crumbs';
 type BgKind = 'home' | 'central' | 'night' | 'street' | 'office' | 'hospital' | 'school' | 'warm_street';
 type Nose = 'small' | 'medium' | 'broad' | 'long' | 'button';
 
@@ -311,6 +313,15 @@ const CH: Record<CharacterId, Look> = {
     name: 'Plantonista', role: 'médico do Regional', age: 38,
     sex: 'M', face: 'oval', skin: SKIN[1], hair: HAIR[1], style: 'none', hat: 'scrub_cap', hatColor: '#4f7fa8', eyes: 'tired', iris: '#3a2a1c',
     facial: 'stubble', clothes: 'scrubs', c1: '#4a78a6', acc: ['mask_chin', 'stetho'], bg: 'hospital',
+  },
+  // o plantonista do pronto-socorro do Regional (vaga-zero.md): 33 anos, magro, óculos de armação fina,
+  // cabelo curto penteado de lado, olheira de seis anos de plantão, jaleco aberto amassado por cima do
+  // pijama azul-marinho, estetoscópio no pescoço e migalha de bolacha água e sal na gola
+  SAULO: {
+    name: 'Dr. Saulo Brandão', role: 'plantonista do PS do Regional', age: 33,
+    sex: 'M', face: 'long', skin: SKIN[1], hair: HAIR[1], style: 'short', eyes: 'tired', iris: '#3a2a1c', nose: 'long', brows: 'normal',
+    glasses: 'rect', glassColor: '#2a2a30', facial: 'shadow', clothes: 'coat_open', c1: '#e3e8e0', c2: '#2a3a5a',
+    acc: ['dark_circles', 'stetho', 'crumbs'], bg: 'hospital', rest: 'stern',
   },
 };
 
@@ -3000,7 +3011,19 @@ function drawAccessories(L: Layer, g: Geo, l: Look, m: Mats): void {
     L.color(45, 59, '#9aa8a0', P.ACC);
     for (let y = 53; y <= 62; y++) L.k[L.idx(40, y)] = 1;
   }
+  if (acc.includes('crumbs')) {
+    // migalhas de bolacha água e sal na gola do jaleco
+    for (const [x, y] of [
+      [27, 52],
+      [29, 54],
+      [36, 53],
+      [38, 55],
+      [33, 58],
+    ] as [number, number][])
+      L.color(x, top + (y - 52), y % 2 ? '#e8d4a0' : '#d8bc84', P.ACC);
+  }
   if (acc.includes('tiepin')) {
+
     for (let x = 30; x <= 34; x++) L.color(x, 56, x === 31 ? '#fff0a0' : x === 34 ? '#a8802a' : '#e8b931', P.ACC);
   }
   if (acc.includes('pen_ear')) {
