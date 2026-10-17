@@ -856,7 +856,8 @@ function closeLegs(st: Stage, t: number): Pix {
   const r0 = kid ? 9 : 11;
   const r1 = kid ? 6 : 7.5;
   const def = sg.includes('deformidade_perna');
-  const fem = (P.spec.wound?.at === 'perna' && /coxa|femur/.test('')) || (def && !sg.includes('sangue_perna') && P.spec.wound?.kind !== 'exposta');
+  // fêmur (perna encurtada e virada para fora): fratura fechada da perna — dita pela ferida ou pela deformidade sem sangue
+  const fem = (P.spec.wound?.at === 'perna' && P.spec.wound.kind === 'fratura') || (def && !sg.includes('sangue_perna') && P.spec.wound?.kind !== 'exposta');
   // pernas de cima (quadril) para baixo (pés)
   const hipY = -6;
   const kneeY = 30;

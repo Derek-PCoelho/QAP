@@ -2266,24 +2266,27 @@ function escritorioBack(p: Pix): void {
   p.px(88, 12, '#7fd17a');
   // painel de metas
   metricsScreen(p, 62, 28, 124, 46, '94');
-  // mesa executiva
-  p.rect(70, 100, 180, 12, '#3a2a22');
-  p.hl(70, 249, 100, '#5a4234');
-  p.rect(72, 112, 176, 34, '#2a1e18');
-  p.hl(72, 247, 112, '#1a120e');
   floorShadow(p, 160, 147, 92, 3, 0.4);
   // cadeira executiva (encosto acima da mesa)
   p.rect(146, 74, 28, 26, '#1e1e22');
   p.hl(146, 173, 74, '#3a3a40');
-  // objetos na mesa
-  p.rect(84, 94, 12, 6, '#c8d4dc');
-  p.rect(226, 90, 6, 10, '#bfe3f2');
-  p.hl(226, 231, 90, '#ffffff');
   // planta
   p.rect(292, 126, 16, 20, '#c8c4bc');
   p.disc(300, 112, 12, '#3f6a4a');
   p.disc(295, 104, 7, '#4f7a5a');
   p.disc(306, 116, 6, '#2f5a3a');
+}
+
+/** a mesa executiva vai na frente: quem senta atrás dela aparece só do peito para cima */
+function escritorioFront(p: Pix): void {
+  p.rect(70, 100, 180, 12, '#3a2a22');
+  p.hl(70, 249, 100, '#5a4234');
+  p.rect(72, 112, 176, 34, '#2a1e18');
+  p.hl(72, 247, 112, '#1a120e');
+  // objetos na mesa
+  p.rect(84, 94, 12, 6, '#c8d4dc');
+  p.rect(226, 90, 6, 10, '#bfe3f2');
+  p.hl(226, 231, 90, '#ffffff');
 }
 
 function escritorioLight(p: Pix, front: boolean): void {
@@ -2305,7 +2308,7 @@ function escritorioAnim(p: Pix, has: Has, t: number): void {
 
 function escritorioPlace(c: SceneCast): Placement {
   const x = clampX(c.x);
-  if (c.pose === 'sentado') return { x: x >= 80 && x <= 240 ? 160 : x, bottom: x >= 80 && x <= 240 ? 112 : 168, layer: x >= 80 && x <= 240 ? 'back' : 'top', chair: !(x >= 80 && x <= 240) };
+  if (c.pose === 'sentado') return { x: x >= 80 && x <= 240 ? 160 : x, bottom: x >= 80 && x <= 240 ? 107 : 168, layer: x >= 80 && x <= 240 ? 'back' : 'top', chair: !(x >= 80 && x <= 240) };
   return { x, bottom: 168, layer: 'top' };
 }
 
@@ -2575,8 +2578,8 @@ const OBJECTS: Partial<Record<SceneBg, Record<string, ObjDef>>> = {
     bombinha: o(79, 74, 17, 9, 'back', (p, r) => inhaler(p, r.x + 1, r.y + 1)),
     isopor: o(208, 99, 22, 15, 'back', (p, r) => styrofoam(p, r.x + 1, r.y + 1)),
     meia_mancha: o(37, 90, 16, 19, 'back'),
-    // os pés da Dona Zélia, sentada na cabeceira dela (o sapato fechado é o que ela calça)
-    sapato_fechado: o(195, 129, 18, 11, 'back'),
+    // os sapatos fechados da Zélia (de sair), arrumados ao lado da cadeira dela
+    sapato_fechado: o(213, 134, 16, 9, 'back', (p, r) => closedShoes(p, r.x + 1, r.y + 3)),
     goteira: o(292, 32, 16, 14, 'back', leakStain(300, 147, 40), leakAnim(300, 147, 44)),
     balde: o(293, 135, 14, 14, 'front', DRAW.balde),
     mesa_vazia: o(124, 112, 72, 30, 'front'),
@@ -2814,7 +2817,7 @@ const BGS: Record<SceneBg, BgDef> = {
     marks: { ZELIA: 264, LUCIA: 214, ALEX: 214, DAVI: 196, EU_M: 140, EU_F: 140 },
     objects: {},
   },
-  escritorio: { warm: false, back: escritorioBack, light: escritorioLight, anim: escritorioAnim, place: escritorioPlace, objects: OBJECTS.escritorio ?? {} },
+  escritorio: { warm: false, back: escritorioBack, front: escritorioFront, light: escritorioLight, anim: escritorioAnim, place: escritorioPlace, objects: OBJECTS.escritorio ?? {} },
   igreja: { warm: true, back: igrejaBack, front: igrejaFront, light: igrejaLight, anim: igrejaAnim, place: igrejaPlace, objects: OBJECTS.igreja ?? {} },
   mesa: { warm: false, back: mesaBack, light: mesaLight, anim: mesaAnim, place: noPlace, objects: OBJECTS.mesa ?? {} },
   preto: { warm: false, back: (p) => p.clear('#050505'), place: noPlace, objects: {} },

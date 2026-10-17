@@ -938,8 +938,13 @@ const porta: PlaceFn = (p, c) => {
   door(p, 110, floorY - 50, 30, 50, '#5a4a3a', { open: false });
   windowAt(p, c, 160, 44, 36, 26, '#e8e4dc', { bars: true, curtain: '#e8d8b8' });
   windowAt(p, c, 40, 44, 36, 26, '#e8e4dc', { bars: true });
-  // número
-  drawText(p, '40', 146, 40, '#2a2a30');
+  // número da casa pela ligação (nunca o 40, que é a casa do protagonista), numa plaquinha
+  const n = 2 + (hashStr(c.seed + ':num') % 498);
+  const num = String(n === 40 ? 41 : n);
+  const nw = textWidth(num);
+  p.rect(145, 38, nw + 3, 9, '#efe6cf');
+  p.frame(145, 38, nw + 3, 9, '#6a6a70');
+  drawText(p, num, 147, 40, '#2a2a30');
   // muro baixo + portão
   p.rect(0, floorY - 14, W, 14, shade(wallC, -0.1));
   for (let x = 96; x < 156; x += 4) p.vl(x, floorY - 30, floorY - 1, '#3a3e44');
