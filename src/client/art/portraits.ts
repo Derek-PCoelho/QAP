@@ -82,6 +82,8 @@ export type CharacterId =
 type FaceShape = 'oval' | 'fem' | 'round' | 'square' | 'long' | 'child' | 'teen';
 type HairStyle =
   | 'short'
+  | 'wavy'
+  | 'kid_straight'
   | 'bun_low'
   | 'curly'
   | 'kid'
@@ -100,7 +102,7 @@ type HairStyle =
   | 'under_hat'
   | 'none';
 type Hat = 'samu_cap' | 'cap' | 'cap_back' | 'fedora' | 'bucket' | 'helmet' | 'scrub_cap';
-type Facial = 'stubble' | 'heavy' | 'gray_stubble' | 'mustache' | 'mustache_white' | 'mustache_thin';
+type Facial = 'shadow' | 'stubble' | 'heavy' | 'gray_stubble' | 'mustache' | 'mustache_white' | 'mustache_thin';
 type Glasses = 'round' | 'rect' | 'half_chain' | 'sun_head';
 type Clothes =
   | 'scrubs'
@@ -161,6 +163,8 @@ interface Look extends CharacterInfo {
   hat?: Hat;
   hatColor?: string;
   eyes?: 'normal' | 'tired' | 'big' | 'small' | 'narrow';
+  /** formato do olho (sobrepõe o formato escolhido por idade/sexo) */
+  eyeShape?: 'almond';
   iris?: string;
   brows?: 'thin' | 'normal' | 'thick';
   browColor?: string;
@@ -181,6 +185,9 @@ interface Look extends CharacterInfo {
   lips?: 'thin' | 'full';
 }
 
+/** pele da Lúcia: clara, um tom de marfim levemente dourado */
+const LUCIA_SKIN = '#f3d3b5';
+
 const CH: Record<CharacterId, Look> = {
   EU_M: {
     name: `Dr. ${PROTAGONIST_FIRST.M} Moura`, role: 'médico regulador (você)', age: 29,
@@ -194,18 +201,18 @@ const CH: Record<CharacterId, Look> = {
   },
   LUCIA: {
     name: 'Lúcia', role: 'esposa, costureira', age: 31,
-    sex: 'F', face: 'fem', skin: SKIN[3], hair: HAIR[0], style: 'curly', iris: '#2e1a10', lips: 'full', nose: 'broad',
-    clothes: 'blouse', c1: HOME.fabricRed, acc: ['earrings', 'tape'], bg: 'home', rest: 'soft',
+    sex: 'F', face: 'fem', skin: LUCIA_SKIN, hair: HAIR[0], style: 'long', eyeShape: 'almond', iris: '#3a2418', nose: 'small', brows: 'thin',
+    clothes: 'blouse', c1: HOME.fabricRed, acc: ['studs', 'tape'], bg: 'home', rest: 'soft',
   },
   // o marido, quando a protagonista é mulher: o mesmo papel da Lúcia (costura, ateliê) e a mesma paleta
   ALEX: {
-    name: 'Alex', role: 'marido, costureiro', age: 32,
-    sex: 'M', face: 'oval', skin: SKIN[3], hair: HAIR[0], style: 'curly_short', iris: '#2e1a10', lips: 'full', nose: 'broad',
-    facial: 'heavy', clothes: 'shirt', c1: HOME.fabricRed, acc: ['tape'], bg: 'home', rest: 'soft',
+    name: 'Alex', role: 'marido, costureiro', age: 37,
+    sex: 'M', face: 'long', skin: SKIN[0], hair: HAIR[0], style: 'wavy', iris: '#3e5a70', nose: 'medium', brows: 'thick',
+    facial: 'shadow', clothes: 'shirt', c1: HOME.fabricRed, acc: ['tape'], bg: 'home', rest: 'soft',
   },
   DAVI: {
     name: SON_NAME, role: 'filho, 8 anos', age: 8,
-    sex: 'M', face: 'child', skin: SKIN[2], hair: HAIR[0], style: 'kid', eyes: 'big', iris: '#3a2414', nose: 'button',
+    sex: 'M', face: 'child', skin: SKIN[0], hair: HAIR[1], style: 'kid_straight', eyes: 'big', iris: '#3a2414', nose: 'button',
     clothes: 'stripes', c1: HOME.fabricBlue, c2: '#e9e2cf', acc: ['blush'], bg: 'home',
   },
   ZELIA: {
@@ -427,7 +434,7 @@ function geoFor(l: Look): Geo {
       break;
   }
   const eyes = l.eyes ?? 'normal';
-  const shape = eyes === 'big' ? EYE_SHAPES.big : eyes === 'small' ? EYE_SHAPES.small : l.sex === 'F' ? EYE_SHAPES.fem : EYE_SHAPES.adult;
+  const shape = l.eyeShape === 'almond' ? EYE_SHAPES.almond : eyes === 'big' ? EYE_SHAPES.big : eyes === 'small' ? EYE_SHAPES.small : l.sex === 'F' ? EYE_SHAPES.fem : EYE_SHAPES.adult;
   const w = shape.lid.length;
   // olhos: 7 px com 6 px entre eles; pequenos (6 px) um pouco mais afastados
   const eyeLX = w === 7 ? 22 : 23;
@@ -498,7 +505,7 @@ function makeMats(L: Layer, l: Look): Mats {
   const flush = L.mat(skinRamp(mixLab(l.skin, '#c83838', sL > 0.6 ? 0.3 : 0.24)));
   const circles = L.mat(skinRamp(mixLab(l.skin, '#6a4a78', sL > 0.6 ? 0.2 : 0.16)));
   const beardC = l.facial === 'gray_stubble' ? '#d4d0c8' : mixLab(l.hair, '#2a3040', 0.2);
-  const beardK = l.facial === 'heavy' ? 0.62 : l.facial === 'gray_stubble' ? 0.34 : sL > 0.6 ? 0.3 : 0.26;
+  const beardK = l.facial === 'heavy' ? 0.62 : l.facial === 'gray_stubble' ? 0.34 : l.facial === 'shadow' ? 0.15 : sL > 0.6 ? 0.3 : 0.26;
   const stubble = L.mat(skinRamp(mixLab(l.skin, beardC, beardK)));
   const lipBase = l.acc?.includes('lipstick')
     ? '#b8323a'
@@ -1336,6 +1343,43 @@ function drawHairFront(L: Layer, g: Geo, l: Look, m: Mats): void {
   const t = g.top;
   const hairPart = (mk: Mask, h: HairPaint) => paintHair(L, mk, m.hair, P.HAIR, h);
   switch (s) {
+    case 'wavy': {
+      // curto liso com onda: laterais baixas, topo cheio penteado para trás e
+      // para a direita, uma mecha ondulada caindo na testa do lado esquerdo
+      const sil = new Mask().ellipse(32.5, t + 8.5, 16.2, 11.8);
+      sil.ellipse(31, t - 1.6, 11, 4.8).ellipse(40, t, 7, 3.6);
+      sil.and(new Mask().rect(0, 0, 64, t + 16));
+      const win = belowLine([
+        [16.5, t + 15],
+        [18, t + 10],
+        [20.5, t + 8.2],
+        [23, t + 9.2],
+        [25.5, t + 7.4],
+        [29, t + 5.6],
+        [34, t + 5.2],
+        [39, t + 6],
+        [42.5, t + 7.6],
+        [45, t + 10],
+        [47.5, t + 15],
+      ]);
+      win.rect(14, g.earY0, 4, 13).rect(46, g.earY0, 4, 13);
+      sil.sub(win);
+      sil.rect(17, t + 10, 2, 5).rect(45, t + 10, 2, 5);
+      hairPart(sil, { src: [24, t - 3], ball: [32, t + 6, 17, 14], tex: 'strand', clump: 3, band: [5, 7.5], seed: 8 });
+      // risca à esquerda e a onda: um gancho de fios escuros sobre a testa
+      for (let y = t - 5; y <= t + 1; y++) L.tone(24, y, 0, P.HAIR);
+      for (const [x, y, tt] of [
+        [23, t + 2, 1],
+        [22, t + 3, 1],
+        [22, t + 4, 0],
+        [21, t + 5, 1],
+        [27, t + 4, 1],
+        [26, t + 5, 0],
+        [25, t + 6, 1],
+      ] as [number, number, number][])
+        if (L.part(x, y) === P.HAIR) L.tone(x, y, tt, P.HAIR);
+      return;
+    }
     case 'short': {
       // corte curto masculino: volume no alto penteado para o lado, laterais
       // baixas acima da orelha, entradas nas têmporas (linha em M) e risca à esquerda
@@ -1423,6 +1467,33 @@ function drawHairFront(L: Layer, g: Geo, l: Look, m: Mats): void {
         [47, t + 26],
       ]));
       paintCurls(L, mask, m.hair, P.HAIR, { r: 2.8, seed: 21, ball: [32, t + 10, 20, 20], centers });
+      return;
+    }
+    case 'kid_straight': {
+      // menino de cabelo liso: copa redonda, franja reta e um pouco desfiada
+      // caindo para o lado, laterais cobrindo o alto da orelha, redemoinho no alto
+      const sil = new Mask().ellipse(32, t + 7.5, 15.6, 10.6).ellipse(30, t - 1, 9, 3.6);
+      sil.and(new Mask().rect(0, 0, 64, t + 17));
+      const win = belowLine([
+        [16.5, t + 15],
+        [18, t + 11],
+        [20, t + 9.6],
+        [23, t + 10.2],
+        [25, t + 9.4],
+        [28, t + 10.2],
+        [31, t + 9.4],
+        [34, t + 10],
+        [37, t + 9.2],
+        [40, t + 9.6],
+        [43, t + 8.6],
+        [45.5, t + 10],
+        [47.5, t + 15],
+      ]);
+      win.rect(14, g.earY0 + 2, 4, 11).rect(46, g.earY0 + 2, 4, 11);
+      sil.sub(win);
+      hairPart(sil, { src: [35, t - 2], ball: [32, t + 6, 16, 13], tex: 'strand', clump: 2.4, band: [4, 6.5], seed: 33 });
+      // pontas da franja (fios separando)
+      for (const x of [24, 30, 36, 41]) if (L.part(x, t + 9) === P.HAIR) L.tone(x, t + 9, 1, P.HAIR);
       return;
     }
     case 'kid': {
