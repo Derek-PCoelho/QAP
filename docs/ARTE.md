@@ -38,7 +38,8 @@ No mapa da cidade, todo frio, existe **um único ponto quente**: a casinha "SUA 
 | Ícones de interface | 16×16 | ×2 (padrão) |
 | Ícones de status da família | 12×12 (centrados em 16×16 via `icon()`) | ×2 |
 | Corpo inteiro (família) | adulto 16×32 · Liam 12×24 · Dona Zélia 14×29 | dentro da cena |
-| Ozzy, o lulu da família | sentado 16×13 · deitado 19×11 · dormindo 16×10 (sem contorno) | dentro da cena |
+| Ozzy, o lulu da família | sentado 16×13 · deitado 19×11 · dormindo 16×10 · correndo/latindo 19×10 (+contorno) | dentro da cena |
+| Adesivos do Ozzy | 30×28 (borda branca de vinil) | ×2/×3 no quadro de cortiça |
 | Fotos de jornal | 144×96 (retícula tinta-sobre-papel) | ×2 (recorte 96×64 nos dias de página cheia) |
 
 Regra de ouro: **sempre escala inteira, nunca suavização**. As funções desenham em pixels nativos; a UI amplia com CSS.
@@ -74,14 +75,15 @@ Regra de ouro: **sempre escala inteira, nunca suavização**. As funções desen
 
 ### Como o Desgaste mistura as cores
 
-`blendHome(t)` devolve a paleta da casa já misturada (cada cor andando em linha reta até a sua contrapartida). Para todo o resto — pele, objetos, sombras derivadas — `gradeHome(hex, t)` faz uma **transferência por âncoras**: as 13 cores da casa (mais os tons de pele e os neutros) são âncoras com destino conhecido, e qualquer outra cor segue o deslocamento das âncoras mais próximas (interpolação de Shepard). Cores muito saturadas (alertas, giz de cera) só perdem parte da cor, para a informação continuar legível. A gradação é aplicada pelo próprio buffer (`Pix.setMap(homeGrader(t))`), então nenhuma cena precisa pensar nisso. Ícones de status sobre a cabeça da família **não** são gradados.
+`blendHome(t)` devolve a paleta da casa já misturada (cada cor andando em linha reta até a sua contrapartida). Para todo o resto — pele, objetos, sombras derivadas — `gradeHome(hex, t)` faz uma **transferência por âncoras**: as 13 cores da casa (mais os tons de pele e os neutros) são âncoras com destino conhecido, e qualquer outra cor segue o deslocamento das âncoras mais próximas (interpolação de Shepard). Cores muito saturadas (alertas, giz de cera) só perdem parte da cor, para a informação continuar legível. A gradação é aplicada pelo próprio buffer (`Pix.setMap(homeGrader(t))`), então nenhuma cena precisa pensar nisso. **A pele é a exceção**: tons vizinhos de pele escura caíam em âncoras diferentes (madeira, couro) e a pele ficava em placas verde-cinza; agora a pele dos retratos (máscara das partes rosto/orelha/pescoço) e dos sprites (`markSkinTones`) passa por `gradeSkin`, uma transformação contínua que tira cor e puxa para um cinza-esverdeado pálido por igual, em qualquer tom. Ícones de status sobre a cabeça da família **não** são gradados.
 
 ## Tipografia
 
 - **VT323** — texto corrido, terminal, transcrição de ligações.
 - **Pixelify Sans** — rótulos e títulos de interface.
 - **Jacquard 24** — manchetes de jornal e o título do jogo.
-- **Fonte bitmap 3×5 (versalete)** — dentro da arte: nomes de bairro e de rua no mapa, placas ("SILÊNCIO", "UTI", "40"), o crachá, o "94" do painel. Tem acentos do português (Á À Â Ã É Ê Í Ó Ô Õ Ú Ç) e é sempre nítida porque é desenhada pixel a pixel (`drawText`).
+- **Fonte bitmap 3×5 (versalete)** — dentro da arte: nomes de bairro e de rua no mapa, placas ("SILÊNCIO", "UTI", "40"), o crachá, o "94" do painel. Tem acentos do português (Á À Â Ã É Ê Í Ó Ô Õ Ú Ç) e é sempre nítida porque é desenhada pixel a pixel (`drawText`). O "2" tem topo redondo para não virar "Z".
+- **Conserto de legibilidade** (`fontFix.ts`): na Pixelify pequena o "5" parece "S", o "Z" e o "2" parecem "8", o "B" parece "8"; na Jacquard o "A" parece "X". A arte gera em código duas fontes TrueType minúsculas só com esses glifos redesenhados em pixel — `'QAP Pixelify Fix'` (5 2 Z z B, pesos 400 e 600, mesma grade e métricas da Pixelify) e `'QAP Jacquard Fix'` (A Á À Â Ã) — e as registra com `installFontFixes()`. Basta pôr a família de conserto antes da original na pilha do CSS (`--f-ui`, `--f-mast`); o resto dos caracteres cai na fonte original.
 
 ## Personagens
 
@@ -98,11 +100,11 @@ Como são desenhados:
 
 **Rostos de paciente** (`faces.ts`, `patientFacePix(spec)`): close 64×64 para a videochamada, com aparência (rosto, cabelo, roupa, íris) pela seed e sinais clínicos legíveis de relance: palidez, cianose (lábios e contorno da boca azul-arroxeados), rubor, icterícia (pele e esclera amarelas), acinzentado, suor, olhos fechados/semicerrados/revirados, desvio de rima (lado do paciente), hematoma em volta do olho, inchaço de lábios e pálpebras, sangue (couro cabeludo/nariz), espuma na boca e petéquias.
 
-- **Você** — Dr. Luan Moura (cabelo curto escuro, barba por fazer, olheiras, pijama cirúrgico verde em V) ou Dra. Amber Moura (coque baixo, mesmo pijama).
-- **Lúcia** — a esposa (com o Luan): cachos volumosos, pele morena, argolas douradas, fita métrica no pescoço.
-- **Alex** — o marido (com a Amber), no mesmo papel e na mesma paleta da Lúcia: cachos curtos, barba cheia curta, pele morena, camisa vermelha de botão e a fita métrica no pescoço. No conteúdo ele fala como `LUCIA`; o retrato (`ALEX`) e o sprite (`ALEX`) entram quando a protagonista é mulher.
-- **Liam** — 8 anos, olhos grandes, camiseta listrada, bochechas coradas (id interno `DAVI`).
-- **Ozzy** — o lulu da pomerânia laranja da família (`dog.ts`): bola de pelo laranja, juba creme, orelhinhas em pé, rabo de pluma enrolado sobre as costas, olhinhos e focinho pretos. Poses `sentado` (abana o rabo), `deitado` (respira), `dormindo` (enrolado) e `brincando` (pula atrás da bolinha azul). Fica no chão de cada cômodo da casa (cozinha, sala, quarto, varanda da porta), com a gradação do Desgaste; depois da brincadeira da noite, dorme enrolado (na cozinha, no tapete da pia). Nunca aparece triste, doente ou machucado; nas vinhetas tristes ele simplesmente não está.
+- **Você** — Dr. Thiago Moura (cabelo curto escuro, barba por fazer, olheiras, pijama cirúrgico verde em V) ou Dra. Camille Moura (coque baixo, mesmo pijama). O jogador pode renomear: a arte recebe o primeiro nome por parâmetro (crachá desenhado: `EndingOpts.name`; rótulo: `characterName('EU_F', nome)`); sem nome, valem os padrões de `names.ts` (Thiago/Camille, sobrenome Moura).
+- **Lúcia** — a esposa (com o Thiago): asiática de pele clara (`#f3d3b5`, marfim levemente dourado), cabelo preto liso e comprido com risca no meio caindo à frente dos ombros, olhos amendoados (formato `almond` em `EYE_SHAPES`: abertura mais baixa, canto externo puxado para cima), nariz pequeno, sobrancelha fina, brinquinhos, blusa vermelha e a fita métrica de costureira no pescoço. No corpo inteiro, o penteado `straight_long` (cortinas lisas até o peito).
+- **Alex** — o marido (com a Camille), no mesmo papel da Lúcia (costureiro, fita métrica, camisa vermelha de botão): branco (`SKIN[0]`), ~37 anos, cabelo preto curto e liso com uma onda caindo na testa (`wavy`; no corpo, `wavy_m`), olhos azul-acinzentados, sobrancelha marcada e só uma sombra de barba (`facial: 'shadow'`). Retrato e sprite `ALEX`; no conteúdo ele fala como `LUCIA`.
+- **Liam** — 8 anos, branco (`SKIN[0]`), cabelo castanho-escuro liso em cuia com franja (`kid_straight`), olhos grandes, camiseta listrada azul e creme, bochechas coradas (id interno `DAVI`).
+- **Ozzy** — o lulu da pomerânia laranja da família (`dog.ts`): bola de pelo laranja, juba creme, orelhinhas em pé, rabo de pluma enrolado sobre as costas, olhinhos e focinho pretos. Poses `sentado` (abana o rabo), `deitado` (respira), `dormindo` (enrolado), `brincando` (pula atrás da bolinha azul), `correndo` (galope de lado em 4 quadros), `latindo` (em pé, "au! au!" com balão **AU!**) e `deitando` (esfinge de olhos pesados, entre o deitado e o dormindo). Fica no chão de cada cômodo da casa (cozinha, sala, quarto, varanda da porta), com a gradação do Desgaste. **Brincar com o Ozzy**: ele dá voltas correndo pela sala, para e late em cada canto, depois deita no tapete vermelho e pega no sono com "z z z" subindo (`SceneOpts.ozzyPlay` = ms desde o começo; `ozzyPlayAt(ms)` dá a posição e o quadro). Nunca aparece triste, doente ou machucado; nas vinhetas tristes ele simplesmente não está. **Adesivos** para o quadro de cortiça (`stickers.ts`, recorte de vinil com borda branca): feliz, dormindo, latindo, com coração, de chapéu de festa e de sirene.
 - **Dona Zélia** — coque grisalho, óculos redondos, blusa florida, humor ácido no canto da boca.
 - **Simone** — ruivo curtinho, fone de TARM, batom vermelho, óculos de leitura na corrente.
 - **Peixoto** — calvo, bigode, camisa social de manga curta, gravata e crachá da Saúde+ Gestão.
@@ -128,7 +130,7 @@ Quadras escuras com telhadinhos que mudam por bairro (galpões ondulados no Dist
 
 ## Finais e título
 
-Vinhetas 320×180: `desenho_davi` (giz de cera: você à mesa com o telefone, casinhas com a luz acesa em volta, fios pontilhados até elas; faixa de cima livre para o título escrito pela UI), `desenho_cadeira` (você atrás de uma mesa enorme, sem telefone, "94" na parede), `cracha_prego`, `calcada_moveis`, `telefone_escuro`, `gaveta`, `quarto_alugado`, `escritorio_ar`, `mural` (8 molduras vazias; os retângulos estão em `MURAL_FRAMES`), `bolo_porta` (o Ozzy recebe a visita abanando o rabo; no `desenho_davi` ele aparece de giz de cera, os dois são do final bom; a `calcada_moveis` mostra a Lúcia ou o Alex conforme o gênero) e `titulo` (a mesa da regulação à noite: tubo fluorescente, monitor com o mapa, telefone com a linha piscando — e o único calor da cena, o porta-retrato da família).
+Vinhetas 320×180: `desenho_davi` (giz de cera: você à mesa com o telefone, casinhas com a luz acesa em volta, fios pontilhados até elas; faixa de cima livre para o título escrito pela UI), `desenho_cadeira` (você atrás de uma mesa enorme, sem telefone, "94" na parede), `cracha_prego` (o nome do jogador desenhado no crachá: `EndingOpts.name`, até 2 linhas, corta com ponto se não couber), `calcada_moveis` (agora com o Desgaste), `telefone_escuro`, `gaveta`, `quarto_alugado`, `escritorio_ar`, `mural` (8 molduras vazias; os retângulos estão em `MURAL_FRAMES`), `bolo_porta` (o Ozzy recebe a visita abanando o rabo; no `desenho_davi` ele aparece de giz de cera, os dois são do final bom; a `calcada_moveis` mostra a Lúcia ou o Alex conforme o gênero) e `titulo` (a mesa da regulação à noite: tubo fluorescente, monitor com o mapa, telefone com a linha piscando — e o único calor da cena, o porta-retrato da família).
 
 ## Fotos de jornal
 
@@ -140,15 +142,22 @@ Vinhetas 320×180: `desenho_davi` (giz de cera: você à mesa com o telefone, ca
 import { portrait, icon, drawCityMap, tileFromPixel, drawScene, objectRect, newsPhoto, drawEnding, blendHome, cssVars } from './art';
 
 portrait('LUCIA', 'preocupado', { blend: desgaste / 100 });     // dataURL 64×64 (a UI mostra a 64/128/192 px)
+characterName('EU_F', nomeEscolhido);                            // "Dra. Ana Moura" (padrão: Camille/Thiago)
 patientFacePix({ seed, age: 'adulto', sex: 'F', state: 'cianose' }); // Pix 64×64 transparente
 icon('phone_ring', 2);  icon('fome');                            // dataURL 32×32
 drawCityMap(ctx, { tile: 8, t: performance.now(), flood, showLabels: true, units, routes, markers, highlightStreet, hoverTile });
 drawScene(ctx, { bg: 'cozinha', blend, objects: ['cracha', 'geladeira_quebrada'], cast, ozzy: 'sentado', time }); // cast: { id: 'ALEX' | 'LUCIA' | 'DAVI' | 'ZELIA' | …, pose, x }
+drawScene(ctx, { bg: 'sala', blend, objects, cast, ozzyPlay: agora - inicioDaBrincadeira, time }); // Ozzy corre, late e dorme no tapete
+const f = ozzyPlayAt(ms);                                        // { x, y, pose, flip, frame, phase, bark, done, t } — f.bark vira true no "au!"
 drawDog(pix, x, y, 'brincando', time, { map, flip });          // o Ozzy num Pix qualquer: centro em x, patas na linha y
+ozzySticker('festa', 3);                                         // adesivo do Ozzy (dataURL 90×84); OZZY_STICKERS lista os 6
 newsPhoto('enchente', { crop: false });                           // dataURL 144×96 (ou recorte 96×64)
-drawEnding(ctx, 'desenho_davi', { time, gender: 'F', blend: 0 });
+drawEnding(ctx, 'cracha_prego', { time, gender: 'F', blend: 0, name: nomeEscolhido }); // o nome vai desenhado no crachá
+await installFontFixes();                                        // fontes de conserto (5/2/Z/B da Pixelify, A da Jacquard)
 const vars = cssVars(blendHome(desgaste / 100), 'home');           // { '--home-wall': '#…' }
 ```
+
+`renderScene`, `renderCityMap` e `renderEnding` devolvem um `Pix` novo a cada chamada (pode ser guardado); `drawScene`/`drawCityMap`/`drawEnding` reutilizam um buffer interno e são os que a UI deve chamar a cada quadro.
 
 Todos os módulos são seguros para importar em Node (testes): nada acessa o DOM no topo; funções que devolvem dataURL retornam `''` fora do navegador e as `render*()` devolvem um `Pix` puro. Canvases e dataURLs são criados sob demanda e guardados em cache.
 
