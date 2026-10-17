@@ -6,7 +6,7 @@
 // triste baixa a cabeça). Mesmas cores dos retratos.
 // =============================================================================
 import { Pix } from './pix';
-import { SKIN, HAIR, HOME, mix, shade } from './palette';
+import { SKIN, HAIR, HOME, mix, shade, markSkinTones } from './palette';
 import type { MemberStatus } from '../../engine/types';
 
 export type CastId = 'LUCIA' | 'ALEX' | 'DAVI' | 'ZELIA' | 'EU_M' | 'EU_F';
@@ -155,10 +155,14 @@ function colors(b: Body, status?: MemberStatus): Paint {
   if (status === 'critico') skin = mix(skin, '#c9c6bc', 0.38);
   if (status === 'frio') skin = mix(skin, '#9fb4c8', 0.12);
   const light = b.hair === HAIR[3] || b.hair === HAIR[4];
+  const skinS = shade(skin, -0.2);
+  const skinD = shade(skin, -0.42);
+  // o Desgaste esfria a pele por igual (sem manchas), qualquer que seja o tom
+  markSkinTones(skin, skinS, skinD);
   return {
     skin,
-    skinS: shade(skin, -0.2),
-    skinD: shade(skin, -0.42),
+    skinS,
+    skinD,
     hair: b.hair,
     hairL: light ? '#e2e2da' : mix(b.hair, '#6a5a64', 0.45),
     hairD: light ? '#8a8a84' : mix(b.hair, '#000000', 0.45),

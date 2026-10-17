@@ -11,7 +11,7 @@
 // ×2 ou ×3 com image-rendering: pixelated). Puro até a conversão final.
 // =============================================================================
 import { Pix, hasDOM, pack, unpackRgb, hash2, mulberry } from './pix';
-import { CENTRAL, HOME, SKIN, HAIR, homeGrader, quantize, rgbToHex } from './palette';
+import { CENTRAL, HOME, SKIN, HAIR, homeGrader, gradeSkin, quantize, rgbToHex } from './palette';
 import { SON_NAME } from '../../engine/text';
 import { protagonistLabel } from './names';
 import {
@@ -3099,6 +3099,7 @@ function render(id: CharacterId, mood: Mood, withBg: boolean): Pix {
   L.despeckle([P.FACE, P.HAIR, P.BACK, P.BODY, P.HAT, P.NECK], 2);
   drawGlasses(L, g, l);
   drawAccessories(L, g, l, m);
+  skinMasks.set(`${id}|${mood}|${withBg ? 1 : 0}`, skinMask(L));
   const bg = withBg ? background(l.bg) : null;
   return compose(L, bg, { ink: BG_INK[l.bg], rim: BG_RIM[l.bg], rimK: 0.32, openBottom: true });
 }
@@ -3128,22 +3129,44 @@ function makeMatsInto(aux: Layer, src: Layer, m: Mats): Mats {
   return { ...m, skin: re(m.skin), blush: re(m.blush), circles: re(m.circles), stubble: re(m.stubble), hair: re(m.hair), flush: re(m.flush) };
 }
 
-function gradePix(p: Pix, t: number): Pix {
+/**
+ * Desgaste no retrato: o fundo, o cabelo e a roupa seguem a gradação da casa
+ * (homeGrader); a pele (rosto, orelhas, pescoço — máscara `skin`) usa gradeSkin,
+ * contínua, para qualquer tom esfriar por igual.
+ */
+function gradePix(p: Pix, t: number, skin?: Uint8Array): Pix {
   if (t <= 0) return p;
   const g = homeGrader(t);
   const memo = new Map<number, number>();
-  return p.remap((v) => {
-    let o = memo.get(v);
+  const memoS = new Map<number, number>();
+  for (let i = 0; i < p.data.length; i++) {
+    const v = p.data[i];
+    if (!(v >>> 24)) continue;
+    const isSkin = !!skin?.[i];
+    const mm = isSkin ? memoS : memo;
+    let o = mm.get(v);
     if (o === undefined) {
       const [r, gg, b, a] = unpackRgb(v);
-      const hex = g(rgbToHex(r, gg, b));
-      const n = pack(hex);
+      const src = rgbToHex(r, gg, b);
+      const n = pack(isSkin ? gradeSkin(src, t) : g(src));
       o = ((n & 0x00ffffff) | (a << 24)) >>> 0;
-      memo.set(v, o);
+      mm.set(v, o);
     }
-    return o;
-  });
+    p.data[i] = o;
+  }
+  return p;
 }
+
+/** máscara (1 por pixel) das partes de pele de uma camada de retrato */
+function skinMask(L: Layer): Uint8Array {
+  const out = new Uint8Array(L.w * L.h);
+  for (let i = 0; i < out.length; i++) {
+    const part = L.p[i];
+    if (part === P.FACE || part === P.NECK || part === P.EAR || part === P.FEAT) out[i] = 1;
+  }
+  return out;
+}
+const skinMasks = new Map<string, Uint8Array>();
 
 const pixCache = new Map<string, Pix>();
 
@@ -3160,7 +3183,7 @@ export function portraitPix(id: CharacterId, mood: Mood = 'neutro', opts: { blen
       base = render(id, mood, bg);
       pixCache.set(baseKey, base);
     }
-    p = blend > 0 ? gradePix(base.copy(), blend) : base;
+    p = blend > 0 ? gradePix(base.copy(), blend, skinMasks.get(`${id}|${mood}|${bg ? 1 : 0}`)) : base;
     pixCache.set(key, p);
   }
   return p.copy();
