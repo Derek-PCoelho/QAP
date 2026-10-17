@@ -273,7 +273,7 @@ export const DAY = day({
       quem: {
         lines: [
           { who: 'AÍLTON', t: 'Menino de moto. A ambulância demorou. Tá vendo o Regional ali? (ele aponta com o queixo) Quatro quadras. Quatro.' },
-          { who: 'AÍLTON', t: 'O Bené, da ambulância, foi quem me ensinou essa curva. Ele não passa mais por aqui. Dá a volta pela Santos Dumont.' },
+          { who: 'AÍLTON', t: 'O Bené, aquele da ambulância que me ensinou a curva, não passa mais por aqui. Dá a volta pela Santos Dumont.' },
         ],
       },
       quieto: { lines: [{ who: 'NARRADOR', t: 'O ônibus passa. A flor de plástico balança com o vento, como se alguém tivesse acenado.' }] },

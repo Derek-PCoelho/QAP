@@ -110,6 +110,7 @@ export const DAY = day({
           { who: 'NARRADOR', t: '06:30. Garoa fina. A Drogaria do Gervásio ainda está de porta baixada. Uma placa amarela, desbotada: "FARMÁCIA POPULAR AQUI".' },
           { who: 'NARRADOR', t: 'O Ozzy late para a moto do entregador de pão. A moto não liga para o Ozzy.' },
           { who: 'AÍLTON', t: 'Quarta-feira, {dr}. Dia de feijoada e de enfarte. Senta firme que a curva da Brasil hoje tá lisa.' },
+          { who: 'AÍLTON', t: 'Quem me ensinou essa curva foi o Bené, que hoje dirige ambulância. E quem ensinou ele foi o finado Nestor, que dirigiu o doze trinta anos. Curva é herança, {dr}.' },
         ],
       },
     },

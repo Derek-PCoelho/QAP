@@ -116,6 +116,8 @@ export const DAY = day({
         lines: [
           { who: 'NARRADOR', t: '07:00. Segunda-feira. O Henrique já está de jaqueta, a chave do carro na mão. O cheiro de menta chega antes dele.' },
           { who: 'HENRIQUE', t: 'Noite calma, {nome}. Ah: hoje à noite eu posso chegar uns minutinhos atrasado. Coisa boba. Segura as pontas pra mim?' },
+          // ROTEIRO R3 (pista): 12 de abril de 2019
+          { who: 'HENRIQUE', t: '(olhando o calendário da parede, sem motivo) Abril é o pior mês, {nome}. Ainda é março e eu já tô sentindo abril.' },
           { who: 'SIMONE', t: 'O Wesley pôs o pino ontem à noite, {dr}. Tá bem. Mandou um joinha pra você no meu celular.', when: (c) => c.flag('wesley_atendido') && c.flag('simone_wesley_conversa') },
           { who: 'SIMONE', t: 'O Wesley operou ontem. Tá bem. (ela volta para o monitor antes que você responda)', when: (c) => c.flag('wesley_atendido') && !c.flag('simone_wesley_conversa') },
           { who: 'NARRADOR', t: 'A Simone já está na mesa. Não diz bom dia. No seu monitor, um post-it com a letra dura dela: "Ligações."', when: is.flag('d7_wesley_dispensado') },
