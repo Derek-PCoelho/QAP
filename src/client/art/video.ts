@@ -543,9 +543,19 @@ function buildStage(sc: VideoScene, seed: string, view: 'ver' | 'campo', key: st
       const P = patient;
       const fig = drawFigure({ ...P.spec, look: P.look, pose: P.pose, k: P.k, dir: P.dir, phase: 0 });
       const sideX = fb % 2 === 0 ? -1 : 1;
-      ax = Math.round(P.x + sideX * (34 + fb * 6) * P.k);
-      ay = Math.round(P.y - 4);
-      k = kAt(lay, ay);
+      // parto na cama: quem ajuda fica de pé NO CHÃO, ao lado da cama (antes subia no
+      // colchão e saía gigante perto da parturiente)
+      const onBed = P.pose === 'parto' && (!!lay.bed || place === 'quarto' || place === 'hospital');
+      if (onBed) {
+        const by = lay.floorY + 52;
+        ay = by - 8;
+        k = kAt(lay, ay);
+        ax = Math.round(P.x + sideX * (56 + fb * 12) * kAt(lay, by));
+      } else {
+        ax = Math.round(P.x + sideX * (34 + fb * 6) * P.k);
+        ay = Math.round(P.y - 4);
+        k = kAt(lay, ay);
+      }
       const hand = sideX < 0 ? fig.pts.handL : fig.pts.handR;
       reach = [P.x + hand[0] - ax, drawY(P) + hand[1] - ay];
       fpose = act === 'segurando_mao' ? 'em_pe' : 'ajoelhado';

@@ -1290,7 +1290,7 @@ function boloPorta(p: Pix, c: Ctx, t: number): void {
     s.rect(dx0 + 4, floor + 1, dx1 - dx0 - 8, 4, '#7a5a3a');
     for (let x = dx0 + 5; x < dx1 - 4; x += 2) s.px(x, floor + 2, '#5a4028');
     // do lado de dentro: o porta-retrato da família e o cabideiro com a mochila do Liam
-    familyPhoto(s, 14, 14, 18, 13);
+    familyPhoto(s, 14, 14, 18, 13, c.g);
     s.vl(140, 6, 44, HOME.wood);
     s.hl(134, 146, 8, HOME.wood);
     s.rect(135, 10, 9, 12, HOME.fabricBlue);
@@ -1371,7 +1371,7 @@ function titulo(p: Pix, c: Ctx, t: number): void {
   // foto da família (o único calor)
   p.glow(190, 124, 34, HOME.lampLight, 0.26, 4);
   const fp = new Pix(20, 16);
-  familyPhoto(fp, 1, 1, 17, 13);
+  familyPhoto(fp, 1, 1, 17, 13, c.g);
   p.blit(fp.scaled(2), 172, 104);
   // telefone (2×), com a linha da fila piscando em tituloAnim
   const ph = new Pix(46, 30);
