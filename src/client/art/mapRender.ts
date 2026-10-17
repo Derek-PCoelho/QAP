@@ -487,6 +487,8 @@ const hit = (a: LRect, b: LRect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < 
 
 /** camada de nomes (bairros e marcos) de cada mapa-base */
 const LABELS = new WeakMap<Pix, Pix>();
+/** retângulos ocupados pelos nomes do mapa-base (os rótulos de viatura fogem deles) */
+const LABEL_RECTS = new WeakMap<Pix, LRect[]>();
 
 function buildBase(T: number, labels: boolean, flood: boolean): Pix {
   const { w, h } = mapPixelSize(T);
@@ -571,7 +573,11 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
   LABELS.set(p, lab);
   if (labels && T >= 6) {
     const placed: LRect[] = [];
+    LABEL_RECTS.set(p, placed);
     const icons: LRect[] = placeLandmarks().map((pl) => ({ x: pl.at[0] * T + Math.floor(T / 2) - 5, y: pl.at[1] * T + Math.floor(T / 2) - 5, w: 10, h: 10 }));
+    // onde as viaturas param (na rua do marco: bases, hospitais, UPA, maternidade) — o nome não vai ali
+    for (const pl of placeLandmarks())
+      if (['hospital', 'upa', 'maternidade', 'base'].includes(pl.lm.kind)) icons.push({ x: pl.road[0] * T + Math.floor(T / 2) - 18, y: pl.road[1] * T + Math.floor(T / 2) - 7, w: 36, h: 14 });
     const free = (r: LRect, avoidIcons = true) =>
       r.x >= 1 && r.y >= 1 && r.x + r.w <= w - 1 && r.y + r.h <= h - 1 && !placed.some((q) => hit(q, r)) && (!avoidIcons || !icons.some((q) => hit(q, r)));
     // 1) marcos principais
@@ -588,6 +594,10 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
         [cx - Math.floor(tw / 2), cy + 8],
         [cx + 7, cy - 2],
         [cx - 7 - tw, cy - 2],
+        [cx - Math.floor(tw / 2), cy + 16],
+        [cx + 7, cy + 8],
+        [cx - 7 - tw, cy + 8],
+        [cx - Math.floor(tw / 2), cy - 20],
       ];
       let pick: [number, number] | null = null;
       for (const [x, y] of cands) {
@@ -865,7 +875,7 @@ function ambulancePix(type: 'USA' | 'USB', status: string, t: number, dir: 1 | -
   return p;
 }
 
-function drawUnits(p: Pix, units: MapUnit[], T: number, t: number): void {
+function drawUnits(p: Pix, units: MapUnit[], T: number, t: number, avoid: LRect[] = []): void {
   // agrupa viaturas sobrepostas e espalha em leque
   const groups = new Map<string, MapUnit[]>();
   for (const u of units) {
@@ -947,12 +957,13 @@ function drawUnits(p: Pix, units: MapUnit[], T: number, t: number): void {
       [cl(ax - wpx - 3), ay + 2],
       [cl(px - Math.floor(wpx / 2)), below + 14],
     ];
-    const fits = ([x, y]: [number, number]) => {
+    // folga de 2 px entre rótulos ("USB 04USA 03" colados nunca mais)
+    const fits = ([x, y]: [number, number], strict: boolean) => {
       if (y < 1 || y + 6 > p.h) return false;
-      const r = { x: x - 1, y: y - 1, w: wpx + 2, h: 7 };
-      return !taken.some((q) => hit(q, r)) && !bodies.some((q) => hit(q, r));
+      const r = { x: x - 3, y: y - 2, w: wpx + 6, h: 9 };
+      return !taken.some((q) => hit(q, r)) && !bodies.some((q) => hit(q, r)) && (!strict || !avoid.some((q) => hit(q, r)));
     };
-    const pick = cands.find(fits) ?? cands.find(([, y]) => y >= 1 && y + 6 <= p.h) ?? cands[0];
+    const pick = cands.find((c) => fits(c, true)) ?? cands.find((c) => fits(c, false)) ?? cands.find(([, y]) => y >= 1 && y + 6 <= p.h) ?? cands[0];
     const [lx, ly] = pick;
     taken.push({ x: lx - 1, y: ly - 1, w: wpx + 2, h: 7 });
     p.recta(lx - 1, ly - 1, wpx + 2, 7, '#0b100e', u.selected ? 0.9 : 0.7);
@@ -1034,7 +1045,7 @@ function renderMapInto(o: CityMapOpts): Pix {
   const lab = LABELS.get(b);
   if (lab) p.blit(lab, 0, 0);
   for (const m of o.markers ?? []) drawMarker(p, m, T, o.t);
-  if (o.units?.length) drawUnits(p, o.units, T, o.t);
+  if (o.units?.length) drawUnits(p, o.units, T, o.t, LABEL_RECTS.get(b) ?? []);
   if (o.hoverTile) drawHover(p, o.hoverTile, T);
   return p;
 }

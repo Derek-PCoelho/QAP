@@ -633,7 +633,7 @@ export const EYE_SHAPES: Record<string, EyeShape> = {
   fem: { lid: [1, 0, 0, 0, 0, 0, 1], bot: [2, 3, 3, 3, 3, 2, 2], iris: 3, irisTop: 1, irisH: 3 },
   // amendoado (asiático): abertura mais baixa, canto externo puxado para cima e
   // afinando, canto interno mais baixo; a íris fica meio coberta pela pálpebra
-  almond: { lid: [0, 0, 0, 0, 0, 1, 1], bot: [1, 2, 3, 3, 3, 3, 2], iris: 3, irisTop: 1, irisH: 2 },
+  almond: { lid: [0, 0, 0, 0, 0, 1, 1], bot: [1, 2, 3, 3, 3, 3, 2], iris: 3, irisTop: 1, irisH: 3 },
   // criança: grandes
   big: { lid: [1, 0, 0, 0, 0, 0, 1], bot: [3, 4, 4, 4, 4, 4, 3], iris: 3, irisTop: 1, irisH: 4 },
   // idoso: pequenos, encapuzados

@@ -1733,7 +1733,7 @@ function drawHairFront(L: Layer, g: Geo, l: Look, m: Mats): void {
         [46, t + 30],
       ]);
       sil.sub(win);
-      hairPart(sil, { src: [32, t + 2], ball: [32, t + 10, 18, 22], tex: 'strand', clump: 2.6, band: [8, 10.5], fallY: t + 18, seed: 4 });
+      hairPart(sil, { src: [32, t - 7], ball: [32, t + 10, 18, 22], tex: 'strand', clump: 2.6, band: [8, 10.5], fallY: t + 18, seed: 4 });
       for (let y = t - 3; y <= t + 3; y++) L.tone(32, y, 0, P.HAIR);
       return;
     }
