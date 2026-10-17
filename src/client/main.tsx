@@ -5,6 +5,7 @@ import '@fontsource/pixelify-sans/latin-ext-400.css';
 import '@fontsource/vt323/latin-400.css';
 import '@fontsource/vt323/latin-ext-400.css';
 import '@fontsource/jacquard-24/latin-400.css';
+import { installFontFixes } from './art/fontFix';
 import './styles/base.css';
 import './styles/screens.css';
 import './styles/desk.css';
@@ -13,5 +14,7 @@ import './styles/minigames.css';
 import './styles/simone.css';
 import './styles/field.css';
 import { App } from './App';
+
+void installFontFixes();
 
 createRoot(document.getElementById('root')!).render(<App />);

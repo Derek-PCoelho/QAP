@@ -43,9 +43,9 @@
   --h-lamplight: #ffe2a3;
   --h-wall: #c99a5e;
   /* tipografia */
-  --f-ui: 'Pixelify Sans', ui-monospace, monospace;
+  --f-ui: 'QAP Pixelify Fix', 'Pixelify Sans', ui-monospace, monospace;
   --f-screen: 'VT323', ui-monospace, monospace;
-  --f-mast: 'Jacquard 24', 'Pixelify Sans', serif;
+  --f-mast: 'QAP Jacquard Fix', 'Jacquard 24', 'Pixelify Sans', serif;
   --stage-w: 1280px;
   --stage-h: 720px;
 }
