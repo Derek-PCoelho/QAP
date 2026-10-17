@@ -1383,21 +1383,52 @@
   color: var(--c-ink);
 }
 .cork h2 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 18px;
   color: #2d1d0d;
 }
-.cork-items {
-  flex: 1;
+.cork-top {
   display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  align-items: baseline;
   gap: 14px;
-  overflow-y: auto;
-  padding: 6px;
+  margin-bottom: 6px;
+}
+.cork-hint {
+  font-size: 12px;
+  color: #3d2a14;
+}
+/* 1.1: quadro livre — cada papel fica onde o jogador soltou (posição em fração da área) */
+.cork-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.cork-area.arming {
+  cursor: copy;
+}
+.cork-area.busy {
+  cursor: grabbing;
 }
 .cork-empty {
   color: #3d2a14;
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  margin: 0;
+}
+.cork-area .pin-card,
+.cork-area .cork-sticker {
+  position: absolute;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+.cork-area .pin-card.dragging,
+.cork-area .cork-sticker.dragging {
+  cursor: grabbing;
+  box-shadow: 6px 9px 0 rgba(0, 0, 0, 0.35);
+  filter: brightness(1.04);
 }
 .pin-card {
   position: relative;
@@ -1436,7 +1467,6 @@
   text-align: left;
   font-family: inherit;
   color: var(--c-ink);
-  cursor: pointer;
   background: #fbf7ea;
   box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 1px #c9b98f;
 }
@@ -1445,13 +1475,138 @@
   color: #a22a1f;
 }
 .pin-card.desk-doc.open {
-  width: 360px;
-  transform: none !important;
-  z-index: 2;
+  outline: 2px solid #2d1d0d;
 }
 .pin-card.k-postit {
   background: var(--c-postit);
   width: 150px;
+}
+/* cores do post-it do jogador (a mesma paleta da Simone, mais o amarelo de sempre) */
+.pc-amarelo {
+  --pc: #f2d45c;
+}
+.pc-azul {
+  --pc: #a9d4f2;
+}
+.pc-rosa {
+  --pc: #f5b5d0;
+}
+.pc-verde {
+  --pc: #aee09f;
+}
+.pc-branco {
+  --pc: #f7f5ee;
+}
+.pin-card.k-postit[class*='pc-'] {
+  background: var(--pc);
+}
+.cork-x {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  color: #fff;
+  background: #7a1510;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.pin-card:hover .cork-x,
+.cork-sticker:hover .cork-x,
+.cork-x:focus-visible {
+  opacity: 1;
+}
+.cork-sticker {
+  width: 60px;
+  height: 56px;
+}
+.cork-sticker img {
+  display: block;
+  width: 60px;
+  height: 56px;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.cork-trash {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 35;
+  width: 170px;
+  padding: 18px 10px;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.92;
+  color: #f6f1e2;
+  background: rgba(45, 29, 13, 0.82);
+  box-shadow: inset 0 0 0 2px #c9b98f;
+  pointer-events: none;
+}
+.cork-trash.over {
+  background: #a22a1f;
+}
+.cork-read {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 40;
+  width: 420px;
+  max-height: 92%;
+  overflow-y: auto;
+  transform: translate(-50%, -50%) rotate(-0.4deg);
+  padding: 14px 16px 12px;
+  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.4);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.cork-read b {
+  font-family: var(--f-screen);
+  font-size: 20px;
+  font-weight: normal;
+}
+.cork-read p {
+  white-space: pre-line;
+  margin: 6px 0 10px;
+}
+.cork-tray {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: rgba(45, 29, 13, 0.35);
+}
+.cork-tray-label {
+  font-size: 12px;
+  color: #f6f1e2;
+  margin-right: 4px;
+}
+.cork-tray-item {
+  width: 38px;
+  height: 36px;
+  padding: 2px;
+  border: 0;
+  background: rgba(246, 241, 226, 0.15);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.cork-tray-item img {
+  width: 30px;
+  height: 28px;
+  image-rendering: pixelated;
+}
+.cork-tray-item:hover,
+.cork-tray-item.on {
+  background: rgba(246, 241, 226, 0.45);
+  box-shadow: inset 0 0 0 2px #f2d45c;
 }
 .pin {
   position: absolute;
@@ -1467,6 +1622,23 @@
   display: flex;
   gap: 6px;
   margin-top: 8px;
+  align-items: center;
+}
+.cork-colors {
+  display: flex;
+  gap: 3px;
+}
+.cork-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: var(--pc);
+  cursor: pointer;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45);
+}
+.cork-swatch.on {
+  box-shadow: inset 0 0 0 2px #2d1d0d, 0 0 0 2px #f6f1e2;
 }
 .cork-write input {
   flex: 1;
@@ -1474,7 +1646,7 @@
   font-size: 18px;
   padding: 4px 8px;
   border: 0;
-  background: #f2d45c;
+  background: var(--pc, #f2d45c);
 }
 .diary {
   width: 720px;

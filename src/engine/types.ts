@@ -1229,6 +1229,27 @@ export interface BoardEntryIn {
 }
 export interface BoardEntry extends BoardEntryIn { day: number; count: number }
 
+/** cor do post-it que o jogador cola no quadro de cortiça (1.1) */
+export type CorkColor = 'amarelo' | 'azul' | 'rosa' | 'verde' | 'branco';
+/** papel ou adesivo do jogador no quadro de cortiça (posição em fração da área, 0–1) */
+export interface CorkItem {
+  id: string;
+  kind: 'postit' | 'adesivo';
+  x: number;
+  y: number;
+  text?: string;
+  color?: CorkColor;
+  /** adesivo do Ozzy: feliz, dormindo, latindo, coracao, festa, sirene */
+  sticker?: string;
+}
+/** quadro de cortiça (1.1): papéis do jogador e onde ele pôs as fichas da central (ver engine/cork.ts) */
+export interface CorkState {
+  items: CorkItem[];
+  /** posição das fichas da central (`b:ID`) e dos documentos (`d:ID`) que o jogador arrastou */
+  pos: Record<string, [number, number]>;
+  seq: number;
+}
+
 export interface MemberState {
   status: MemberStatus;
   hunger: number;
@@ -1287,6 +1308,8 @@ export interface GameState {
   bills: BillsState;
   diary: DiaryEntry[];
   board: BoardEntry[];
+  /** 1.1: o que o jogador fez no quadro de cortiça (opcional: saves antigos não têm; ver engine/cork.ts) */
+  cork?: CorkState;
   docs: string[];
   manual: string[];
   achievements: string[];
