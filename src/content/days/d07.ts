@@ -95,12 +95,17 @@ export const DAY = day({
           : 'Neurologista do Regional lembra: o que conta é a última hora em que a pessoa foi vista bem.',
       photo: viva || morta ? 'casa' : 'hospital',
       stories: [
-        avc === 'vivo'
-          ? { title: 'Tempo é cérebro', text: 'Idoso que "acordou com a boca torta" chega a tempo ao Regional. A esposa lembrou que ele tinha ido ao banheiro às cinco da manhã: foi o que salvou a janela.' }
-          : { title: 'Tempo é cérebro', text: 'O Regional registrou dois casos de AVC no sábado. O neurologista lembra: sorrir, levantar os braços, falar uma frase. E anotar a hora.' },
+        avc === 'vivo' && c.flag('d6_avc_regional')
+          ? { title: 'Tempo é cérebro: Seu Ademir já pede café', text: 'O aposentado que "acordou com a boca torta" no sábado foi levado direto ao Regional e passou pela trombólise. A esposa, Dona Neide, lembrou que ele tinha ido ao banheiro às cinco da manhã: foi o que salvou a janela. Ontem à noite ele já reclamava do café do hospital.' }
+          : avc === 'vivo'
+            ? { title: 'Tempo é cérebro', text: 'Idoso que "acordou com a boca torta" chega a tempo ao hospital. A esposa lembrou que ele tinha ido ao banheiro às cinco da manhã: foi o que salvou a janela.' }
+            : { title: 'Tempo é cérebro', text: 'O Regional registrou dois casos de AVC no sábado. O neurologista lembra: sorrir, levantar os braços, falar uma frase. E anotar a hora.' },
+        ...(c.flag('d5_benedita_radio') || c.flag('d5_benedita_levada')
+          ? [{ title: 'Aos 86, "a primeira ambulância da vida"', text: 'Dona Benedita Alves, da Bela Vista, teve alta depois de dois dias de soro. "Nunca tinha precisado. Agora já sei como é", disse. Levou o terço e o radinho de pilha.' }]
+          : []),
         { title: 'Missa pelos trabalhadores da saúde', text: '"Rezem pelos plantonistas", pediu o padre na Matriz. A Saúde+ Gestão não mandou representante.' },
         { title: 'Coluna social: domingo em família', text: 'O vereador Arlindo Matos posa com a mãe, Dona Odete, 82, "a mulher mais forte de Santa Aurora", no almoço de domingo na Bela Vista.' },
-      ],
+      ].slice(0, 4),
       notice: 'Nova página no Manual: 7 (obstetrícia — período expulsivo, eclâmpsia, sangramento na gestação).',
       ad: 'MOTO ENTREGAS JÁ — Seu pedido em 20 minutos ou é de graça! Contratamos motoboys com moto própria. Domingo paga em dobro.',
       weather: 'Mormaço · 32 °C',
@@ -127,6 +132,64 @@ export const DAY = day({
       },
       devagar: {
         lines: [{ who: 'SIMONE', t: 'Falo todo dia, {dr}. Ele tem dezenove anos. Ninguém de dezenove anos vai devagar.' }],
+      },
+    },
+  }),
+  // 1.1 — ida (a missa da Dona Dirce), almoço INTERROMPIDO às 13:05 (a marmita que o Wesley fez) e volta (o carro preto)
+  ida: () => ({
+    id: 'd07_ida',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:15. Domingo, o 12 passa de meia em meia hora. Você espera vinte minutos no ponto com a Dona Dirce, de véu na bolsa, indo para a missa das sete.' },
+          { who: 'DIRCE', t: 'A missa hoje é pelos plantonistas, {dr}. Eu vou pedir por você. Pede você também, que santo gosta de ouvir a voz do interessado.' },
+        ],
+      },
+    },
+  }),
+  almoco: (c) => {
+    const w = c.s.shift ? Object.values(c.s.shift.calls).find((x) => x.def === 'd07_wesley' && !x.gen) : undefined;
+    if (w?.decision) {
+      return {
+        id: 'd07_almoco',
+        bg: 'central',
+        cast: ['SIMONE'],
+        nodes: { start: { lines: [{ who: 'NARRADOR', t: '13:00. A marmita que o Wesley deixou pra mãe está fechada em cima da mesa, com o bilhete preso na tampa: "pra minha mãe não comer bolacha". Ninguém almoça.' }] } },
+      };
+    }
+    return {
+      id: 'd07_almoco',
+      bg: 'central',
+      cast: ['SIMONE'],
+      nodes: {
+        start: {
+          lines: [
+            { who: 'NARRADOR', t: '13:00. Domingo. A Simone abre a marmita com cuidado de quem abre presente.' },
+            { who: 'SIMONE', t: 'O Wesley que fez, {dr}. Arroz, feijão e um bife que parece sola. Ele saiu cedo com a moto nova e deixou isso na geladeira com um bilhete: "pra minha mãe não comer bolacha".' },
+            { who: 'SIMONE', t: 'Dezenove anos. Dezenove anos e ele fez arroz.' },
+            { who: 'NARRADOR', t: 'Ela ri. Pega o garfo.' },
+            w
+              ? { who: 'NARRADOR', t: 'A sua linha já está piscando. No visor: "SEU EDINHO (FEIRANTE) · AV. BRASIL, 2780".' }
+              : { who: 'NARRADOR', t: '13:05. A sua linha acende. No visor: "SEU EDINHO (FEIRANTE) · AV. BRASIL, 2780".' },
+            { who: 'NARRADOR', t: 'O relógio volta a correr. A Simone ainda está com o garfo no ar quando você atende.' },
+          ],
+        },
+      },
+    };
+  },
+  volta: () => ({
+    id: 'd07_volta',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:50. Na Vila, um carro preto de vidro escuro está estacionado na sua rua, motor ligado. No banco do motorista, um homem de terno fala ao celular.' },
+          { who: 'NARRADOR', t: '"...Pode deixar. Tá bom? Tá bom." Ele desliga, ajeita a gravata no retrovisor e olha para a casa azul.' },
+          { who: 'NARRADOR', t: 'O Ozzy, no portão, para de abanar o rabo.' },
+        ],
       },
     },
   }),
@@ -180,7 +243,7 @@ export const DAY = day({
       },
     },
     {
-      at: '13:05',
+      at: '13:10',
       kind: 'script',
       id: 'vigia_wesley',
       run: (c) => {
@@ -371,6 +434,8 @@ export const DAY = day({
         ],
         referencia: 'A casa de esquina, grade dourada. Todo mundo conhece.',
         seguranca: 'Seguríssimo. Tem segurança na porta.',
+        pulso: ['ODETE (ao fundo): Setenta e dois, Arlindo! O aparelhinho da cuidadora diz setenta e dois!', 'VEREADOR: ...Setenta e dois. Mas pode piorar!'],
+        pele: 'Corada. Normal. ...Ela passou batom, {dr}. Pra ir no hospital. Isso não é sinal de nada?',
       },
       extra: [
         {
@@ -444,6 +509,8 @@ export const DAY = day({
         paciente: 'Ela não fala! Não fala!',
         seguranca: 'Seguro! Tirei a mesinha de perto!',
         referencia: 'Sobrado amarelo, garagem de madeira.',
+        pulso: 'Tá batendo! Forte, rápido, aqui no pescoço!',
+        pele: 'Vermelha, suada... a boca tá meio roxa, babando. Agora tá voltando a cor, eu acho.',
       },
       extra: [
         {
@@ -609,6 +676,8 @@ export const DAY = day({
         paciente: 'Sou eu mesma!',
         inicio: 'Agorinha.',
         seguranca: 'Seguro. O forno já desliguei.',
+        pulso: 'Normal, {meu} {filho}. O dedo é que tá batendo, que nem coração pequenininho.',
+        pele: 'Só a pontinha do dedo vermelha. O resto, corada de forno.',
       },
       extra: [
         {
@@ -654,7 +723,8 @@ export const DAY = day({
     call({
       id: 'd07_wesley',
       ref: 'D7 #7 ★',
-      at: '13:00',
+      // 1.1: chega às 13:05, no meio do almoço (o almoço do dia 7 é interrompido)
+      at: '13:05',
       anchor: true,
       num: '(17) 99761-1300',
       caller: 'Seu Edinho (feirante)',
@@ -668,7 +738,7 @@ export const DAY = day({
       open: [
         '{Dr}, um motoboy caiu aqui na frente da feira! {{O osso da perna tá aparecendo|osso}}, saindo pela calça!',
         '[gente em volta; alguém grita "não tira o capacete dele!"]',
-        'Ele tá pedindo pra avisar a mãe. {{Diz que a mãe trabalha aí na Regulação|mae_samu}}. Simone, o nome dela.',
+        'Ele tá pedindo pra avisar a mãe. {{Diz que a mãe trabalha aí na Regulação|mae_regulacao}}. Simone, o nome dela.',
       ],
       q: {
         oque: 'Ele vinha de entrega, um carro abriu a porta sem olhar e ele bateu. Caiu de lado e arrastou.',
@@ -680,10 +750,12 @@ export const DAY = day({
         historico: 'Diz que não tem nada. Moto nova, comprou semana passada. Tá mais preocupado com a moto.',
         paciente: ['WESLEY: Ai... ai, minha perna... Fala pra minha mãe que tá tudo bem... {{ela trabalha aí, no telefone|mae_telefone}}...', 'WESLEY: Não fala da moto pra ela, não.'],
         seguranca: 'Seguro. O pessoal da feira parou o trânsito com as caixas de tomate.',
+        pulso: 'Tem, tem. Rápido. O coração dele tá a mil, mas ele tá falando comigo.',
+        pele: 'Pálido de dor, suando um pouco. A boca tá normal.',
         referencia: 'Em frente à feira, perto da banca de pastel.',
       },
       extra: [
-        { id: 'nome', label: 'Nome completo dele?', say: 'Qual o nome completo dele?', a: '{{Wesley... Wesley Batista|nome_wesley}}. Tá escrito no colete da firma de entrega.' },
+        { id: 'nome', label: 'Nome completo dele?', say: 'Qual o nome completo dele?', a: '{{Wesley... Wesley Campos Batista|nome_wesley}}. Tá escrito no colete da firma de entrega.' },
         {
           id: 'capacete',
           label: 'Capacete? Bateu a cabeça?',
@@ -708,7 +780,7 @@ export const DAY = day({
       ],
       links: [
         { a: 'osso', b: 'sangra_pouco', insight: 'Osso exposto com sangramento pequeno, consciente, pé quente: fratura exposta estável. Amarelo → USB (Manual p.1).' },
-        { a: 'mae_samu', b: 'nome_wesley', kind: 'confirma', insight: 'Wesley Batista, 19 anos. A mãe "trabalha na Regulação, no telefone", chama Simone. Na mesa ao lado, a Simone parou de digitar.' },
+        { a: 'mae_regulacao', b: 'nome_wesley', kind: 'confirma', insight: 'Wesley Campos Batista, 19 anos. A mãe "trabalha na Regulação, no telefone", chama Simone. Na mesa ao lado, a Simone parou de digitar.' },
         { a: 'lucido', b: 'manual:amarelo', kind: 'confirma', insight: 'Lúcido, sem trauma de cabeça, respirando bem: não é vermelho. A urgência é a fratura.' },
       ],
       onAnswer: (e) => {
@@ -721,7 +793,7 @@ export const DAY = day({
         if (d.resource === 'USA' || d.resource === 'USB') e.set('wesley_atendido');
         else e.set('d7_wesley_dispensado');
       },
-      patient: { name: 'Wesley Batista', age: 19, sex: 'M' },
+      patient: { name: 'Wesley Campos Batista', age: 19, sex: 'M' },
       truth: { dx: 'Fratura exposta de perna (estável)', sev: 'amarelo', ok: ['USB'], risk: { good: 100, bad: 260, needs: 'USB' } },
       radio: {
         ok: 'Central, {unit}. Fratura exposta de tíbia, sangramento controlado, pé quente. Imobilizado. O rapaz mandou dizer pra Simone que "a moto só ralou". Seguimos Regional.',
@@ -804,18 +876,22 @@ export const DAY = day({
       note: 'Diz que o tio desmaiou no churrasco.',
       noteWrong: 'Homem desmaiado num churrasco, não respira!',
       addr: { rua: 'Rua Sabiá', n: 1500, bairro: 'Vila Esperança' },
-      amb: ['festa', 'risadas', 'musica'],
+      // 1.1 (trotes-folgados.md): médio e sem risada. O "morto" responde antes do sobrinho e o churrasco continua
+      // animado ao fundo, sem pânico nenhum. A voz do tio aparece uma vez, abafada.
+      amb: ['festa', 'musica'],
       open: [
         'Alô, emergência? O meu tio {{tá desmaiado, não respira|desmaiado}}! Manda a ambulância grande, rápido!',
-        '[{{voz de homem ao fundo, rindo: "Fala que eu tô morrendo! Fala que eu tô morrendo!"|voz_tio}}]',
-        '[gargalhadas; pagode alto]',
+        '[{{churrasco animado ao fundo: pagode, gente conversando alto, panela de pressão chiando. Ninguém grita, ninguém chora|festa_calma}}]',
+        '[uma voz de homem, abafada, perto do fone: {{"fala que eu tô morrendo"|voz_tio}}]',
       ],
       q: {
         oque: 'Ele caiu duro no churrasco! Bebeu... quer dizer, não bebeu nada!',
-        consciencia: '{{Não acorda!|nao_acorda}} [ao fundo: "acordei, acordei!"] [gargalhadas]',
-        respira: 'Não respira! Quer dizer... respira pouco! [risadas]',
+        consciencia: ['TIO (mais perto, antes de qualquer um): {{Tô!|nao_acorda}}', 'SOBRINHO: ...Não tá. Não acorda. Desmaiado.'],
+        respira: 'Não respira! Quer dizer... respira pouco.',
+        pulso: ['Pulso? [uma voz ao fundo: "pega no meu pulso, pega"]', '...Tem. Fraquinho. Acho.'],
+        pele: 'Roxo. Quer dizer, vermelho. Ele é moreno, {m:moço|moça}, não dá pra ver direito.',
         idade: 'Uns quarenta... cinquenta... sessenta?',
-        paciente: ['TIO: Alô? Aqui é o morto! [gargalhadas]', '[alguém toma o telefone: "para, tio!"]'],
+        paciente: ['[alguém toma o telefone e devolve: "para, tio"]', '[o pagode continua, no mesmo volume]'],
         referencia: 'Rua Sabiá, mil e quinhentos. Do lado do pagode.',
         seguranca: 'Seguro, seguro! Só tem cerveja!',
       },
@@ -839,17 +915,31 @@ export const DAY = day({
       nodes: {
         start: {
           lines: [
-            { who: 'NARRADOR', t: 'Oito da noite. Um carro preto de vidro escuro para na frente da sua casa. Os vizinhos aparecem nas janelas, um por um.' },
-            { who: 'ASSESSOR', t: 'Boa noite! {Dr} {nome}? Wagner, assessor do vereador Arlindo Matos.' },
+            { who: 'NARRADOR', t: 'Oito da noite. O carro preto de vidro escuro encosta na frente da sua casa. Os vizinhos aparecem nas janelas, um por um. A Dona Dirce, de vassoura, varrendo nada.' },
+            { who: 'NARRADOR', t: 'O Ozzy rosna pela fresta do portão. O Ozzy nunca rosna.' },
+            { who: 'ASSESSOR', t: 'Boa noite! {Dr} {nome}? Wagner Tavares, assessor do vereador Arlindo Matos. Pode ficar tranquil{m:o|a}, {dr}. Tá bom? Tá bom.' },
             c.flag('d7_vereador_usa') || c.flag('d7_usa_vip')
               ? { who: 'ASSESSOR', t: 'O vereador pediu pra agradecer pessoalmente a agilidade com a Dona Odete hoje. (estende um envelope pardo, gordo) Uma lembrança. Pela atenção.' }
               : { who: 'ASSESSOR', t: 'O vereador ficou chateado com o atendimento de hoje, não vou mentir. Mas ele não guarda rancor. (estende um envelope pardo, gordo) Uma lembrança, pra gente começar de novo. Pela atenção.' },
+            { who: 'NARRADOR', t: 'A mão que segura o envelope tem uma aliança apertada no dedo, afundando na carne. E um arranhão fresco nas costas, de unha.' },
             { who: 'NARRADOR', t: 'Pelo volume, mil reais em notas de cinquenta. {Oconj} está {c:parada|parado} na porta da cozinha. A Dona Zélia baixou o volume da TV.' },
           ],
           choices: [
             { label: 'Aceitar o envelope.', next: 'aceita', effect: fx.all(fx.money(1000, 'envelope do vereador'), fx.add('integridade', -4, 'propina'), fx.set('envelope_aceito')) },
             { label: 'Recusar: "Não posso aceitar. Diz pro vereador que a Regulação atende todo mundo igual."', next: 'recusa', effect: fx.all(fx.set('envelope_recusado'), fx.set('vereador_inimigo')) },
             { label: '(Olhar para {oconj} antes de responder.)', next: 'olhar' },
+            { label: '"Aceita um café, seu Wagner?"', next: 'cafe' },
+          ],
+        },
+        cafe: {
+          lines: [
+            { who: 'ASSESSOR', t: '(olha o relógio, rápido demais) Não, não. A patroa me espera. Ela não gosta que eu demore.' },
+            { who: 'NARRADOR', t: 'Ele passa o polegar no arranhão das costas da mão, como quem apaga uma coisa escrita.' },
+            { who: 'ASSESSOR', t: 'É só uma lembrança, {dr}. Tá bom? Tá bom.' },
+          ],
+          choices: [
+            { label: 'Aceitar o envelope.', next: 'aceita', effect: fx.all(fx.money(1000, 'envelope do vereador'), fx.add('integridade', -4, 'propina'), fx.set('envelope_aceito')) },
+            { label: 'Recusar: "Não posso aceitar. Diz pro vereador que a Regulação atende todo mundo igual."', next: 'recusa', effect: fx.all(fx.set('envelope_recusado'), fx.set('vereador_inimigo')) },
           ],
         },
         olhar: {
@@ -865,15 +955,17 @@ export const DAY = day({
         },
         aceita: {
           lines: [
-            { who: 'ASSESSOR', t: 'O vereador não esquece quem é amigo, {dr}. Boa noite.' },
-            { who: 'NARRADOR', t: 'O carro vai embora. Você guarda o envelope na lata de biscoito, em cima da geladeira.' },
+            { who: 'ASSESSOR', t: 'O vereador não esquece quem é amigo, {dr}. Tá bom? Tá bom. Boa noite.' },
+            { who: 'NARRADOR', t: 'O carro vai embora. Você guarda o envelope na lata de biscoito, em cima da geladeira. As notas são novas, em sequência, presas por uma cinta de papel: "Câmara Municipal — Gab. 7".' },
             { who: 'LUCIA', t: '(sem olhar pra você) Quanto tem aí?' },
             { who: 'ZELIA', t: '(da sala, sem tirar os olhos da TV) Teu pai devolvia até troco errado de padaria, {filho}.' },
+            // a partir daqui a família fala do dinheiro que existe (ROTEIRO 3.1)
+            { who: 'LUCIA', t: '(olhando a conta de luz presa no ímã) A luz tá paga, pelo menos. ...Não sei se eu queria que estivesse.', when: (cc) => cc.money() >= 1000 },
           ],
         },
         recusa: {
           lines: [
-            { who: 'ASSESSOR', t: '(o sorriso não sai do rosto) Tá bom. Eu transmito, {dr}. Ele vai lembrar. Ele lembra de tudo.' },
+            { who: 'ASSESSOR', t: '(o sorriso não sai do rosto) Tá bom. Tá bom. Eu transmito, {dr}. Ele vai lembrar. Ele lembra de tudo.' },
             { who: 'NARRADOR', t: 'O carro demora para sair. Depois sai.' },
             { who: 'LUCIA', t: '(fechando a porta) Mil reais, {nome}.' },
             { who: 'LUCIA', t: 'Eu tô {c:orgulhosa|orgulhoso} e com raiva ao mesmo tempo. Dá pra ser as duas coisas?' },
@@ -905,12 +997,13 @@ export const DAY = day({
           },
           lines: [
             { who: 'NARRADOR', t: 'Você está na USA 01, no meio de uma ocorrência. Em casa, às oito da noite, a campainha toca.' },
-            { who: 'NARRADOR', t: '{Oconj} abre. Um rapaz de terno, cabelo de gel, óculos escuros na cabeça. Um envelope pardo na mão.' },
-            { who: 'ASSESSOR', t: '{m:O doutor|A doutora} não está? Tudo bem. É uma lembrança do vereador Arlindo. Pela atenção com a mãe dele.' },
+            { who: 'NARRADOR', t: '{Oconj} abre. Um homem de terno, aliança apertada no dedo, um arranhão fresco nas costas da mão. Um envelope pardo.' },
+            { who: 'ASSESSOR', t: '{m:O doutor|A doutora} não está? Tudo bem. Wagner, assessor do vereador Arlindo. É uma lembrança. Pela atenção com a mãe dele. Tá bom? Tá bom.' },
             { who: 'LUCIA', t: 'Pela atenção.', when: is.flag('d7_lucia_jogou') },
             { who: 'NARRADOR', t: '{c:Ela|Ele} pega o envelope, pesa na mão... e joga por cima do portão. As notas de cinquenta se espalham pela calçada.', when: is.flag('d7_lucia_jogou') },
             { who: 'NARRADOR', t: 'O assessor recolhe uma por uma, agachado, de terno, enquanto a rua inteira assiste das janelas.', when: is.flag('d7_lucia_jogou') },
             { who: 'LUCIA', t: '(para a vizinha da frente) Boa noite, Dona Dirce.', when: is.flag('d7_lucia_jogou') },
+            { who: 'NARRADOR', t: 'A Dona Dirce, sem querer, varre uma nota de cinquenta para dentro do bueiro. Diz que foi sem querer. Ninguém acredita.', when: is.flag('d7_lucia_jogou') },
             { who: 'LUCIA', t: 'Não, {c:obrigada|obrigado}.', when: is.flag('d7_lucia_fechou') },
             { who: 'NARRADOR', t: '{c:Ela fecha a porta antes de ele terminar a frase|Ele fecha a porta antes de o assessor terminar a frase}. Depois fica um tempo {c:encostada|encostado} nela, de olhos fechados.', when: is.flag('d7_lucia_fechou') },
             { who: 'NARRADOR', t: '{Oconj} olha para o envelope. Depois para a conta de luz presa na geladeira com um ímã de pizzaria.', when: is.flag('envelope_lucia') },
