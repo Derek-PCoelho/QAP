@@ -6,10 +6,19 @@
 // Fios: 🌾 Henrique (sindicância — encobrir, denunciar ou se omitir) · ↺ Simone
 //       (demissão anunciada) · ↺ Cida ("tava na comadre") · 🌾 Rosângela (liga do
 //       abrigo, se foi salva) · ↺ Lúcia (proposta de emprego — Modo Inconsistência).
+// 1.1 (ROTEIRO, dia 12): o bilhete das 22:07 vira prova na sindicância (doc na mesa e
+// "anexar ao parecer"); o tremor do dia 1, o cheiro do dia 10 e o caderno do Sereno contam
+// como relato; "Em dezenove não teve sindicância" (pista R3); a Rosângela traz o caderninho
+// do Wagner (R1); o almoço é a Simone anunciando a demissão, com o Bené; ida com o
+// Reginaldo; o calendário (domingo) e a ficha do Yuri corrigidos.
 // =============================================================================
-import type { Ctx, EffCtx, SceneDef } from '../../engine/types';
+import type { Ctx, EffCtx, SceneDef, Choice, DLine } from '../../engine/types';
 import type { DeskDoc, GuideScript } from '../../engine/content-api';
 import { day, call, fx, is, NUM, ADDR } from '../dsl';
+import { envelopeEntregue, rua } from './arco';
+
+/** tem o papel das 22:07 (escrito na noite da Dona Zélia ou pelo desenho do Liam) */
+const bilhete = (c: Ctx) => c.flag('anotou_henrique_d10');
 
 /** o menino da dengue (D11) ficou na fila e morreu no noturno do Henrique */
 const yuri = (c: Ctx) => c.flag('noturno_obito_d11_dengue_grave');
@@ -29,11 +38,21 @@ export const DOCS_EXTRA: Record<string, DeskDoc> = {
     title: 'Sindicância: cópia da ficha',
     text: (c) =>
       yuri(c)
-        ? 'FICHA · sábado, 18:20 · Yuri Santana, 15 · Dengue, 5º dia. NOTA DA TARM (Simone): "Mãe, filho de 15 com dengue. Sangrou o nariz e a gengiva. Tá tonto." Recebida na fila diurna; passada ao noturno às 19:00 sem atendimento. Conduta do noturno (Dr. Henrique Lacerda), 19:40: "orientado hidratação oral e UBS". Retorno às 03:50: rebaixado. USB enviada 04:05. Óbito às 04:10. — PARECER DO REGULADOR DO DIA: "O paciente relatou sangramento na triagem inicial?" [ ] Sim  [ ] Não'
-        : 'FICHA · domingo, 02:10 · Rosa Teixeira, 68 · Dengue, 5º dia. NOTA DA TARM (Cleide, noturno): "Senhora, dengue 5º dia, gengiva sangrando, tonta." Conduta (Dr. Henrique Lacerda): "orientado hidratação oral e UBS". Retorno às 05:30: desmaio. USB enviada. Óbito na UPA às 06:40. — PARECER DO REGULADOR DO DIA: "O paciente relatou sangramento na triagem inicial?" [ ] Sim  [ ] Não',
+        ? 'FICHA · sábado, 18:20 · Yuri Santana, 15 · Dengue, 5º dia. NOTA DA TARM (Simone): "Mãe, filho de 15 com dengue. Sangrou o nariz e a gengiva. Tá tonto." Recebida na fila diurna; passada ao noturno às 19:00 sem atendimento. Conduta do noturno (Dr. Henrique Lacerda), 19:40: "orientado hidratação oral e UBS". Retorno às 03:50: rebaixado. USB enviada 03:58. Óbito às 04:24, a caminho do Regional. — PARECER DO REGULADOR DO DIA: "O paciente relatou sangramento na triagem inicial?" [ ] Sim  [ ] Não'
+        : 'FICHA · domingo, 02:10 · Otília Barreto, 68 · Dengue, 5º dia. NOTA DA TARM (Cleide, noturno): "Senhora, dengue 5º dia, gengiva sangrando, tonta." Conduta (Dr. Henrique Lacerda): "orientado hidratação oral e UBS". Retorno às 05:30: desmaio. USB enviada. Óbito na UPA às 06:40. — PARECER DO REGULADOR DO DIA: "O paciente relatou sangramento na triagem inicial?" [ ] Sim  [ ] Não',
     clues: [{ id: 'doc:ficha_sindicancia', text: 'Ficha da sindicância: a nota da triagem registra sangramento' }],
     // 1.1: ler a ficha (no quadro, ou na hora do interfone) é o que conta
     onRead: fx.set('viu_ficha_sindicancia'),
+  },
+  // ROTEIRO 3.2: o papel da noite da Dona Zélia, na mesa no dia da sindicância
+  bilhete_henrique: {
+    id: 'bilhete_henrique',
+    title: 'Papel de pão dobrado em quatro',
+    text: (c) =>
+      c.val('bilhete_origem') === 'desenho'
+        ? 'A sua letra, tremida, escrita depois de olhar o desenho do Liam: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias." Atrás, um pedacinho de giz de cera azul grudado.'
+        : 'A sua letra, tremida: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias."',
+    until: 12,
   },
 };
 
@@ -98,7 +117,7 @@ export const GUIDES_EXTRA: Record<string, GuideScript> = {
         options: [{ label: 'Abre a porta, entrega as cartelas e vai junto com ele.', kind: 'certo' }],
       },
     ],
-    success: 'A equipe encontrou o Lucas de lado, respirando, com a mãe segurando as cartelas e a mão dele.',
+    success: 'A equipe encontrou o Ícaro de lado, respirando, com a mãe segurando as cartelas e a mão dele.',
     fail: 'A orientação teve falhas, mas a mãe não saiu do lado dele.',
   },
 };
@@ -130,7 +149,7 @@ const PROPOSTA: SceneDef = {
     cracha: {
       onEnter: fx.add('lacos', 1, 'guardou o crachá'),
       lines: [
-        { who: 'NARRADOR', t: 'Você tira o crachá do pescoço. Só então percebe que ele estava ali, no jantar, desde as sete da manhã de ontem.' },
+        { who: 'NARRADOR', t: 'Você tira o crachá do pescoço. Só então percebe que ele estava ali, no jantar, desde as sete da manhã.' },
         { who: 'NARRADOR', t: 'Você guarda na gaveta dos talheres. {Oconj} acompanha com os olhos até a gaveta fechar.' },
         { who: 'LUCIA', t: 'Pronto. Agora sim.' },
       ],
@@ -148,7 +167,7 @@ const PROPOSTA: SceneDef = {
     },
     dormir: {
       lines: [
-        { who: 'LUCIA', t: 'Amanhã você trabalha.' },
+        { who: 'LUCIA', t: 'Terça você trabalha. Amanhã você dorme. Pelo menos isso.' },
         { who: 'NARRADOR', t: '{c:Ela|Ele} recolhe os pratos. Fica um tempo na área de serviço, olhando o varal no escuro.' },
       ],
       next: 'decide',
@@ -261,6 +280,69 @@ export const DAY = day({
   weekday: 'Domingo',
   weather: 'Domingo nublado, 26 °C.',
   goal: { maxUSA: 2, bonus: 30 },
+  // ROTEIRO 3.2: o papel da noite da Dona Zélia vai para a mesa no dia da sindicância
+  onStart: fx.when(is.flag('anotou_henrique_d10'), fx.doc('bilhete_henrique')),
+  ida: (c) =>
+    rua(
+      'd12_ida',
+      'calcada',
+      [
+        { who: 'NARRADOR', t: '06:35. Domingo. No ponto da Vila, um homem com a bochecha inchada e um pano de prato amarrado no rosto, de laço em cima da cabeça.' },
+        { who: 'NARRADOR', t: 'Você dá bom-dia pro Seu Aílton quando o 12 encosta. O homem do pano vira na hora.' },
+        { who: 'REGINALDO', t: '{Dr}? Do telefone? Sou eu, do dente! Do primeiro dia! ...Ainda não fui no dentista. Tô indo agora. Domingo. Tem dentista de domingo?' },
+      ],
+      [
+        { label: '"A UPA Norte tem dentista de plantão."', next: 'upa', effect: fx.set('reginaldo_upa_d12') },
+        { label: '"Melhoras, Reginaldo."', next: 'melhoras' },
+      ],
+      {
+        upa: { lines: [{ who: 'REGINALDO', t: 'Viu? Por isso que eu ligo pra vocês. (ele desce no ponto da Norte segurando o pano com as duas mãos)' }] },
+        melhoras: { lines: [{ who: 'REGINALDO', t: 'Melhoras pra mim e pro dente. Ele não merece, mas eu desejo.' }] },
+      },
+    ),
+  almoco: (c) => ({
+    id: 'd12_almoco',
+    bg: 'central',
+    cast: ['SIMONE', 'BENE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Domingo. A Simone não abre a marmita. O comunicado da Saúde+ está preso no quadro de avisos da copa desde as sete e meia.' },
+          { who: 'SIMONE', t: '{Dr}... deixa eu falar antes que eu desista. No fim do mês cortam uma TARM por turno. No dia, somos duas: eu e a Tati. Eu sou a mais velha e a mais cara.' },
+          { who: 'SIMONE', t: 'Fiz a conta, {dr}. Eu sei fazer conta. É o que eu faço o dia inteiro.' },
+          { who: 'NARRADOR', t: 'O Bené para na porta da copa, de macacão.' },
+          { who: 'BENE', t: 'Domingo é dia de gente sozinha. Fica de olho, Simone.' },
+          { who: 'SIMONE', t: 'Domingo que vem eu fico de olho de casa.' },
+          { who: 'NARRADOR', t: 'O Bené não acha graça. Entra. Senta.' },
+        ],
+        choices: [
+          { label: '"Você acerta três de quatro post-its, Simone. Isso não tá na planilha."', next: 'apoio', effect: fx.add('lealSimone', 1, 'apoiou a Simone') },
+          { label: '"Eles leem planilha."', next: 'realista' },
+          { label: '"E se a gente fizer barulho?"', when: (cc) => cc.flag('lia_2019') || cc.flag('castro_saulo'), next: 'barulho' },
+        ],
+      },
+      apoio: {
+        lines: [
+          { who: 'BENE', t: 'Três de quatro. Eu acerto uma de cada duas ruas. E tô aqui.' },
+          { who: 'SIMONE', t: '(ela ri, e abre a marmita) ...Obrigada. De verdade.' },
+        ],
+      },
+      realista: { lines: [{ who: 'SIMONE', t: 'É. E planilha não lê gente.' }] },
+      barulho: {
+        lines: [
+          { who: 'SIMONE', t: 'Barulho a gente fez em dezenove. Ninguém ouviu.' },
+          { who: 'NARRADOR', t: 'O Bené levanta e vai esquentar uma marmita que ele não trouxe. Fica um tempo de costas, olhando o micro-ondas vazio girar.' },
+        ],
+      },
+    },
+  }),
+  volta: (c) =>
+    rua('d12_volta', 'rua', [
+      { who: 'NARRADOR', t: '19:30. Domingo à noite, a rua está vazia. O 12 passa sem parar em três pontos seguidos: ninguém esperando.' },
+      is.present('lucia')(c)
+        ? { who: 'NARRADOR', t: 'Do portão, você vê a luz da sala acesa e, no varal da área, uma roupa social pingando. Ninguém lava roupa social no domingo.' }
+        : { who: 'NARRADOR', t: 'Do portão, você vê só a luz da cozinha. Alguém deixou o rádio ligado pra casa não ficar quieta.' },
+    ]),
   newspaper: (c) => ({
     headline: yuri(c)
       ? 'Adolescente morre de dengue depois de ligar para a emergência'
@@ -283,7 +365,7 @@ export const DAY = day({
       { title: 'Precisa conversar?', text: 'O CVV (Centro de Valorização da Vida) atende de graça, 24 horas, pelo telefone 188. Em emergência médica, ligue para o serviço de emergência da sua cidade.' },
     ],
     notice: 'Nova página no Manual: p.12 — Saúde mental (surto, crise com risco, acolhimento).',
-    ad: 'TÊXTIL RIO CLARO contrata costureiras e supervisora de costura. Carteira assinada. Entrevistas no Hotel Central, segunda e terça.',
+    ad: 'TÊXTIL RIO CLARO contrata costureiras e supervisora de costura. Carteira assinada. Entrevistas no Hotel Central, neste domingo e na segunda.',
     weather: 'Nublado · 26 °C',
   }),
   handover: (c): SceneDef => ({
@@ -294,7 +376,7 @@ export const DAY = day({
           start: {
             lines: [
               { who: 'NARRADOR', t: '07:00. O Henrique está sentado na sua cadeira. Não está mascando nada.' },
-              { who: 'HENRIQUE', t: 'O menino da dengue. O da sua fila, das seis e vinte. Yuri. Morreu às quatro e dez, na USB, a caminho do Regional.' },
+              { who: 'HENRIQUE', t: 'O menino da dengue. O da sua fila, das seis e vinte. Yuri. Morreu às quatro e vinte e quatro, na USB, a caminho do Regional.' },
               { who: 'HENRIQUE', t: 'Eu li "dengue" e orientei soro. Às sete e quarenta. Eu li "dengue", {nome}.' },
             ],
             choices: [
@@ -322,7 +404,7 @@ export const DAY = day({
           start: {
             lines: [
               { who: 'NARRADOR', t: '07:00. O Henrique passa o plantão de casaco, com uma ficha dobrada na mão.' },
-              { who: 'HENRIQUE', t: 'Perdi uma senhora essa noite. Dona Rosa, sessenta e oito, dengue. Ligou às duas, eu orientei soro. Às cinco e meia ela desmaiou. Morreu na UPA.' },
+              { who: 'HENRIQUE', t: 'Perdi uma senhora essa noite. Dona Otília, sessenta e oito, dengue. Ligou às duas, eu orientei soro. Às cinco e meia ela desmaiou. Morreu na UPA.' },
               { who: 'HENRIQUE', t: 'E soube do seu menino de ontem. O Yuri. Às vezes não dá, {nome}. Nem pra você, nem pra mim.', when: is.flag('d11_dengue_obito') },
               { who: 'HENRIQUE', t: 'A Saúde+ já ligou. Vão abrir sindicância.' },
             ],
@@ -341,7 +423,7 @@ export const DAY = day({
         },
   }),
   timeline: [
-    { at: '07:02', kind: 'radio', who: 'USA 01 · BENÉ', text: 'Central, USA 01 em QRV. Domingo, {bene}. Domingo é dia de gente sozinha. Fica de olho.' },
+    { at: '07:02', kind: 'radio', who: 'USA 01 · BENÉ', text: 'Central, USA 01 em QRV. Domingo, {bene}: missa, churrasco e escada de laje. Bené na escuta.' },
     {
       at: '11:40',
       kind: 'script',
@@ -351,18 +433,17 @@ export const DAY = day({
         if (cr?.guide?.done) c.modal('SIMONE', 'Eu ouvi um pedaço daquela, {dr}. Do menino. Você não apressou ele nenhuma vez.', 'simone');
       },
     },
+    // a demissão anunciada da Simone passou para o almoço (13:00); o comunicado fica no quadro desde cedo
+    { at: '07:30', kind: 'script', id: 'demissao_quadro', run: (c) => c.set('simone_demissao_anunciada') },
     {
-      at: '12:20',
+      at: '16:00',
       kind: 'simone',
       who: 'SIMONE',
-      id: 'demissao',
-      run: (c) => c.set('simone_demissao_anunciada'),
-      text: '{Dr}... deixa eu falar uma coisa antes que eu desista. Saiu o comunicado da Saúde+: no fim do mês cortam uma TARM por turno. No dia, somos duas. Eu sou a mais velha e a mais cara.',
-      options: [
-        { id: 'apoio', label: '"Se depender de mim, você fica. E eu escrevo o que precisar."', effect: (c) => c.add('lealSimone', 1, 'apoiou a Simone'), reply: 'Escrever o quê, {dr}? "Ela acerta setenta e cinco por cento dos post-its"? (ela ri) ...Obrigada. De verdade.' },
-        { id: 'realista', label: '"Você é a melhor TARM daqui. Eles vão perceber."', reply: 'Eles não ouvem as ligações, {dr}. Eles leem planilha.' },
-        { id: 'silencio', label: '(Não saber o que dizer.)', reply: 'Tudo bem. Eu só precisava falar em voz alta. Próxima ligação.' },
-      ],
+      when: (c) => c.flag('d5_benedita_radio') || c.flag('d5_benedita_levada') || c.flag('d5_benedita_termo'),
+      text: (c) =>
+        c.flag('d5_benedita_termo')
+          ? 'A Sônia, vizinha da Dona Benedita, ligou no fixo. A Benedita voltou pro hospital com o rim. Ela disse que a vizinha assinou um papel naquele dia que nem lia direito. (pausa) Só pra você saber, {dr}.'
+          : 'A Sônia, vizinha da Dona Benedita, ligou no fixo pra agradecer. A Benedita tá em casa, fazendo palavra cruzada de novo. Disse que hoje acertou todas.',
     },
     {
       at: '13:40',
@@ -593,15 +674,15 @@ export const DAY = day({
         { a: 'resp_devagar', b: 'manual:vermelho', insight: 'Respiração lenta e consciência rebaixada: risco imediato de vida (Manual p.1).' },
       ],
       guide: { id: 'd12_intox' },
-      patient: { name: 'Lucas Ferreira', age: 17, sex: 'M' },
+      patient: { name: 'Ícaro Ferreira', age: 17, sex: 'M' },
       truth: { dx: 'Intoxicação medicamentosa intencional com rebaixamento de consciência', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 50, bad: 120 } },
       radio: {
         ok: '{central}, {unit} no local. Rebaixado, mas protegendo a via aérea. Embalagens recolhidas. Seguimos Regional. A mãe vem com a gente, de mão dada com ele.',
         under: '{unit}: intoxicação grave, rebaixado, respiração lenta! Precisamos de USA!',
       },
       diary: {
-        alive: 'Lucas, 17. Várias cartelas, meia hora antes. A mãe guardou as embalagens e não largou a mão dele.',
-        dead: 'Lucas, 17. A mãe chegou da missa e achou as cartelas.',
+        alive: 'Ícaro, 17. Várias cartelas, meia hora antes. A mãe guardou as embalagens e não largou a mão dele.',
+        dead: 'Ícaro, 17. A mãe chegou da missa e achou as cartelas.',
       },
     }),
     // ----------------------------------------------------------------- 5 Rosângela liga do abrigo (se foi salva no D8)
@@ -619,11 +700,17 @@ export const DAY = day({
       noteWrong: 'Mulher do abrigo. Acho que é trote.',
       addr: { rua: 'Rua São João', n: 1880, bairro: 'Vila Nova', ref: 'Casa-abrigo. Endereço sigiloso: não divulgar.' },
       amb: ['radio_am', 'cozinha'],
-      open: [
+      open: (c) => [
         'Oi... desculpa ligar aqui, eu sei que é pra emergência. {{Não é emergência.|nao_emergencia}}',
-        'Meu nome é Rosângela. {{Eu pedi uma pizza de calabresa pra vocês, semana passada.|calabresa}}',
+        'Meu nome é Rosângela. {{Eu pedi uma pizza de calabresa pra vocês, na segunda.|calabresa}}',
         '[{{alguém mexe uma panela ao fundo; um rádio toca baixinho|abrigo}}]',
         'Eu só queria agradecer quem atendeu. Eu não sei quem foi. A moça do abrigo deixou eu ligar.',
+        ...(c.flag('rosangela_falou') ? ['Você falou comigo no rádio, naquela hora. Ninguém fala com a gente. Só com a polícia.'] : []),
+        // R1: o homem do envelope é o homem da pizza
+        'E tem outra coisa. Ele carregava envelope pro vereador. Tinha um caderninho de capa preta, com nome e valor. {{Eu tirei foto antes da polícia chegar|caderninho}}.',
+        ...(c.flag('envelope_aceito') && !envelopeEntregue(c)
+          ? ['[silêncio]', '...{Dr}. O seu nome tá no caderninho. {{Eu não vou mostrar essa página|protegeu}}. Eu rasguei a foto em duas. Você não desligou na minha cara.']
+          : []),
       ],
       q: {
         oque: 'Nada, nada. Eu tô bem. É isso que eu queria dizer: eu tô bem.',
@@ -650,11 +737,56 @@ export const DAY = day({
         },
       ],
       links: [{ a: 'calabresa', b: 'manual:azul', kind: 'confirma', insight: 'A "pizza de calabresa" da semana passada. Hoje não é emergência: é a Rosângela, viva, ligando para agradecer.' }],
-      onAnswer: fx.all(fx.set('rosangela_ligou'), fx.add('humanidade', 1, 'a Rosângela ligou para agradecer')),
+      onAnswer: (e) => {
+        e.set('rosangela_ligou');
+        e.add('humanidade', 1, 'a Rosângela ligou para agradecer');
+        e.set('rosangela_caderninho');
+        if (e.flag('envelope_aceito') && !envelopeEntregue(e)) e.set('rosangela_protegeu');
+      },
       patient: { name: 'Rosângela', sex: 'F' },
       truth: { dx: 'Ligação de agradecimento (sem emergência)', sev: 'azul', ok: ['ORI'], ref: ['CASA'] },
       radio: { excess: 'Central, {unit}. Endereço de casa-abrigo, {dr}. Ninguém passando mal. A coordenadora pediu, por favor, pra não mandar viatura com sirene aqui.' },
-      diary: { ori: 'Rosângela, a da pizza de calabresa. Ligou do abrigo só para dizer que está viva.' },
+      diary: { ori: (c) => (c.flag('rosangela_protegeu') ? 'Rosângela, a da pizza de calabresa. Ligou do abrigo para dizer que está viva. Tem a foto de um caderninho do marido. Rasgou a página com o meu nome.' : 'Rosângela, a da pizza de calabresa. Ligou do abrigo para dizer que está viva. E que fotografou o caderninho dos envelopes do marido.') },
+    }),
+    // ----------------------------------------------------------------- folgado (ROTEIRO trotes-folgados: sempre 1 no D12)
+    // reserva: com o banco de folgados (pool 'folgado'), o motor sorteia uma variante no lugar desta
+    call({
+      id: 'd12_folgado',
+      ref: 'D12 folgado',
+      at: '12:25',
+      pool: 'folgado',
+      genOnly: true,
+      num: '(17) 3326-1225',
+      caller: 'Seu Gumercindo',
+      callerName: 'Seu Gumercindo',
+      type: 'comum',
+      voice: 'idoso',
+      note: 'Senhor quer ambulância pra levar a sogra na missa.',
+      noteWrong: 'Idosa precisando de remoção. Parece urgente.',
+      cat: 'clinico',
+      addr: { rua: 'Rua Jacarandá', n: 1225, bairro: 'Jardim Primavera', ref: 'Casa do portão de ferro com um anão de jardim.' },
+      amb: ['tv', 'radio_am'],
+      open: [
+        'Boa tarde, é da ambulância? Então: a missa das cinco é na Matriz e a minha sogra não anda até lá. O carro tá na oficina.',
+        'Vocês passam aqui na frente toda hora, né? É só dar uma paradinha. Ela vai quietinha na maca, pode até ir sem sirene.',
+      ],
+      q: {
+        oque: 'Nada, graças a Deus. É a missa. Ela não perde uma missa há quarenta anos.',
+        consciencia: 'Acordadíssima. Rezando o terço desde o almoço.',
+        respira: 'Respira, reza e reclama de mim. Tudo junto.',
+        pulso: 'Tem, ué. Ela mesma conta: diz que tá setenta e pouco, que nem a idade dela. Mentira, ela tem oitenta e oito.',
+        pele: 'Corada. Passou até um batonzinho pra missa.',
+        historico: 'Pressão. Toma o remédio. Anda devagarinho, de bengala, mas anda.',
+        paciente: 'DONA EDITE: Ô, moço, eu vou de ambulância ou não vou? O padre começa pontual!',
+        gravada: 'Gravando? Ótimo. Grava aí que eu pago imposto desde mil novecentos e setenta e dois.',
+        nao_perfil: 'Perfil? Ela é uma santa! Qual é o perfil de vocês, então? Só quem tá morrendo?',
+        meios_proprios: ['Meios próprios? Meu meio próprio tá na oficina, {m:moço|moça}!', 'Seu... seu desalmado! Seu #%!#@$ de jaleco! [piii] ...Desculpa. A sogra tá ouvindo.'],
+        encerrar: 'Tá. Tá bom. Vou chamar o genro da vizinha. Ele dirige feito um condenado, mas dirige.',
+      },
+      patient: { name: 'Edite (sogra do Seu Gumercindo)', age: 88, sex: 'F' },
+      truth: { dx: 'Pedido de transporte para a missa (sem queixa de saúde)', sev: 'azul', ok: ['ORI'], ref: ['CASA', 'UBS', 'UPA'] },
+      radio: { excess: 'Central, {unit}. Uma senhora de chapéu e terço na mão nos esperando no portão, {dr}. Queria carona pra missa. Não levamos. Ela nos abençoou mesmo assim.' },
+      diary: { ori: 'Seu Gumercindo queria a ambulância pra levar a sogra na missa das cinco. O carro estava na oficina. A sogra não perde missa há quarenta anos.' },
     }),
     // ----------------------------------------------------------------- 6 idosa ansiosa: o marido não voltou da missa
     call({
@@ -900,35 +1032,57 @@ export const DAY = day({
   // 19:00 — a sindicância do Henrique
   endScene: (c) => {
     const y = yuri(c);
+    const papel = bilhete(c);
+    const mostrou = c.flag('mostrou_bilhete_henrique');
+    const naMae = c.flag('henrique_atendeu_zelia');
+    // o que o regulador viu com os próprios olhos (relato sem prova documental)
+    const motivos: string[] = [];
+    if (c.flag('henrique_maos_d1')) motivos.push('o tremor desde o dia 1');
+    if (c.flag('henrique_cheiro_d10')) motivos.push('o cheiro do dia 10');
+    if (c.flag('noite_leu_caderno')) motivos.push('o caderno do senhor de capa');
+    if (naMae && !papel) motivos.push('a noite da sua mãe');
+    const relato = motivos.length ? ` (Escrever também ${motivos.length > 1 ? motivos.slice(0, -1).join(', ') + ' e ' + motivos[motivos.length - 1] : motivos[0]}.)` : '';
+    const start: DLine[] = [
+      { who: 'NARRADOR', t: '19:04. Troca de turno. A Simone desliga o computador e não levanta da cadeira.' },
+      { who: 'NARRADOR', t: 'O Henrique está encostado na porta. Barba feita, camisa passada. Menta. Ele não tirou o casaco.' },
+      { who: 'NARRADOR', t: 'Ele assina o ponto. A caneta treme do jeito que você viu no primeiro dia.', when: is.flag('henrique_maos_d1') },
+      { who: 'HENRIQUE', t: 'Você disse que a fila era sua. Ninguém nunca disse isso pra mim.', when: is.flag('assumiu_fila_d11') },
+      y
+        ? { who: 'HENRIQUE', t: 'A sindicância é do Yuri. Quinze anos. Ficou na sua fila às seis e vinte e passou pra mim às sete. Eu orientei soro e UBS.' }
+        : { who: 'HENRIQUE', t: 'A sindicância é da Dona Otília. Sessenta e oito. Eu orientei soro e UBS às duas da manhã.' },
+      { who: 'HENRIQUE', t: 'A auditoria vai ouvir a gravação, mas quem fecha o parecer técnico é o regulador do dia. O Peixoto mandou pra você.' },
+      { who: 'HENRIQUE', t: 'Em dezenove não teve sindicância, sabia? Ninguém abriu ficha de nada. Era pior.' },
+      mostrou
+        ? { who: 'HENRIQUE', t: 'Eu não vou te pedir nada hoje, {nome}. Você me mostrou o papel ontem. Eu sei o que tá escrito nele.' }
+        : { who: 'HENRIQUE', t: 'É um campo só, {nome}. "O paciente relatou sangramento na triagem inicial?" Você marca "não", e eu volto pro noturno amanhã. Ninguém mais perde nada.' },
+      { who: 'HENRIQUE', t: 'E não me olha desse jeito. Você também já ajeitou ficha, {nome}. Eu vi o dia 9.', when: (cc) => cc.flag('mentiu_9B') && !mostrou },
+      { who: 'HENRIQUE', t: 'Você foi {m:o único|a única} que perguntou se eu tava bem. Lembra? Pois é. Não tô.', when: is.flag('henrique_perguntado') },
+      { who: 'HENRIQUE', t: 'Você me jogou "Palmeiras" na cara ontem. Hoje você vai me jogar no papel?', when: is.flag('confrontou_henrique_d11') },
+      { who: 'HENRIQUE', t: 'E a sua mãe... eu sei que fui eu que atendi. Eu não lembro de nada daquela noite, {nome}. Nada.', when: () => naMae },
+      { who: 'EU', t: 'Tá escrito na nota, Henrique: "sangrou o nariz e a gengiva". É a letra da Simone.', when: (cc) => cc.flag('viu_ficha_sindicancia') && y },
+      { who: 'HENRIQUE', t: 'Nota de TARM se corrige. A Simone entende.', when: (cc) => cc.flag('viu_ficha_sindicancia') && y },
+      { who: 'SIMONE', t: '(sem levantar os olhos) A Simone não entende, não.', when: (cc) => cc.flag('viu_ficha_sindicancia') && y },
+      { who: 'EU', t: 'Tá escrito na nota da triagem, Henrique: "gengiva sangrando, tonta".', when: (cc) => cc.flag('viu_ficha_sindicancia') && !y },
+      { who: 'HENRIQUE', t: 'A Cleide escreve o que ouve. Eu regulo o que entendo.', when: (cc) => cc.flag('viu_ficha_sindicancia') && !y },
+      { who: 'SIMONE', t: '(baixinho, pra você) Eu vi o papel no seu bolso ontem, {dr}. Eu tô do seu lado. Seja qual for.', when: is.flag('simone_sabe_zelia') },
+    ];
+    const choices: Choice[] = [
+      { label: 'Marcar "não" no sistema. Encobrir.', next: 'encobre' },
+      ...(papel ? [{ label: 'Anexar o bilhete das 22:07 ao parecer.', next: 'denuncia_prova' }] : []),
+      { label: `"Relatou, Henrique. Eu vou escrever a verdade no parecer."${relato}`, next: 'denuncia' },
+      { label: '"Eu não vou assinar nada. Nem pra um lado, nem pro outro."', next: 'omite' },
+    ];
+    const denunciaFim: DLine[] = [
+      { who: 'SIMONE', t: 'Ele tem dois filhos, {dr}.' },
+      { who: 'SIMONE', t: '(pausa) E eu tenho um menino que anda de moto de madrugada. Se o Wesley ligar aqui às três da manhã, eu quero alguém sóbrio do outro lado.' },
+      { who: 'NARRADOR', t: 'Ela diz as duas coisas com a mesma voz. Você não sabe qual das duas ela quer que você escute.' },
+    ];
     return {
       id: 'd12_sindicancia',
       bg: 'central',
       cast: ['HENRIQUE', 'SIMONE'],
       nodes: {
-        start: {
-          lines: [
-            { who: 'NARRADOR', t: '19:04. Troca de turno. A Simone desliga o computador e não levanta da cadeira.' },
-            { who: 'NARRADOR', t: 'O Henrique está encostado na porta. Barba feita, camisa passada. Menta. Ele não tirou o casaco.' },
-            y
-              ? { who: 'HENRIQUE', t: 'A sindicância é do Yuri. Quinze anos. Ficou na sua fila às seis e vinte e passou pra mim às sete. Eu orientei soro e UBS.' }
-              : { who: 'HENRIQUE', t: 'A sindicância é da Dona Rosa. Sessenta e oito. Eu orientei soro e UBS às duas da manhã.' },
-            { who: 'HENRIQUE', t: 'A auditoria vai ouvir a gravação, mas quem fecha o parecer técnico é o regulador do dia. O Peixoto mandou pra você.' },
-            { who: 'HENRIQUE', t: 'É um campo só, {nome}. "O paciente relatou sangramento na triagem inicial?" Você marca "não", e eu volto pro noturno amanhã. Ninguém mais perde nada.' },
-            { who: 'HENRIQUE', t: 'E não me olha desse jeito. Você também já ajeitou ficha, {nome}. Eu vi o dia 9.', when: is.flag('mentiu_9B') },
-            { who: 'HENRIQUE', t: 'Você foi {m:o único|a única} que perguntou se eu tava bem. Lembra? Pois é. Não tô.', when: is.flag('henrique_perguntado') },
-            { who: 'HENRIQUE', t: 'E a sua mãe... eu sei que fui eu que atendi. Eu não lembro de nada daquela noite, {nome}. Nada.', when: is.flag('henrique_atendeu_zelia') },
-            { who: 'EU', t: 'Tá escrito na nota, Henrique: "sangrou o nariz e a gengiva". É a letra da Simone.', when: (cc) => cc.flag('viu_ficha_sindicancia') && y },
-            { who: 'HENRIQUE', t: 'Nota de TARM se corrige. A Simone entende.', when: (cc) => cc.flag('viu_ficha_sindicancia') && y },
-            { who: 'SIMONE', t: '(sem levantar os olhos) A Simone não entende, não.', when: (cc) => cc.flag('viu_ficha_sindicancia') && y },
-            { who: 'EU', t: 'Tá escrito na nota da triagem, Henrique: "gengiva sangrando, tonta".', when: (cc) => cc.flag('viu_ficha_sindicancia') && !y },
-            { who: 'HENRIQUE', t: 'A Cleide escreve o que ouve. Eu regulo o que entendo.', when: (cc) => cc.flag('viu_ficha_sindicancia') && !y },
-          ],
-          choices: [
-            { label: 'Marcar "não" no sistema. Encobrir.', next: 'encobre' },
-            { label: '"Relatou, Henrique. Eu vou escrever a verdade no parecer."', next: 'denuncia' },
-            { label: '"Eu não vou assinar nada. Nem pra um lado, nem pro outro."', next: 'omite' },
-          ],
-        },
+        start: { lines: start, choices },
         encobre: {
           onEnter: (e) => {
             e.add('integridade', -3, 'encobriu o Henrique');
@@ -942,32 +1096,83 @@ export const DAY = day({
             y
               ? { who: 'NARRADOR', t: 'A Simone pega a bolsa e sai sem dar boa noite. A nota dela continua lá, na ficha original, com a letra redonda dela. Ninguém vai ler.' }
               : { who: 'NARRADOR', t: 'A Simone pega a bolsa e sai sem dar boa noite.' },
-            { who: 'NARRADOR', t: 'O Henrique assume o noturno às 19:10. Antes de sentar, joga uma bala de menta na boca. Depois, outra.' },
           ],
+          next: papel ? 'papel' : 'encobre_fim',
+        },
+        // ROTEIRO 3.2: encobriu tendo o bilhete no bolso
+        papel: {
+          lines: [{ who: 'HENRIQUE', t: '(ele aponta o seu bolso com o queixo) E esse papel aí? Você vai jogar fora, né?' }],
+          choices: [
+            { label: 'Rasgar o papel na frente dele.', next: 'rasgou', effect: fx.all(fx.set('rasgou_bilhete'), fx.add('lealHenrique', 2, 'rasgou o bilhete'), fx.add('integridade', -1, 'rasgou o bilhete')) },
+            { label: 'Guardar o papel no bolso.', next: 'guardou', effect: fx.set('guardou_bilhete') },
+          ],
+        },
+        rasgou: {
+          lines: [{ who: 'NARRADOR', t: 'Você rasga em quatro. Depois em oito. Ele recolhe os pedacinhos de cima da mesa e joga no lixo do corredor, devagar, um por um.' }],
+          next: 'encobre_fim',
+        },
+        guardou: {
+          lines: [{ who: 'HENRIQUE', t: '(ele olha o bolso, olha você) Guarda, então. Pra quê, eu não sei. Nem você.' }],
+          next: 'encobre_fim',
+        },
+        encobre_fim: {
+          lines: [{ who: 'NARRADOR', t: 'O Henrique assume o noturno às 19:10. Antes de sentar, joga uma bala de menta na boca. Depois, outra.' }],
         },
         denuncia: {
           onEnter: fx.all(fx.add('integridade', 2, 'parecer verdadeiro'), fx.set('denunciou_henrique'), fx.set('henrique_afastado'), fx.unset('henrique_piorando'), fx.ach('denunciou')),
           lines: [
             { who: 'EU', t: 'Relatou, Henrique. Tá na nota e vai estar na gravação. E você não tava em condição de regular naquela noite.' },
-            { who: 'EU', t: 'Nem na noite da minha mãe.', when: is.flag('henrique_atendeu_zelia') },
+            { who: 'EU', t: 'Nem na noite da minha mãe.', when: () => naMae },
+            { who: 'NARRADOR', t: 'No parecer, você escreve também o que ninguém pediu: as mãos que tremem no crachá desde o seu primeiro dia.', when: is.flag('henrique_maos_d1') },
+            { who: 'NARRADOR', t: 'E o cheiro que chegou antes dele, de manhã, no dia 10. Cheiro de agora, não de ontem.', when: is.flag('henrique_cheiro_d10') },
+            { who: 'NARRADOR', t: 'E o caderno de um senhor de capa que corrige, de madrugada, as ruas que o noturno erra. "Terceira vez."', when: is.flag('noite_leu_caderno') },
             { who: 'HENRIQUE', t: '(um silêncio comprido) Você sabe o que acontece comigo agora.' },
             { who: 'EU', t: 'Sei. Você vai ser afastado. E vai ter tratamento. É o que eu ia querer que fizessem comigo.' },
             { who: 'NARRADOR', t: 'O Peixoto desce às 19:40. Lê o parecer duas vezes, tira os óculos, lê de novo. Recolhe o crachá do Henrique "até segunda ordem" e o encaminha para a medicina do trabalho.' },
-            { who: 'SIMONE', t: 'Ele tem dois filhos, {dr}.' },
-            { who: 'SIMONE', t: '(pausa) E eu tenho um menino que anda de moto de madrugada. Se o Wesley ligar aqui às três da manhã, eu quero alguém sóbrio do outro lado.' },
-            { who: 'NARRADOR', t: 'Ela diz as duas coisas com a mesma voz. Você não sabe qual das duas ela quer que você escute.' },
+            { who: 'PEIXOTO', t: 'A noite da sua mãe, sem registro, é a sua palavra contra a dele, {dr}. E a dele tem onze anos de casa. (ele assina embaixo mesmo assim) O resto basta.', when: () => naMae && !papel },
+            ...denunciaFim,
             { who: 'HENRIQUE', t: '(na porta, sem se virar) Eu vou te odiar por um tempo, {nome}.' },
             { who: 'NARRADOR', t: 'O noturno é coberto por uma substituta de Rio Claro de Minas, a Dra. Paula. Ela chega às 20:15, pedindo desculpa pelo trânsito.' },
           ],
         },
+        // ROTEIRO 3.2: denúncia com prova (o papel das 22:07 grampeado no parecer)
+        denuncia_prova: {
+          onEnter: fx.all(
+            fx.add('integridade', 3, 'parecer com prova'),
+            fx.set('denunciou_henrique'),
+            fx.set('denuncia_com_prova'),
+            fx.set('henrique_afastado'),
+            fx.unset('henrique_piorando'),
+            fx.ach('denunciou'),
+          ),
+          lines: [
+            { who: 'NARRADOR', t: 'Você tira do bolso o papel de pão dobrado em quatro, desdobra em cima da ficha e grampeia no parecer.' },
+            { who: 'HENRIQUE', t: '(ele lê; o dedo para em cima de uma palavra) Palmeiras.' },
+            { who: 'HENRIQUE', t: '...Eu passei Palmeiras pra sua mãe.' },
+            { who: 'NARRADOR', t: 'Uma pausa comprida. A bala de menta para de estalar.' },
+            { who: 'HENRIQUE', t: 'Anexa. Eu assino embaixo.' },
+            { who: 'NARRADOR', t: 'Ele assina. A letra dele treme menos que a sua.' },
+            { who: 'NARRADOR', t: 'O Peixoto desce às 19:40. Lê o parecer, lê o papel de pão, tira os óculos.' },
+            { who: 'PEIXOTO', t: 'Com hora e endereço. Isso aqui não dá pra arquivar, {dr}. Nem se eu quisesse.' },
+            { who: 'NARRADOR', t: 'Ele recolhe o crachá do Henrique "até segunda ordem" e o encaminha para a medicina do trabalho.' },
+            ...denunciaFim,
+            { who: 'HENRIQUE', t: '(na porta, sem se virar) Eu vou te odiar por um tempo, {nome}. Depois eu vou ler esse papel de novo.' },
+            { who: 'NARRADOR', t: 'O noturno é coberto por uma substituta de Rio Claro de Minas, a Dra. Paula. Ela chega às 20:15, pedindo desculpa pelo trânsito.' },
+          ],
+        },
         omite: {
-          onEnter: fx.set('omitiu_henrique'),
+          onEnter: (e) => {
+            e.set('omitiu_henrique');
+            if (bilhete(e)) e.set('bilhete_sem_uso');
+          },
           lines: [
             { who: 'HENRIQUE', t: 'Isso é um sim ou um não?' },
             { who: 'EU', t: 'É um "não é comigo".' },
             { who: 'NARRADOR', t: 'O parecer fica em branco. Na segunda, a sindicância é arquivada por "insuficiência de manifestação técnica". Ninguém assina nada. Ninguém perde nada.' },
             { who: 'NARRADOR', t: 'O Henrique assume o noturno às 19:15. Quando ele aperta a sua mão, a dele treme.' },
-            { who: 'SIMONE', t: '(vestindo o casaco) Quem cala consente, {dr}. Minha avó dizia.' },
+            papel
+              ? { who: 'SIMONE', t: '(vestindo o casaco) Você tinha um papel, {dr}. Eu vi. Quem cala consente. E quem guarda papel consente com recibo.' }
+              : { who: 'SIMONE', t: '(vestindo o casaco) Quem cala consente, {dr}. Minha avó dizia.' },
           ],
         },
       },

@@ -279,6 +279,7 @@ function dengueCasa(c: Ctx): SceneDef {
 // -----------------------------------------------------------------------------
 function almocoD11(c: Ctx): SceneDef {
   const negociou = c.flag('d9_negociou');
+  const depois = c.flag('anotou_henrique_d10') ? 'bilhete' : undefined;
   const obrigado: DLine[] = [
     { who: 'SAULO', t: '...Obrigado. Eu não esperava.' },
     { who: 'SAULO', t: 'Você negociou comigo na quinta. Sem gritar. Por isso eu liguei pra você.', when: () => negociou },
@@ -315,14 +316,28 @@ function almocoD11(c: Ctx): SceneDef {
           { label: '"Não posso."', next: 'nega', effect: fx.set('saulo_negado') },
         ],
       },
-      empresta: { lines: [...obrigado, { who: 'SAULO', t: 'Você sabe demais pra quem regula de telefone, Regulação.', when: (cc) => cc.flag('saulo_quarto_perguntado') }] },
+      empresta: { lines: [...obrigado, { who: 'SAULO', t: 'Você sabe demais pra quem regula de telefone, Regulação.', when: (cc) => cc.flag('saulo_quarto_perguntado') }], next: depois },
       nega: {
         lines: [
           { who: 'SAULO', t: 'Entendi. É o que eu falo pra vocês todo dia.' },
           { who: 'SAULO', t: '(pausa) Agora eu entendi como soa.' },
           { who: 'NARRADOR', t: 'Crec. A linha cai. A Simone continua olhando a foto do Wesley.' },
         ],
+        next: depois,
       },
+      // ROTEIRO 3.2 (almoço do D11): a Simone vê o bilhete das 22:07 no bolso do jaleco
+      bilhete: {
+        lines: [
+          { who: 'NARRADOR', t: 'Quando você tira o jaleco pra sentar, um papel dobrado escorrega do bolso. A Simone pega antes de você. Lê só a primeira linha.' },
+          { who: 'SIMONE', t: 'É a letra que eu tô pensando? ...Não me fala. Se me falar, eu tenho que fazer alguma coisa.' },
+        ],
+        choices: [
+          { label: '"É o Henrique, Simone. A noite da minha mãe."', next: 'contou', effect: fx.all(fx.add('lealSimone', 1, 'contou da noite da mãe'), fx.set('simone_sabe_zelia')) },
+          { label: '(Pegar o papel de volta sem dizer nada.)', next: 'calou' },
+        ],
+      },
+      contou: { lines: [{ who: 'SIMONE', t: '(ela devolve o papel dobrado nas mesmas dobras) Palmeiras. ...Tá. Agora eu sei. Agora a gente sabe.' }] },
+      calou: { lines: [{ who: 'SIMONE', t: 'Melhor. Por enquanto.' }] },
     },
   };
 }
