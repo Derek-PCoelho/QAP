@@ -485,6 +485,9 @@ interface LRect {
 }
 const hit = (a: LRect, b: LRect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
+/** camada de nomes (bairros e marcos) de cada mapa-base */
+const LABELS = new WeakMap<Pix, Pix>();
+
 function buildBase(T: number, labels: boolean, flood: boolean): Pix {
   const { w, h } = mapPixelSize(T);
   const p = new Pix(w, h);
@@ -562,7 +565,10 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
     if (T >= 8) p.blit(ic, cx - 4, cy - 4);
     else p.rect(cx - 1, cy - 1, 3, 3, LM_PAL[LM_ICON[kind]?.[3]?.[3] ?? 'w'] ?? '#e6efd9');
   }
-  // nomes (com desvio de colisões)
+  // nomes (com desvio de colisões) numa camada à parte, desenhada por cima das
+  // rotas (a linha da rota não apaga mais as letras de "MATERNIDADE", "VILA NOVA")
+  const lab = new Pix(w, h);
+  LABELS.set(p, lab);
   if (labels && T >= 6) {
     const placed: LRect[] = [];
     const icons: LRect[] = placeLandmarks().map((pl) => ({ x: pl.at[0] * T + Math.floor(T / 2) - 5, y: pl.at[1] * T + Math.floor(T / 2) - 5, w: 10, h: 10 }));
@@ -596,7 +602,7 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
         pick = [Math.max(2, Math.min(w - tw - 2, x)), Math.max(5, y)];
       }
       placed.push({ x: pick[0] - 2, y: pick[1] - 4, w: tw + 4, h: 10 });
-      drawText(p, txt, pick[0], pick[1], warm ? HOME.lampLight : '#c4d4c0', { outline: warm ? HOME.bg1 : MAP_COLORS.labelOutline });
+      drawText(lab, txt, pick[0], pick[1], warm ? HOME.lampLight : '#c4d4c0', { outline: warm ? HOME.bg1 : MAP_COLORS.labelOutline });
     }
     // 2) bairros
     for (const b of BAIRROS) {
@@ -616,7 +622,7 @@ function buildBase(T: number, labels: boolean, flood: boolean): Pix {
         }
       if (!pick) pick = [Math.round(cxp - tw / 2), Math.round(labelBands(b)[0] * T - 2)];
       placed.push({ x: pick[0] - 2, y: pick[1] - 4, w: tw + 4, h: 10 });
-      drawText(p, name, pick[0], pick[1], MAP_COLORS.label, { outline: MAP_COLORS.labelOutline });
+      drawText(lab, name, pick[0], pick[1], MAP_COLORS.label, { outline: MAP_COLORS.labelOutline });
     }
   }
   return p;
@@ -879,6 +885,7 @@ function drawUnits(p: Pix, units: MapUnit[], T: number, t: number): void {
       placed.push({ u, px, py: cy, up: arr.length > 1 && i % 2 === 1 });
     });
   }
+  const labels: { u: MapUnit; px: number; ax: number; ay: number; up: boolean }[] = [];
   // não selecionadas primeiro
   placed.sort((a, b) => Number(!!a.u.selected) - Number(!!b.u.selected) || a.py - b.py);
   for (const { u, px, py, up } of placed) {
@@ -918,14 +925,36 @@ function drawUnits(p: Pix, units: MapUnit[], T: number, t: number): void {
         p.px(x, y + 2 * sy, col);
       }
     }
-    // rótulo
+    labels.push({ u, px, ax, ay, up });
+  }
+  // rótulos por último, sem se sobrepor (nem uns aos outros, nem às viaturas)
+  const bodies: LRect[] = placed.map(({ px, py }) => ({ x: px - 7, y: py - 6, w: 16, h: 11 }));
+  const taken: LRect[] = [];
+  // a selecionada escolhe primeiro
+  labels.sort((a, b) => Number(!!b.u.selected) - Number(!!a.u.selected));
+  for (const { u, px, ax, ay, up } of labels) {
     const lab = u.label;
     const wpx = textWidth(lab);
-    let lx = px - Math.floor(wpx / 2);
-    lx = Math.max(1, Math.min(p.w - wpx - 1, lx));
-    let ly = up ? ay - 9 : ay + 11;
-    if (ly + 6 > p.h) ly = ay - 9;
-    if (ly < 1) ly = ay + 11;
+    const cl = (x: number) => Math.max(1, Math.min(p.w - wpx - 1, x));
+    const below = ay + 11;
+    const above = ay - 9;
+    const cands: [number, number][] = [
+      [cl(px - Math.floor(wpx / 2)), up ? above : below],
+      [cl(px - Math.floor(wpx / 2)), up ? below : above],
+      [cl(px - Math.floor(wpx / 2)), below + 7],
+      [cl(px - Math.floor(wpx / 2)), above - 7],
+      [cl(ax + 13), ay + 2],
+      [cl(ax - wpx - 3), ay + 2],
+      [cl(px - Math.floor(wpx / 2)), below + 14],
+    ];
+    const fits = ([x, y]: [number, number]) => {
+      if (y < 1 || y + 6 > p.h) return false;
+      const r = { x: x - 1, y: y - 1, w: wpx + 2, h: 7 };
+      return !taken.some((q) => hit(q, r)) && !bodies.some((q) => hit(q, r));
+    };
+    const pick = cands.find(fits) ?? cands.find(([, y]) => y >= 1 && y + 6 <= p.h) ?? cands[0];
+    const [lx, ly] = pick;
+    taken.push({ x: lx - 1, y: ly - 1, w: wpx + 2, h: 7 });
     p.recta(lx - 1, ly - 1, wpx + 2, 7, '#0b100e', u.selected ? 0.9 : 0.7);
     drawText(p, lab, lx, ly, u.selected ? CENTRAL.amber : u.type === 'USA' ? '#f2b2aa' : '#f5c49a');
   }
@@ -1002,6 +1031,8 @@ function renderMapInto(o: CityMapOpts): Pix {
     drawHighlight(p, o.highlightStreet, T, o.t, shown);
   }
   for (const r of o.routes ?? []) drawRoute(p, r, T, o.t);
+  const lab = LABELS.get(b);
+  if (lab) p.blit(lab, 0, 0);
   for (const m of o.markers ?? []) drawMarker(p, m, T, o.t);
   if (o.units?.length) drawUnits(p, o.units, T, o.t);
   if (o.hoverTile) drawHover(p, o.hoverTile, T);
