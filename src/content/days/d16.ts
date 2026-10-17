@@ -8,11 +8,19 @@
 // na escola (Modo Inconsistência doméstico), se a Márcia morreu e ele recebeu a USA.
 // Fim do turno: o Peixoto na porta da central.
 // Fios: 🌾 Jairo, Osvaldo · ↺ Cida (sinal 1 → diário d16_cida → D19) · 🌾 pé da Zélia · 🌾 Márcia/Liam.
+// 1.1 (ROTEIRO, dia 16): almoço com o Peixoto ligando do carro ("meu pai não atende") no lugar do
+// link; R2 vira às 14:40 (o Saulo liga: a folha do quarto andar; `saulo_fonte`/`saulo_sozinho`;
+// "Por que agora?" conta 2019 em parte); o Biel chamado pelo nome (`d10_biel_nome`); a Cida faz o
+// FAST sozinha (`d6_cida_fast`) e a Simone cola o post-it branco (`cida_sinal1`); o Liam apanhando
+// também chega pela Dona Iolanda (aula) ou pelo cônjuge, sem precisar do "reparar"; trotes sem
+// risada; folgado de reserva (sempre 1 no D16); ida (o fiado do Toninho; o Biel não está no ponto) e
+// volta (a Dona Iolanda no Aurora).
 // =============================================================================
-import type { Ctx, SceneDef, DLine, SceneNode } from '../../engine/types';
+import type { Ctx, SceneDef, DLine, SceneNode, ShiftScriptCtx } from '../../engine/types';
 import type { GuideScript } from '../../engine/content-api';
 import { hm } from '../../engine/util';
 import { day, call, fx, is, NUM, ADDR } from '../dsl';
+import { addNum, aulas, edsonVivo, rua, zeliaViva } from './arco';
 
 const presente = (c: Ctx, m: 'lucia' | 'davi') => {
   const f = c.s.family[m];
@@ -134,7 +142,38 @@ export const GUIDES_EXTRA: Record<string, GuideScript> = {
 // -----------------------------------------------------------------------------
 // Casa: antes da folga — o pé da Dona Zélia
 // -----------------------------------------------------------------------------
+/** o Liam apanhando (se a Márcia morreu e ele recebeu a USA no dia 9) */
+const apanhandoD16 = (c: Ctx) => presente(c, 'davi') && c.flag('marcia_morreu') && c.val<string>('d9_davi') === 'USA';
+/** com aula de desenho, a Dona Iolanda percebe e liga antes (ROTEIRO 3.3) */
+const iolandaLiga = (c: Ctx) => apanhandoD16(c) && aulas(c) >= 1;
+
 function preD16(c: Ctx): SceneDef {
+  const sc = preD16Base(c);
+  if (!iolandaLiga(c)) return sc;
+  const st = sc.nodes.start;
+  const antes = st.onEnter;
+  return {
+    ...sc,
+    nodes: {
+      ...sc.nodes,
+      start: {
+        ...st,
+        lines: [
+          { who: 'NARRADOR', t: 'Antes de você abrir o portão, o celular toca. Número fixo do Centro.' },
+          { who: 'IOLANDA', t: '{Dr}? Iolanda, a professora de desenho do Liam. Desculpa ligar num sábado à noite.' },
+          { who: 'IOLANDA', t: 'Hoje de manhã ele desenhou três meninos grandes e um pequeno no chão. E tinha um roxo no braço, de dedo. Eu dei aula quarenta anos. Isso não é imaginação.' },
+          ...st.lines,
+        ],
+        onEnter: (e) => {
+          e.set('iolanda_avisou');
+          antes?.(e);
+        },
+      },
+    },
+  };
+}
+
+function preD16Base(c: Ctx): SceneDef {
   const viva = c.s.family.zelia.status !== 'morto';
   const ferida = c.flag('pe_ferida') || c.flag('pe_ferida_escondida');
   const tratada = c.flag('curativo');
@@ -213,8 +252,10 @@ function cenaD16(c: Ctx): SceneDef {
   const L = presente(c, 'lucia');
   const internada = c.s.family.zelia.status === 'internado';
   const zeliaMorta = c.s.family.zelia.status === 'morto';
-  const apanhando = D && c.flag('marcia_morreu') && c.val<string>('d9_davi') === 'USA';
+  const apanhando = apanhandoD16(c);
   const promessa = c.flag('promessa_davi');
+  const iolanda = iolandaLiga(c);
+  const conjugeViu = L && c.v('lacos') >= 6;
 
   const abertura: DLine = internada
     ? { who: 'NARRADOR', t: L ? 'Sábado, quase dez da noite. A cadeira da Dona Zélia vazia. {Oconj} voltou do hospital agora há pouco, ainda com o crachá de acompanhante.' : 'Sábado, quase dez da noite. A cadeira da Dona Zélia vazia.' }
@@ -238,11 +279,16 @@ function cenaD16(c: Ctx): SceneDef {
           { who: 'EU', t: 'Que roxo é esse, Liam?' },
           { who: 'DAVI', t: '{{Caí no recreio.|cai_recreio}}' },
           ...(L ? [{ who: 'LUCIA', t: 'Foi o que ele me disse também. Na quinta. E ontem. E hoje.' }] : []),
+          ...(conjugeViu ? [{ who: 'LUCIA', t: '(baixinho, enquanto ele sobe) Eu vi o braço dele no banho, {nome}. Não foi queda. Vai lá.' }] : []),
           { who: 'NARRADOR', t: 'Ele puxa a manga de volta e vai pro quarto sem terminar o prato.' },
         ],
         onEnter: fx.set('davi_apanhando'),
         choices: [
-          { label: '(Ir até o quarto dele.) "Liam, a gente precisa conversar."', next: 'quarto', needLink: 'davi_verdade' },
+          ...(iolanda
+            ? [{ label: '(Ir até o quarto dele.) "Liam, a Dona Iolanda me ligou. Me mostra o desenho dos três meninos."', next: 'quarto' }]
+            : conjugeViu
+              ? [{ label: '(Ir até o quarto dele.) "Liam, {c:a sua mãe|o seu pai} viu o seu braço. A gente precisa conversar."', next: 'quarto' }]
+              : [{ label: '(Ir até o quarto dele.) "Liam, a gente precisa conversar."', next: 'quarto', needLink: 'davi_verdade' }]),
           { label: 'Deixar ele em paz hoje.', next: 'silencio' },
         ],
       },
@@ -252,6 +298,7 @@ function cenaD16(c: Ctx): SceneDef {
           { who: 'EU', t: 'Liam. Ninguém cai no recreio com a marca de quatro dedos. Quem apertou o seu braço?' },
           { who: 'DAVI', t: '...O Pedro. Do 3º B.' },
           { who: 'DAVI', t: 'Ele falou na frente de todo mundo que {m:o meu pai|a minha mãe} deixou a tia Márcia morrer. Que a mãe dele leu no jornal. Que a ambulância grande foi buscar o filho {m:do doutor|da doutora} e a tia ficou sem.' },
+          { who: 'DAVI', t: 'E que a mãe dele disse que a ambulância grande foi pra quem não precisava.', when: is.flag('d9_favorecimento') },
           { who: 'DAVI', t: '...É verdade?' },
         ],
         choices: [
@@ -388,6 +435,119 @@ function bicoD16(c: Ctx): SceneDef {
 }
 
 // -----------------------------------------------------------------------------
+// R2 vira (ROTEIRO, D16 14:40): o Saulo liga do celular dele, sem ser chamado
+// -----------------------------------------------------------------------------
+const SAULO_ESCOLHAS = (c: ShiftScriptCtx) => [
+  {
+    id: 'fonte',
+    label: '"Eu aviso a Carla."',
+    effect: (cc: ShiftScriptCtx) => {
+      cc.set('saulo_fonte');
+      addNum(cc, 'saulo_confianca', 1);
+    },
+    reply: 'Estacionamento do Regional, vaga do fundo, depois das sete. Eu vou estar de jaleco amassado. Ela vai saber. (crec) Obrigado, Regulação.',
+  },
+  {
+    id: 'sozinho',
+    label: '"Isso é com a direção, Saulo."',
+    effect: (cc: ShiftScriptCtx) => cc.set('saulo_sozinho'),
+    reply: '...É. É sempre com a direção. (ele desliga sem tchau)',
+  },
+  ...(c.flag('saulo_contou_2019')
+    ? []
+    : [
+        {
+          id: 'porque',
+          label: '"Por que agora?"',
+          effect: (cc: ShiftScriptCtx) => {
+            cc.set('saulo_contou_2019');
+            cc.schedule(cc.now + 1, 'saulo_virada2');
+          },
+          reply:
+            'Porque em dezenove eu li a folha. Eu tinha seis meses de formado. Disse "sem maca" pra um regulador às duas da manhã. O regulador não insistiu. Eu nunca soube o nome dele. Eu nunca soube o nome de ninguém daquela noite.',
+        },
+      ]),
+];
+/** cida_sinal1 (flags.md): a Simone cola um post-it branco no quadro ("ela não sabe classificar") */
+function postitBranco(c: ShiftScriptCtx) {
+  if (!c.flag('cida_sinal1') || c.sflag('postit_branco')) return;
+  c.sflag('postit_branco', true);
+  c.modal(
+    'SIMONE',
+    c.flag('cida_feijao')
+      ? 'Anotei num post-it branco, {dr}. Branco porque eu não sei que cor é isso. "Cida esqueceu a novela. Esqueceu o feijão no fogo." Colei no quadro, do lado do dela.'
+      : 'Anotei num post-it branco, {dr}. Branco porque eu não sei que cor é isso. "Cida esqueceu a novela." Colei no quadro, do lado do dela.',
+    'simone',
+  );
+}
+function sauloLiga(c: ShiftScriptCtx) {
+  if (c.sflag('saulo_ligou')) return;
+  c.sflag('saulo_ligou', true);
+  const o = c.callStatus('d16_osvaldo');
+  const recebe = o?.decision ? 'O seu idoso da sepse, o pai do Peixoto. Eu recebo.' : 'Se aparecer o pai do Peixoto, o da sepse, manda. Eu recebo.';
+  c.modal(
+    'DR. SAULO (CELULAR)',
+    `Regulação? É o Saulo. Não é pedido. ...${recebe} E escuta. Tem seis leitos no quarto andar com placa de "reservado". Reservado pra quem paga o Saúde+ Vida, o plano da mesma OS que regula vocês. Quando eu digo "lotado", eu tô lendo uma folha que a diretoria me entrega às sete. Eu tô cansado de ler essa folha. Tenho a de hoje no bolso. Se aquela jornalista quiser, ela que venha buscar no estacionamento. Eu não falo no telefone.`,
+    'aviso',
+    SAULO_ESCOLHAS(c),
+  );
+}
+function sauloDecide(c: ShiftScriptCtx) {
+  if (c.sflag('saulo_decidiu') || !c.flag('saulo_contou_2019') || c.flag('saulo_fonte') || c.flag('saulo_sozinho')) return;
+  c.sflag('saulo_decidiu', true);
+  c.modal('DR. SAULO (CELULAR)', '...Então. A folha tá no meu bolso. O que eu faço com ela, Regulação?', 'aviso', SAULO_ESCOLHAS(c));
+}
+
+// -----------------------------------------------------------------------------
+// Almoço (almoco.md, D16 — "Meu pai não atende")
+// -----------------------------------------------------------------------------
+function almocoD16(c: Ctx): SceneDef {
+  void c;
+  return {
+    id: 'd16_almoco',
+    bg: 'central',
+    cast: ['SIMONE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Sábado. A copa está vazia, só a Simone e o micro-ondas novo da OS, que apita duas vezes pra cada vez que precisa.' },
+          { who: 'SIMONE', t: 'O Peixoto passou às seis. De bermuda, {dr}. Bermuda. Ia ver o pai, "gripadinho". Eu nem sabia que ele tinha joelho.' },
+          { who: 'NARRADOR', t: 'O seu celular vibra em cima da mesa de fórmica. "DR. PEIXOTO". Ao fundo, o tique-taque de pisca-alerta de carro.' },
+          { who: 'DR. PEIXOTO', t: '{Dr}. Desculpa ligar no seu almoço. Meu pai não atende desde as onze. Ele faz isso pra me irritar.' },
+          { who: 'DR. PEIXOTO', t: 'Eu tô parado na rodovia, tem uma carreta tombada. ...Se aparecer um Osvaldo, Rua dos Bem-te-vis, 1480, apartamento 41... me avisa? Não manda nada. Só avisa.' },
+          { who: 'DR. PEIXOTO', t: 'Você me passou o seu filho no dia nove. Hoje eu entendo o que é isso.', when: is.flag('d9_impedimento') },
+        ],
+        choices: [
+          { label: '"Aviso. E se precisar, eu mando."', next: 'aviso', effect: fx.all(fx.set('d16_peixoto_almoco', 'aviso'), fx.set('peixoto_pediu_aviso')) },
+          { label: '"Liga pra cuidadora dele."', next: 'cuidadora', effect: fx.all(fx.set('d16_peixoto_almoco', 'cuidadora'), fx.set('peixoto_pediu_aviso')) },
+          { label: '"Não posso misturar, Peixoto. Se ligar, é ligação como qualquer outra."', next: 'neutro', effect: fx.set('d16_peixoto_almoco', 'neutro') },
+        ],
+      },
+      aviso: {
+        lines: [
+          { who: 'DR. PEIXOTO', t: '...Manda. Se precisar, manda. Esquece o que eu falei de não mandar.' },
+          { who: 'NARRADOR', t: 'Ele desliga. A Simone tinha parado de mastigar no meio da ligação.' },
+        ],
+      },
+      cuidadora: {
+        lines: [
+          { who: 'DR. PEIXOTO', t: 'Ele demitiu a cuidadora quarta. Disse que ela "mexia nas coisas". As coisas dele são três caixas de remédio e um rádio.' },
+          { who: 'NARRADOR', t: 'Silêncio na linha. Uma buzina de carreta, longe.' },
+          { who: 'DR. PEIXOTO', t: 'Avisa. Se aparecer, avisa.' },
+        ],
+      },
+      neutro: {
+        lines: [
+          { who: 'DR. PEIXOTO', t: 'Certo. Certo. É assim que tem que ser.' },
+          { who: 'NARRADOR', t: 'Ele desliga primeiro. A Simone olha pra você por cima do pote.' },
+          { who: 'SIMONE', t: 'Você tá certo. Eu odiei você tá certo.' },
+        ],
+      },
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
 export const DAY = day({
   day: 16,
   title: 'O Menino que Gritava Lobo',
@@ -453,6 +613,20 @@ export const DAY = day({
   }),
   timeline: [
     { at: '07:01', kind: 'radio', who: 'USA 01 · BENÉ', text: '{bene}, USA 01 em QRV. Sábado de sol. Tô com um pressentimento hoje, mas deve ser o torresmo de ontem.' },
+    { at: '09:35', kind: 'script', id: 'postit_branco1', run: (c) => postitBranco(c) },
+    { at: '10:20', kind: 'script', id: 'postit_branco2', run: (c) => postitBranco(c) },
+    { at: '11:30', kind: 'script', id: 'postit_branco3', run: (c) => postitBranco(c) },
+    {
+      at: '13:13',
+      kind: 'script',
+      id: 'frota_usb03',
+      run: (c) => {
+        const t = c.callStatus('d16_trote');
+        if (t && t.answered !== undefined && !t.decision) c.modal('SIMONE', 'Conferi a frota, {dr}: a USB 03 tá na base. A Lia tá tomando café, eu tô vendo pela janela. E ninguém da equipe fala "QRR" pra acidente.', 'simone');
+      },
+    },
+    { at: '14:40', kind: 'script', id: 'saulo_virada', run: (c) => sauloLiga(c) },
+    { at: '23:58', kind: 'script', id: 'saulo_virada2', run: (c) => sauloDecide(c) },
     {
       // a frota "otimizada": às 14:20, se as duas USA estão livres, a Regulação Estadual leva uma
       at: '14:20',
@@ -497,29 +671,30 @@ export const DAY = day({
       caller: 'Voz de menino',
       type: 'trotista',
       voice: 'adolescente',
-      note: 'O 9-8877 de novo. Tô ouvindo risada.',
+      note: 'O 9-8877 de novo. Sem risada hoje. Só o videogame.',
       noteFixed: true,
       addr: { rua: 'Rua XV de Novembro', n: 1201, bairro: 'Centro', ref: 'Praça da Matriz, no laguinho.' },
-      amb: ['risadas', 'videogame'],
+      amb: ['videogame'],
       open: [
         'Alô, emergência? Corre! {{Tem um jacaré no laguinho da praça da Matriz|jacare}} comendo um cachorro! Já comeu a metade!',
-        '[{{risadas; alguém sussurra "fala do rabo, fala do rabo"|risadas}}]',
+        '[{{a musiquinha de fase de videogame, alta, do lado do telefone|videogame}}]',
       ],
       q: {
-        oque: 'O jacaré pulou do lago e pegou o cachorro! Um poodle! [risada] Ele tá mastigando a coleira!',
+        oque: 'O jacaré pulou do lago e pegou o cachorro! Um poodle! Ele tá mastigando a coleira!',
         consciencia: 'O jacaré? Tá acordadão!',
-        respira: 'O cachorro? Respira pela metade que sobrou. [risadas]',
+        respira: 'O cachorro? Respira pela metade que sobrou.',
         idade: 'O jacaré tem uns cem anos.',
         referencia: 'Na praça da Matriz! Do lado da igreja! Corre!',
         sangramento: 'Muito! A praça tá vermelha!',
-        paciente: ['[{{risada estourada|risada_estourada}}]', '...peraí, peraí, para de rir, mano...'],
-        seguranca: 'Seguro não! Traz rede! [risadas]',
+        paciente: ['[{{o videogame faz o barulhinho de "game over"|game_over}}]', '...ah, não. Perdi. [ele esquece que está no telefone por um segundo]'],
+        seguranca: 'Seguro não! Traz rede!',
         historico: 'Hã?',
-        confronto_quadro: ['[risadas]', 'Ih, sujou. [desliga]'],
+        confronto_quadro: ['[silêncio; o videogame continua tocando]', 'Ih, sujou. [desliga]'],
       },
-      callback: ['[{{Caixa postal: "E aí, é o Biel. Deixa o recado que eu talvez ouça."|retorno_biel}}]', '[uma risada gravada no fim da mensagem]'],
+      callback: ['[{{Caixa postal: "E aí, é o Biel. Deixa o recado que eu talvez ouça."|retorno_biel}}]'],
       links: [
-        { a: 'jacare', b: 'risadas', insight: 'Jacaré na praça, risadas e alguém soprando a fala: trote. De novo o 9-8877.' },
+        { a: 'jacare', b: 'videogame', insight: 'Jacaré comendo poodle na praça, e o videogame tocando a fase ao lado do telefone: trote. De novo o 9-8877.' },
+        { a: 'jacare', b: 'manual:trote_sinais', insight: 'Um jacaré num laguinho de praça, "comendo a metade" de um cachorro: relato de cinema, sem corpo nenhum (Manual p.2).' },
         { a: 'retorno_biel', b: 'num', insight: 'A caixa postal se apresenta: "é o Biel". O mesmo 9-8877 dos trotes de sempre.' },
       ],
       patient: { name: '"Cachorro e jacaré"' },
@@ -551,8 +726,11 @@ export const DAY = day({
         consciencia: 'Acordada! Acordadíssima.',
         respira: 'Respirando.',
         idade: 'Setenta e nove. Oitenta em agosto, se Deus quiser.',
-        historico: 'Pressão. Tomo certinho. A Zélia me deu uma caixinha com os dias da semana, ajuda muito.',
-        fast: ['Tô sorrindo, ó! Levantei os dois braços, a vizinha tá rindo de mim na janela.', '"O céu é azul"... e a novela é das seis! [risada]'],
+        historico: 'Pressão. Tomo certinho. Tenho uma caixinha com os dias da semana, ajuda muito.',
+        fast: (c) =>
+          c.flag('d6_cida_fast')
+            ? ['Ah, essa eu sei! Sorri, levanta os braços, fala "o rato roeu a roupa do rei de Roma". Tudo certo, viu? Eu faço todo dia, de manhã, no espelho. Você que me ensinou.', '[risada]']
+            : ['Tô sorrindo, ó! Levantei os dois braços, a vizinha tá rindo de mim na janela.', '"O céu é azul"... e a novela é das seis! [risada]'],
         inicio: 'A novela? Começa às seis! Isso eu sei! [risada]',
         dorpeito: 'Nada, nada.',
         sangramento: 'Não.',
@@ -568,11 +746,13 @@ export const DAY = day({
           a: (c) => [
             'A Marta pegou a mala e saiu pela porteira, e o Henrique, o da fazenda, ficou olhando. {{Eu nunca perdi um capítulo, desde o primeiro|nunca_perdeu}}, sabia? Nem quando o meu falecido tava no hospital. Levava o radinho.',
             '[risada]',
-            c.flag('curativo')
-              ? 'Ah, e a Zélia disse que o pé tá sarando. Graças a Deus, viu?'
-              : c.flag('pe_ferida') || c.flag('pe_ferida_escondida')
-                ? 'A Zélia não foi no grupo de novo esta semana. Tá tudo bem aí, {meu} {filho}? Ela anda mancando, eu reparei.'
-                : 'A Zélia mandou um beijo. Disse que você tá trabalhando demais.',
+            !zeliaViva(c)
+              ? 'O grupo de terça ficou sem graça sem a sua mãe, sabia? A gente deixa a cadeira dela.'
+              : c.flag('curativo')
+                ? 'Ah, e a Zélia disse que o pé tá sarando. Graças a Deus, viu?'
+                : c.flag('pe_ferida') || c.flag('pe_ferida_escondida')
+                  ? 'A Zélia não foi no grupo de novo esta semana. Tá tudo bem aí, {meu} {filho}? Ela anda mancando, eu reparei.'
+                  : 'A Zélia mandou um beijo. Disse que você tá trabalhando demais.',
           ],
           onAsk: fx.all(fx.add('humanidade', 1, 'conversou com a Dona Cida'), fx.set('cida_conversou_d16')),
         },
@@ -586,7 +766,7 @@ export const DAY = day({
           a: [
             '[silêncio]',
             'Ah, {meu} {filho}... É a idade. {{Ontem eu fiquei olhando a panela de feijão um tempão, sem lembrar o que ia fazer com ela|feijao}}. Coisa boba.',
-            'Não conta pra ninguém, tá? Nem pra Zélia. Ela vai querer me levar no médico.',
+            'Não conta pra ninguém, tá? Ninguém. Vão querer me levar no médico.',
           ],
           onAsk: fx.all(fx.set('cida_sinal1'), fx.set('cida_feijao')),
         },
@@ -696,6 +876,15 @@ export const DAY = day({
           a: '{{Gabriel. Biel.|nome_gabriel}} O meu vô é o {{Jairo. Jairo Bento Lima|vo_jairo}}.',
         },
         {
+          id: 'acredito',
+          kind: 'fala',
+          label: '"Gabriel. Você é o neto do Seu Jairo. Eu acredito em você."',
+          when: (c) => c.flag('d10_biel_nome'),
+          say: 'Gabriel. Você é o neto do Seu Jairo. Eu acredito em você. Agora faz o que eu falar.',
+          a: ['[o choro para de uma vez, como quem engole]', '...Tá. Tá bom. Fala. Eu faço.'],
+          onAsk: fx.set('biel_acreditou'),
+        },
+        {
           id: 'fechar_chuveiro',
           label: 'Fechar o chuveiro?',
           say: 'Gabriel, você consegue fechar o chuveiro sem escorregar?',
@@ -713,7 +902,15 @@ export const DAY = day({
       worsen: [{ after: 35, lines: ['{m:Moço|Moça}! {{Ele vomitou! Tá fazendo um barulho de afogado|vomitou}}!', '[choro desesperado]'], guide: 'queda_banheiro' }],
       guide: { id: 'queda_banheiro' },
       patient: { name: 'Jairo Bento Lima', age: 71, sex: 'M' },
-      truth: { dx: 'Traumatismo craniano após queda no banheiro (rebaixamento de consciência)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 45, bad: 110, guideBonus: 15 }, key: 'jairo' },
+      // d10_biel_nome: chamado pelo nome, ele para de chorar e segue a guia (janela +5 min)
+      truth: (c) => ({
+        dx: 'Traumatismo craniano após queda no banheiro (rebaixamento de consciência)',
+        sev: 'vermelho',
+        ok: ['USA'],
+        dest: ['REG'],
+        risk: { good: 45 + (c.flag('biel_acreditou') ? 5 : 0), bad: 110 + (c.flag('biel_acreditou') ? 5 : 0), guideBonus: 15 },
+        key: 'jairo',
+      }),
       radio: {
         ok: '{central}, {unit} no local. Senhor de 71, TCE, Glasgow 9, protegido de lado no box. Seguimos Regional. O neto veio junto, segurando a mão dele.',
         saved: '{central}, {unit}. O menino fechou o chuveiro, virou o avô de lado e destrancou o portão. Fez tudo direitinho, {dr}. Seguimos Regional.',
@@ -801,7 +998,7 @@ export const DAY = day({
       addr: { rua: 'Av. Norte', n: 1010, bairro: 'Jardim Norte', ref: 'Na frente do Posto Avenida.' },
       amb: ['rua', 'buzinas'],
       open: [
-        'Central, aqui é o {{Beto, condutor da USB 03|beto}}! A gente bateu na Av. Norte, na frente do Posto Avenida! {{A Lia tá desacordada|lia}}!',
+        'Central, aqui é o {{Beto, condutor da USB 03|beto}}! {{QRR 5, QRR 5!|qrr}} A gente bateu na Av. Norte, na frente do Posto Avenida! {{A Lia tá desacordada|lia}}!',
         'Tô {{ligando do meu celular porque o rádio quebrou|celular}}. Manda uma USA, rápido!',
       ],
       q: {
@@ -813,7 +1010,7 @@ export const DAY = day({
         seguranca: 'Seguro. Manda logo.',
         sangramento: 'Muito sangue. Muito.',
         historico: 'Sei lá, cara. Manda a USA.',
-        paciente: '[{{silêncio; ao fundo, alguém ri e é mandado calar a boca|riso_fundo}}]',
+        paciente: '[{{silêncio; ao fundo, alguém cochicha "fala do caminhão, fala do caminhão"|riso_fundo}}]',
         inicio: 'Agora. Agorinha.',
       },
       extra: [
@@ -823,11 +1020,52 @@ export const DAY = day({
       links: [
         { a: 'retorno_dudu', b: 'beto', insight: 'Quem atende o retorno é o "Dudu", não o Beto da USB 03. E equipe chama a central pelo rádio, não pelo celular.' },
         { a: 'celular', b: 'manual:trote_sinais', insight: 'Um "condutor" ligando do celular pessoal, sem saber direito o paciente que levava: história de quem ouviu nomes num rádio de escuta (Manual p.2).' },
-        { a: 'lia', b: 'riso_fundo', insight: '"A Lia está desacordada"... e alguém ri ao fundo. Confira a USB 03 no painel da frota antes de mandar qualquer coisa.' },
+        { a: 'lia', b: 'riso_fundo', insight: '"A Lia está desacordada"... e alguém sopra a história ao fundo. Confira a USB 03 no painel da frota antes de mandar qualquer coisa.' },
+        { a: 'qrr', b: 'beto', insight: '"QRR 5" não é código de acidente de viatura em lugar nenhum. Jargão de quem ouviu rádio de escuta e juntou palavras.' },
       ],
       patient: { name: '"Equipe da USB 03"' },
       truth: { dx: 'Trote sofisticado (falso condutor da USB 03)', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
       radio: { prank: 'Central, {unit} no Posto Avenida. Nenhum acidente, nenhuma viatura tombada. O frentista disse que uns moleques ficaram rindo aqui do lado com um rádio de escuta. Trote, {dr}.' },
+    }),
+    // ------------------------------------------------------------------ folgado de reserva (trotes-folgados.md: sempre 1 no D16)
+    call({
+      id: 'd16_folgado',
+      ref: 'D16 folgado',
+      at: '16:05',
+      pool: 'folgado',
+      genOnly: true,
+      num: '(17) 3324-1605',
+      caller: 'Seu Valfrido',
+      callerName: 'Seu Valfrido',
+      type: 'comum',
+      voice: 'homem',
+      note: 'Homem quer ambulância com sirene pro soluço da esposa.',
+      noteWrong: 'Mulher com crise há vinte minutos. Parece sério.',
+      cat: 'clinico',
+      addr: { rua: 'Rua Sabiá', n: 605, bairro: 'Vila Esperança', ref: 'Casa com uma Brasília amarela na garagem.' },
+      amb: ['tv'],
+      open: [
+        'Boa tarde! É o seguinte: a minha esposa tá com soluço faz vinte minutos. Já tentei tudo. Água de cabeça pra baixo, susto, açúcar.',
+        'Aí eu pensei: vocês passam com aquela sirene alta... Se passar aqui na frente com ela ligada, o susto cura. Não precisa nem parar.',
+      ],
+      q: {
+        oque: 'Soluço. Desde o almoço. Ela comeu rápido, foi isso.',
+        consciencia: 'Acordada. Brava comigo. Soluçando e brava.',
+        respira: 'Respira. Entre um soluço e outro, mas respira.',
+        pulso: 'Normal. Eu medi no relógio de pulso dela, que mede tudo. Setenta e oito.',
+        pele: 'Vermelha de raiva de mim. Fora isso, normal.',
+        dorpeito: 'Dor? Não. Só o soluço. (ao fundo: "HIC. Fala que não dói, Valfrido. HIC.")',
+        historico: 'Nada, ela é forte. Só o soluço mesmo.',
+        paciente: 'DONA EULÁLIA: Eu falei pra ele não ligar. HIC. Eu falei.',
+        gravada: 'Gravando? Então registra aí que eu tentei de tudo antes. Foi uma tarde perdida.',
+        nao_perfil: 'Perfil? Mas é só passar na frente! Vocês passam aqui toda hora com a sirene!',
+        meios_proprios: ['Meio próprio? Eu já dei o susto, não funcionou. O meu susto é fraco.', 'Bando de #%!#@$ ... [piii] ...Ela tá rindo de mim agora. HIC.'],
+        encerrar: 'Tá. Vou fazer ela beber água de canudinho tapando o nariz. Se não der, eu ligo de novo. Brincadeira. Não ligo.',
+      },
+      patient: { name: 'Eulália (esposa do Seu Valfrido)', age: 61, sex: 'F' },
+      truth: { dx: 'Soluço há vinte minutos, sem outra queixa (pedido de sirene)', sev: 'azul', ok: ['ORI'], ref: ['CASA', 'UBS'] },
+      radio: { excess: 'Central, {unit}. Uma senhora soluçando no portão, {dr}. Quando viu a viatura parar, levou um susto e o soluço passou. O marido quer agradecer à central. Eu não sei se agradeço.' },
+      diary: { ori: 'O Seu Valfrido queria a sirene passando na frente de casa pra curar o soluço da esposa no susto. O soluço passou sozinho às quatro e quinze.' },
     }),
     // ------------------------------------------------------------------ 7 ★ SEU OSVALDO PEIXOTO
     call({
@@ -877,7 +1115,7 @@ export const DAY = day({
           label: '"O seu filho é o Dr. Peixoto?"',
           locked: true,
           // 1.1: "Osvaldo Peixoto... meu filho trabalha aí" + o recado do dia 5 (pai de 84, mora sozinho) na mesa
-          unlockedBy: ['doc:peixoto_pai', 'flag:peixoto_pai', 'seguranca', 'paciente'],
+          unlockedBy: ['doc:peixoto_pai', 'flag:peixoto_pai', 'flag:peixoto_pediu_aviso', 'seguranca', 'paciente'],
           say: 'Seu Osvaldo, o seu filho é o Dr. Peixoto, o coordenador aqui da central?',
           a: ['...É. O Carlinhos.', 'Não conta pra ele, não. {{Ele vive dizendo que o povo se acostumou mal com ambulância|povo_acostumou}}. Eu não quero ser o povo.'],
           unlocks: ['avisar_peixoto'],
@@ -1028,6 +1266,8 @@ export const DAY = day({
               c.flag('peixoto_avisado_d16')
                 ? { who: 'PEIXOTO', t: 'Você me avisou pelo interfone. Eu não sabia o que dizer. Disse "manda". Foi a única coisa certa que eu falei esse mês.' }
                 : { who: 'PEIXOTO', t: 'Ele disse que {m:o regulador foi educado|a reguladora foi educada}. Que não deixou ele terminar o "não precisa".' },
+              ...(c.val('d16_peixoto_almoco') === 'cuidadora' ? [{ who: 'PEIXOTO', t: 'Você mandou eu ligar pra cuidadora. Não tinha cuidadora. Eu demorei duas horas pra lembrar disso parado na rodovia.' }] : []),
+              ...(c.val('d16_peixoto_almoco') === 'neutro' ? [{ who: 'PEIXOTO', t: 'Você disse que era ligação como qualquer outra. Você tinha razão. E eu odeio que você tinha razão.' }] : []),
               { who: 'PEIXOTO', t: 'Ele sempre diz "não precisa". Eu aprendi com ele.' },
             ],
             choices: [
@@ -1055,6 +1295,7 @@ export const DAY = day({
               { who: 'NARRADOR', t: '19:05. O Peixoto está parado na porta da central. Não entra.' },
               { who: 'PEIXOTO', t: 'Meu pai morreu hoje à tarde. Sozinho, no apartamento.' },
               { who: 'PEIXOTO', t: 'Eu vou querer a gravação. A ficha. Os horários. Cada minuto da ligação das duas e meia.' },
+              ...(c.val('d16_peixoto_almoco') === 'neutro' ? [{ who: 'PEIXOTO', t: 'Você disse no almoço que era ligação como qualquer outra. Era. Foi.' }] : []),
               { who: 'NARRADOR', t: 'Ele fala baixo, sem olhar pra você. A voz de quem já começou a procurar um culpado e tem medo de encontrar no espelho.' },
             ],
             choices: [
@@ -1073,6 +1314,23 @@ export const DAY = day({
     }
     return undefined;
   },
+  ida: (c) =>
+    rua('d16_ida', 'rua', [
+      c.flag('aniversario_pago')
+        ? { who: 'TONINHO', t: '(da porta da padaria) O bolo tava bom, doutor? O menino gostou da sirene?' }
+        : c.flag('aniversario_fiado')
+          ? { who: 'TONINHO', t: '(da porta da padaria) Sem pressa, doutor. O fiado de aniversário eu não cobro antes do mês virar.' }
+          : { who: 'NARRADOR', t: 'A padaria do Seu Toninho ainda está de porta meio fechada. Cheiro de pão saindo pela fresta.' },
+      { who: 'NARRADOR', t: 'No ponto da XV, o Biel não está. O banco do ponto, onde ele senta toda manhã de boné virado, está vazio. Pela primeira vez em duas semanas.' },
+    ]),
+  almoco: (c) => almocoD16(c),
+  volta: (c) =>
+    rua('d16_volta', 'rua', [
+      { who: 'NARRADOR', t: 'Sábado à noite. O 12 passa pela XV, 1950. Na portaria do Ed. Aurora, uma senhora de xale roxo conversa com o porteiro.' },
+      ...(aulas(c) >= 1
+        ? [{ who: 'NARRADOR', t: edsonVivo(c) ? 'É a Dona Iolanda, a professora do Liam, falando com o Edson. Ela acena para o ônibus como se soubesse quem está nele.' : 'É a Dona Iolanda, a professora do Liam. Ela acena para o ônibus como se soubesse quem está nele.' }]
+        : [{ who: 'NARRADOR', t: 'O porteiro ri de alguma coisa que ela diz. Lá em cima, no terceiro andar, só uma janela acesa.' }]),
+    ]),
   interlude: {
     teaser: (c) => (c.s.family.zelia.status === 'internado' ? 'A Dona Zélia ficou no Regional. Em casa, o resto da família espera você.' : 'Sábado à noite. Amanhã é domingo.'),
     pre: (c) => preD16(c),
