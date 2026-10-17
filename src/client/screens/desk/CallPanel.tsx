@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { store, useStore } from '../../store';
 import { parseMarkup, resolveTokens } from '../../../engine/text';
+import { splitBleeps } from '../../../engine/bleep';
 import { BOXES, type BoxId, type CallRT, type ShownLine, type VoiceId } from '../../../engine/types';
 import type { QuestionView } from '../../../engine/shift';
 import { audio } from '../../audio';
@@ -30,27 +31,39 @@ export function CallPanel() {
   );
 }
 
+/** cor do post-it da Simone (1.1): a caixa que ela marcou; sem caixa (save antigo) = amarelo */
+export const POSTIT_LABEL: Record<BoxId, string> = { clinico: 'Clínico', go: 'GO', trauma: 'Trauma', outros: 'não soube classificar' };
+export function postitClass(call: CallRT): string {
+  return call.noteBox ? ` pi-${call.noteBox}` : '';
+}
+
 function CallHeader({ call }: { call: CallRT }) {
   const g = store.game!;
   const sh = g.shift!;
   const def = sh.defOf(call);
   const dur = call.answered !== undefined ? sh.sh.time - call.answered : 0;
   return (
-    <>
-      <div className="call-head">
-        <span className="ch-num">☎ {def.num}</span>
-        <span className="ch-who">{resolveTokens(def.callerName ?? def.caller, g.st.gender, g.st)}</span>
-        <span className="ch-dur">{fmtDur(dur)}</span>
-        {call.patience < 50 && <span className="ch-imp">{call.patience < 25 ? 'perdendo a paciência' : 'impaciente'}</span>}
-      </div>
-      {/* o post-it da TARM inteiro: no cartão da fila ele só cabe pela metade */}
-      {call.noteText && (
-        <div className={'ch-tarm' + (call.noteUrgent ? ' red' : '')}>
-          <b>TARM</b> {call.noteText}
-          {call.noteAddr && <em className="ch-addr"> {call.noteAddr}</em>}
-        </div>
-      )}
-    </>
+    <div className="call-head">
+      <span className="ch-num">☎ {def.num}</span>
+      <span className="ch-who">{resolveTokens(def.callerName ?? def.caller, g.st.gender, g.st)}</span>
+      {call.noteText && call.noteBox && <i className={'ch-chip' + postitClass(call)} title={`Post-it da Simone: ${POSTIT_LABEL[call.noteBox]}`} />}
+      <span className="ch-dur">{fmtDur(dur)}</span>
+      {call.patience < 50 && <span className="ch-imp">{call.patience < 25 ? 'perdendo a paciência' : 'impaciente'}</span>}
+    </div>
+  );
+}
+
+/**
+ * O post-it da TARM inteiro, no topo da transcrição (no cartão da fila ele só cabe pela metade).
+ * Fica dentro da área que rola: empurra as falas para baixo e nunca fica por cima delas.
+ */
+function TarmNote({ call }: { call: CallRT }) {
+  if (!call.noteText) return null;
+  return (
+    <div className={'ch-tarm' + postitClass(call) + (call.noteUrgent ? ' red' : '')}>
+      <b>TARM{call.noteBox ? ` · ${POSTIT_LABEL[call.noteBox]}` : ''}</b> {call.noteUrgent && !call.followOf && <strong className="ch-now">Pega essa agora.</strong>} {call.noteText}
+      {call.noteAddr && <em className="ch-addr"> {call.noteAddr}</em>}
+    </div>
   );
 }
 
@@ -159,6 +172,7 @@ function Transcript({ call }: { call: CallRT }) {
 
   return (
     <div ref={ref} className={'transcript scroll-y' + (tremble ? ' tremble-text' : '')} onClick={skip} onScroll={onScroll}>
+      <TarmNote call={call} />
       {lines.map((l) => {
         if (l.id > st!.done && l !== animating) return null;
         const partial = l === animating ? Math.min(animLen, revealed) : undefined;
@@ -184,8 +198,23 @@ function Line({ line, partial }: { line: ShownLine; partial?: number }) {
     if (left <= 0) return null;
     const txt = sg.text.slice(0, Math.max(0, left));
     left -= sg.text.length;
-    // {{trecho|pista}} é só texto desde a 1.1 (o Modo Inconsistência saiu)
-    return <span key={i}>{txt}</span>;
+    // {{trecho|pista}} é só texto desde a 1.1 (o Modo Inconsistência saiu);
+    // "#%!#@$" é palavrão censurado: aparece como símbolos de quadrinho (o áudio faz "piii")
+    const parts = splitBleeps(txt);
+    if (parts.length === 1 && !parts[0].bleep) return <span key={i}>{txt}</span>;
+    return (
+      <span key={i}>
+        {parts.map((p, k) =>
+          p.bleep ? (
+            <span key={k} className="bleep" title="piii!">
+              {p.text}
+            </span>
+          ) : (
+            <span key={k}>{p.text}</span>
+          ),
+        )}
+      </span>
+    );
   });
   const cls = `tl ${line.kind}` + (line.style ? ` st-${line.style}` : '');
   if (line.kind === 'ruido') return <p className={cls}>{body}</p>;
@@ -228,6 +257,8 @@ function Keypad({ call }: { call: CallRT }) {
     store.notify();
   };
   const tarm = !!sh.sh.tarm;
+  // a caixa da cor do post-it da Simone (pode estar errada, como a nota)
+  const marked = call.noteText ? call.noteBox : undefined;
   const tools = all.filter((q) => !q.fixed && !q.box && (q.group === 'ferramenta' || q.group === 'acalmar'));
   const fixed = all.filter((q) => q.fixed);
   // confrontos liberados e perguntas sem caixa (TARM: todas as dela)
@@ -262,7 +293,15 @@ function Keypad({ call }: { call: CallRT }) {
           {BOXES.map((b) => {
             const n = inBox(b).filter((q) => !q.asked).length;
             return (
-              <button key={b} className={`kp-box box-${b}` + (open.includes(b) ? ' on' : '')} disabled={busy} aria-pressed={open.includes(b)} onClick={() => toggle(b)} title={open.includes(b) ? 'Fechar a caixa' : 'Abrir: acrescenta as perguntas desta caixa'}>
+              <button
+                key={b}
+                className={`kp-box box-${b}` + (open.includes(b) ? ' on' : '') + (marked === b ? ' marked' : '')}
+                disabled={busy}
+                aria-pressed={open.includes(b)}
+                onClick={() => toggle(b)}
+                title={(open.includes(b) ? 'Fechar a caixa' : 'Abrir: acrescenta as perguntas desta caixa') + (marked === b ? ' · a cor do post-it da Simone' : '')}
+              >
+                {marked === b && <i className="kp-mark" aria-label="cor do post-it" />}
                 {BOX_LABEL[b]}
                 {n > 0 && <small>{n}</small>}
               </button>

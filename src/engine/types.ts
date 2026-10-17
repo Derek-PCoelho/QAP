@@ -1023,6 +1023,12 @@ export interface CallRT {
   noteText: string;
   /** a Simone marcou "Pega essa agora" (post-it vermelho) */
   noteUrgent?: boolean;
+  /**
+   * cor do post-it da Simone (1.1): a caixa que ela marcou — Clínico azul, GO rosa, Trauma verde,
+   * Outros branco (quando ela não soube classificar). Erra junto com a nota (às vezes a cor fica
+   * certa mesmo com a nota errada). Sem nota (ligação `raw`, Simone ausente, campanha da TARM) = sem cor.
+   */
+  noteBox?: BoxId;
   /** conferência do endereço pela Simone: 'nao_confere' (não existe no cadastro) ou 'marco' (há um marco no endereço) */
   addrNote?: 'nao_confere' | 'marco';
   /** a linha que a Simone escreveu sobre o endereço (vai no post-it) */

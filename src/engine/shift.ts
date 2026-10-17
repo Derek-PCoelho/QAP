@@ -8,7 +8,7 @@ import type {
   PendingRequest, Color, Support, Referral, AnswerIn, CallOutcome, DayDef, RegId, TarmShiftState, ShownLine, BoxId, OutrosAct,
 } from './types';
 import type { Content } from './content-api';
-import { callBox, extraBox } from './categories';
+import { callBox, extraBox, noteBoxFor, simoneBox } from './categories';
 import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL, recordIncome } from './state';
 import { hm, fmtTime, clamp, Rng, hashString } from './util';
 import { normLines, txt, cluesIn, resolveTokens, stripMarkup, beneForm } from './text';
@@ -563,6 +563,8 @@ export class ShiftSim {
       call.noteRight = randOf(this.st) < acc;
       call.noteText = resolveTokens(call.noteRight ? txt(def.note, this.ctx()) : this.wrongNote(call, def), this.st.gender, this.st);
       call.noteUrgent = call.noteRight ? this.truthOf(call).sev === 'vermelho' : /grave|morrendo|urgente|pega/i.test(call.noteText);
+      // 1.1: a cor do post-it (a caixa que ela marcou) erra junto com a nota
+      call.noteBox = noteBoxFor(call.id, simoneBox(def, this.truthOf(call), resolveTokens(txt(def.note, this.ctx()), this.st.gender, this.st)), call.noteRight);
       this.tarmAddress(call, def);
     }
     if (!def.anchor && def.patience !== 0) {
@@ -2028,6 +2030,7 @@ export class ShiftSim {
       call.noteText = 'LIGOU DE NOVO. Diz que piorou muito.';
       call.noteRight = true;
       call.noteUrgent = true;
+      call.noteBox = simoneBox(def, t);
       this.pushLines(call, txt(def.radio?.dismissed, this.ctx()) || DEFAULT_FOLLOWUP[t.sev === 'vermelho' ? 'vermelho' : 'amarelo'], def);
       call.verdict = { ...call.verdict!, revealed: true };
       (call as CallRT & { reopened?: boolean }).reopened = true;

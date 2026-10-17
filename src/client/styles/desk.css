@@ -332,6 +332,37 @@
   font-style: italic;
   box-shadow: none;
 }
+/* 1.1: post-it da Simone pela caixa do chamado — Clínico azul, GO rosa, Trauma verde, branco
+   quando ela não soube classificar. "Pega essa agora" vira um selo vermelho no papel da cor. */
+.pi-clinico {
+  --pi: #a9d4f2;
+  --pi-ink: #0f2a3d;
+}
+.pi-go {
+  --pi: #f5b5d0;
+  --pi-ink: #3d0f24;
+}
+.pi-trauma {
+  --pi: #aee09f;
+  --pi-ink: #133010;
+}
+.pi-outros {
+  --pi: #f7f5ee;
+  --pi-ink: #2b2a25;
+}
+.postit[class*='pi-'],
+.postit.red[class*='pi-'] {
+  background: var(--pi);
+  color: var(--pi-ink);
+}
+.postit.red[class*='pi-'] {
+  box-shadow:
+    inset 3px 0 0 #c4271d,
+    1px 1px 0 rgba(0, 0, 0, 0.25);
+}
+.postit.red[class*='pi-'] b {
+  color: #a3170e;
+}
 
 /* ---------------------------------------------------------------- chamada */
 .call-panel {
@@ -575,6 +606,21 @@
 .kp-box:disabled {
   opacity: 0.45;
   cursor: default;
+}
+.kp-box.marked {
+  position: relative;
+}
+/* a caixa da cor do post-it da Simone: um cantinho de post-it dobrado */
+.kp-mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 9px 9px 0;
+  border-color: transparent #f2d45c transparent transparent;
+  filter: drop-shadow(-1px 1px 0 rgba(0, 0, 0, 0.45));
 }
 .box-clinico {
   --bx: #6fb4e8;
@@ -1864,14 +1910,14 @@ abbr.qcode {
   color: #ffe9a8;
 }
 
-/* post-it da TARM dentro da ligação atendida (texto inteiro) */
+/* post-it da TARM dentro da ligação atendida (texto inteiro): 1.1 — mora no topo da transcrição,
+   dentro da área que rola, e empurra as falas (antes ficava fixo e as falas passavam por baixo) */
 .ch-tarm {
-  /* 1.1: não encolhe dentro da coluna do monitor (encolhida, cobria a 1ª linha da transcrição) */
-  flex: 0 0 auto;
   position: relative;
-  align-self: flex-start;
-  max-width: 100%;
-  margin: 0 0 6px;
+  display: block;
+  width: fit-content;
+  max-width: calc(100% - 6px);
+  margin: 2px 0 8px 2px;
   padding: 3px 8px;
   background: var(--c-postit);
   color: #3b3416;
@@ -1884,6 +1930,19 @@ abbr.qcode {
   background: #f2928a;
   color: #3d0f0b;
 }
+.ch-tarm[class*='pi-'],
+.ch-tarm.red[class*='pi-'] {
+  background: var(--pi);
+  color: var(--pi-ink);
+}
+.ch-tarm.red[class*='pi-'] {
+  box-shadow:
+    inset 4px 0 0 #c4271d,
+    2px 2px 0 rgba(0, 0, 0, 0.35);
+}
+.ch-tarm .ch-now {
+  color: #a3170e;
+}
 .ch-tarm .ch-addr {
   display: block;
   font-style: normal;
@@ -1893,6 +1952,23 @@ abbr.qcode {
   font-size: 10px;
   letter-spacing: 0.5px;
   margin-right: 4px;
+}
+/* quadradinho da cor do post-it no cabeçalho da ligação (o post-it rola com a transcrição) */
+.ch-chip {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 11px;
+  height: 11px;
+  background: var(--pi, var(--c-postit));
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+/* palavrão censurado na transcrição: símbolos de quadrinho (o áudio faz "piii") */
+.tl .bleep {
+  color: #ffd27a;
+  background: rgba(224, 72, 61, 0.28);
+  padding: 0 2px;
+  letter-spacing: 1px;
+  font-weight: bold;
 }
 
 /* adiantar o relógio com a fila vazia */

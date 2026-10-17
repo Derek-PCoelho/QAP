@@ -1,9 +1,10 @@
 // Categorias das perguntas e dos chamados (1.1): Clínico (azul), GO (rosa), Trauma (verde),
-// Outros (branco). Servem às caixas de perguntas da mesa e, na Onda 2, à cor do post-it da Simone.
+// Outros (branco). Servem às caixas de perguntas da mesa e à cor do post-it da Simone.
 //
 // O conteúdo pode marcar à mão (`CallDef.cat`, `ExtraQ.cat`); sem marca, a heurística abaixo
 // decide pelo texto (diagnóstico, etiquetas do banco, rótulo da pergunta).
-import type { BoxId, CallDef, ExtraQ, TruthDef } from './types';
+import { BOXES, type BoxId, type CallDef, type ExtraQ, type TruthDef } from './types';
+import { hashString } from './util';
 
 const norm = (s: string) =>
   s
@@ -39,4 +40,33 @@ export function extraBox(x: ExtraQ, callCat: BoxId): BoxId | undefined {
   if (EXTRA_GO.test(label)) return 'go';
   if (EXTRA_TRAUMA.test(label) && callCat !== 'go') return 'trauma';
   return callCat;
+}
+
+// a Simone não sabe classificar: linha aberta, ninguém fala, ela mesma diz que não entendeu
+const UNSURE_RE = /linha (aberta|muda)|ningu[eé]m (fala|responde)|nao (sei|entendi|deu pra entender)|nao consegui entender|sem saber o que/;
+
+/**
+ * Cor do post-it que a Simone escreveria com a nota CERTA: a caixa do chamado; branco (Outros)
+ * quando o chamado é dos "folgados" (`cat: 'outros'`), quando é linha aberta/acidental ou quando a
+ * própria nota diz que ela não entendeu.
+ */
+export function simoneBox(def: CallDef, t: TruthDef | undefined, note?: string): BoxId {
+  const box = callBox(def, t);
+  if (box === 'outros') return 'outros';
+  if (t?.prankKind === 'acidental') return 'outros';
+  if (note && UNSURE_RE.test(norm(note))) return 'outros';
+  return box;
+}
+
+/**
+ * Cor do post-it de verdade: com a nota certa, a cor certa; com a nota errada, a cor erra em ~2/3
+ * das vezes (outra caixa ou branco). Sem sorteio do jogo (hash da ligação): não muda a sequência
+ * aleatória da partida nem a simulação dos bots.
+ */
+export function noteBoxFor(callId: string, right: BoxId, noteRight: boolean): BoxId {
+  if (noteRight) return right;
+  const h = hashString(callId + ':postit');
+  if (h % 100 < 35) return right;
+  const others = BOXES.filter((b) => b !== right);
+  return others[Math.floor(h / 100) % others.length];
 }
