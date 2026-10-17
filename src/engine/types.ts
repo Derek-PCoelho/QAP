@@ -874,6 +874,206 @@ export interface ReportField {
   options: { id: string; label: string; when?: Cond; effect?: Effect }[];
 }
 
+// ----------------------------------------------------------------------------
+// Vaga zero negociada (1.1) — conteúdo em src/content/vagazero.ts, motor em src/engine/vagazero.ts
+// ----------------------------------------------------------------------------
+/** bom = responde a objeção (Resistência −2) · meio = certo, mas não responde (−1) · ruim = +1 */
+export type VzKind = 'bom' | 'meio' | 'ruim';
+/**
+ * Natureza do argumento (efeitos especiais no motor):
+ * mentira (funciona na hora e volta quando a viatura chega) · ameaca · grito · carteirada ("o
+ * Peixoto mandou": gasta o Peixoto do dia) · vereador · promessa (compromisso de devolução: o
+ * Regional liga depois com o exame) · desvio (aceitar a UPA: encerra a negociação) · empatia.
+ */
+export type VzTag = 'mentira' | 'ameaca' | 'grito' | 'carteirada' | 'vereador' | 'promessa' | 'desvio' | 'empatia';
+
+export interface VzCardDef {
+  id: string;
+  /** o que o regulador diz (aceita tokens {nome}, {dr}, {reg}, {recurso}, {paciente}, {hora}) */
+  text: Txt;
+  kind: VzKind;
+  tag?: VzTag;
+  /** muda a Resistência em vez do padrão do tipo (bom −2, meio −1, ruim +1) */
+  delta?: number;
+  /** só vale "bom" depois de algum destes cartões; antes disso conta como meio e o Saulo responde `replyEarly` */
+  goodAfter?: string[];
+  /** fala do Saulo logo depois do cartão */
+  reply?: Txt;
+  /** fala do Saulo quando o cartão chega cedo demais (ver goodAfter) */
+  replyEarly?: Txt;
+  /** só aparece quando o caso precisa (true) ou não precisa (false) do Regional */
+  precisa?: boolean;
+  when?: Cond;
+}
+
+export interface VzObjection {
+  id: string;
+  /** a fala do Saulo */
+  say: Txt;
+  cards: VzCardDef[];
+  /** só depois de algum destes cartões */
+  after?: string[];
+  /** nunca depois destes cartões */
+  notAfter?: string[];
+  /** desrespeito / birra: acende o botão do Peixoto */
+  birra?: boolean;
+  /** só quando o caso precisa (true) ou não precisa (false) do Regional */
+  precisa?: boolean;
+  when?: Cond;
+}
+
+export interface VzLineDef {
+  who: string;
+  t: Txt;
+  when?: Cond;
+}
+
+export interface VagaZeroDef {
+  /** o que só o Regional tem (aparece na tela e substitui {recurso}) */
+  recurso: string;
+  /** Resistência inicial, 0–5 (0 = "Manda." de cara). O motor desconta `saulo_confianca` (mínimo 1), salvo `fixo`. */
+  start: number | ((c: Ctx) => number);
+  /** não descontar a confiança do Saulo */
+  fixo?: boolean;
+  /** Resistência mínima que os argumentos alcançam (D5: 2 — o tutorial do Peixoto) */
+  floor?: number;
+  /** quando abre: no carimbo (padrão), só pelo pedido de rádio de maca presa do roteiro do dia (D9, D15) ou nos dois */
+  abre?: 'carimbo' | 'retencao' | 'ambos';
+  /** falas antes da primeira objeção (a Simone sopra, o rádio chama) */
+  intro?: VzLineDef[];
+  /** objeções na ordem; se faltar rodada, o motor completa com as genéricas */
+  objections: VzObjection[];
+  /** fala do Saulo ao aceitar / quando não há acordo */
+  aceita?: Txt;
+  recusa?: Txt;
+  /** falas depois do acordo (o post-it da Simone, a pista do quarto andar) */
+  depois?: VzLineDef[];
+  /** rádio alguns minutos depois do acordo */
+  radioDepois?: { min: number; who: string; text: Txt };
+  /** Peixoto: false = ainda não (tutorial do D3); 'impedimento' = o paciente é parente dele (D16) */
+  peixoto?: boolean | 'impedimento';
+  /** falas do Peixoto ao negociar este caso (senão, as padrão) */
+  peixotoFala?: VzLineDef[];
+  /** a Simone marca o melhor cartão com o post-it azul (tutorial) */
+  dica?: boolean;
+  /** o caso precisa mesmo do Regional (padrão true). false: desviar para a UPA é a resposta certa */
+  precisa?: boolean;
+  /** compromisso de devolução: horas depois, o Regional liga com o resultado do exame */
+  promessa?: { exame: string; limpo: boolean | Cond; depois: number; alterado?: Txt; limpoTexto?: Txt };
+  /** minutos de maca presa sem acordo (padrão: 40–60 até o dia 14, 60 depois); 'normal' = retenção comum de maca */
+  retencao?: number | 'normal';
+  /** cena especial do clímax (D19: a Simone fica em cor) / o Henrique (D20) */
+  especial?: 'cida' | 'henrique';
+  /** só abre se (ex.: AVC dentro da janela) */
+  when?: (c: Ctx, t: TruthDef) => boolean;
+  onAceita?: Effect;
+  onRecusa?: Effect;
+  onPeixoto?: Effect;
+}
+
+export interface VagaZeroContent {
+  /** negociações escritas, pelo id da ligação (ex.: 'd03_conceicao') */
+  calls: Record<string, VagaZeroDef>;
+  /** objeções genéricas (O1–O10 da bíblia): completam rodadas e montam as negociações sem roteiro */
+  generic: VzObjection[];
+  /** argumentos "sujos" que entram numa rodada com menos de quatro cartões (mentira, ameaça, carteirada, vereador, grito) */
+  sujos: VzCardDef[];
+  /** o que só o Regional tem, pelo diagnóstico (negociações sem roteiro) */
+  recursoDe(dx: string): string;
+  /** a fala de abertura do Saulo nas negociações sem roteiro */
+  abertura: Txt;
+  /** falas padrão (Peixoto, Heloísa, diretor clínico, mentira descoberta, promessas, recusa) */
+  falas: {
+    peixoto: VzLineDef[];
+    peixotoCobra: Txt;
+    peixotoEndureceu: Txt;
+    peixotoFonte: VzLineDef[];
+    heloisa: VzLineDef[];
+    diretor: VzLineDef[];
+    diretorFalhou: Txt;
+    peixotoFalhou: Txt;
+    aceita: Txt;
+    recusa: Txt;
+    pavio: Txt;
+    mentiraDescoberta: Txt;
+    promessaLembra: Txt;
+    promessaBuscar: Txt;
+    promessaCumprida: Txt;
+    promessaQuebrada: Txt;
+    precisouChefe: Txt;
+    simoneDicaPeixoto: Txt;
+    postit: Txt;
+  };
+}
+
+/** uma fala na tela da vaga zero */
+export interface VzLine {
+  who: string;
+  text: string;
+}
+
+/** negociação aberta (tela do "tempo parando") */
+export interface VzRT {
+  id: string;
+  /** entrada de vagazero.ts (id da ligação) ou 'generico' */
+  key: string;
+  callId: string;
+  unit?: string;
+  origin: 'carimbo' | 'radio' | 'retencao' | 'retentativa';
+  /** o paciente (para a tela) */
+  patient: string;
+  recurso: string;
+  round: number;
+  maxRounds: number;
+  resistance: number;
+  start: number;
+  floor: number;
+  objection?: string;
+  birra?: boolean;
+  cards: { id: string; text: string; hint?: boolean }[];
+  used: string[];
+  usedObjections: string[];
+  log: VzLine[];
+  /** 'negociando' → 'impasse' (acabaram as rodadas) → 'fim' (resultado na tela, esperando fechar) */
+  state: 'negociando' | 'impasse' | 'fim';
+  result?: 'aceito' | 'recusado' | 'peixoto' | 'desviado';
+  /** o botão de escalada: indisponível, apagado (existe, mas ainda não) ou aceso; usado = já foi */
+  peixoto: 'indisponivel' | 'apagado' | 'aceso' | 'usado';
+  /** rótulo do botão de escalada (Peixoto, Dra. Heloísa ou a Simone ligando pro diretor) */
+  peixotoLabel: string;
+  /** a escalada já foi tentada nesta negociação (Peixoto endurecido recusa uma vez) */
+  peixotoTried?: boolean;
+  /** usou argumento que não respondia a objeção (meio, ruim, mentira, pavio): o Saulo não ganha confiança */
+  dirty?: boolean;
+  /** argumentos com efeito pendente */
+  lie?: boolean;
+  promise?: boolean;
+  /** pavio de cada rodada (segundos reais; 0 = sem pavio) */
+  fuse: number;
+  /** minutos que o relógio cobra ao fechar */
+  minutes: number;
+  especial?: 'cida' | 'henrique';
+  direto?: boolean;
+  /** o caso precisa do Regional */
+  precisa: boolean;
+  /** pedido de rádio do roteiro que abriu a negociação (D9, D15): aplicado só com acordo */
+  pendingReq?: { req: PendingRequest; opt: string };
+}
+
+/** resultado da vaga zero guardado na ligação */
+export interface CallVz {
+  key: string;
+  result?: 'aceito' | 'recusado' | 'peixoto' | 'desviado';
+  lie?: boolean;
+  promise?: boolean;
+  /** minutos de maca presa sem acordo */
+  hold?: number;
+  /** tentativas (inclui as do rádio) */
+  tries: number;
+  /** a mentira já foi descoberta */
+  lieCaught?: boolean;
+}
+
 export interface ManualRule { id: string; text: string }
 export interface ManualPage {
   id: string;
@@ -952,7 +1152,7 @@ export interface PendingRequest {
   options: { id: string; label: string; cost?: number }[];
   expires: number;
   defaultOpt: string;
-  kind: 'timeline' | 'piora' | 'recusa' | 'retencao' | 'hostil' | 'vaga';
+  kind: 'timeline' | 'piora' | 'recusa' | 'retencao' | 'hostil' | 'vaga' | 'promessa';
   callId?: string;
   timelineId?: string;
   data?: Record<string, unknown>;
@@ -1056,6 +1256,10 @@ export interface CallRT {
   video?: VideoRT;
   /** pedidos de vídeo nesta ligação (tentativas, inclusive recusas) */
   videoTries?: number;
+  /** 1.1: vaga zero negociada para esta ligação */
+  vz?: CallVz;
+  /** 1.1: minutos de perguntas que não mudavam a conduta num caso grave (contam inteiros para a janela de risco) */
+  waste?: number;
 }
 
 /** reguladores na campanha da Simone */
@@ -1110,7 +1314,7 @@ export interface GenParams {
 
 export interface SchedEvent {
   t: number;
-  kind: 'arrival' | 'unit' | 'timeline' | 'reveal' | 'followup' | 'request' | 'hangup' | 'phantom' | 'simone' | 'peixoto' | 'death' | 'endShift' | 'ai' | 'notice' | 'cochilo';
+  kind: 'arrival' | 'unit' | 'timeline' | 'reveal' | 'followup' | 'request' | 'hangup' | 'phantom' | 'simone' | 'peixoto' | 'death' | 'endShift' | 'ai' | 'notice' | 'cochilo' | 'vz';
   ref: string;
   data?: Record<string, unknown>;
   seq: number;
@@ -1200,6 +1404,10 @@ export interface ShiftState {
   tarm?: TarmShiftState;
   /** videochamadas: franquia do plantão e uso */
   video?: { credits: number; used: number; proofs: number; minutes: number };
+  /** 1.1: negociação de vaga zero aberta (o relógio para) */
+  vz?: VzRT;
+  /** 1.1: negociações esperando a tela (orientação em curso, outra negociação aberta) */
+  vzQueue?: { key: string; callId: string; unit?: string; origin: VzRT['origin']; pendingReq?: VzRT['pendingReq'] }[];
 }
 
 export interface Toast { id: number; text: string; kind: 'bom' | 'ruim' | 'info' | 'dinheiro'; t: number }

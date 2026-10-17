@@ -1,7 +1,7 @@
 // Interface do registro de conteúdo (implementado em src/content/index.ts).
 import type {
   DayDef, QuestionDef, ManualPage, FleetSpec, CallDef, Ctx, SceneDef, BillDef, ShopItem, GameState, Gender,
-  AddrIn, Effect, Cond, Txt, CallRT, NewspaperDef, EndingInfo, TruthDef, VideoDef, LineIn, FieldCaseDef,
+  AddrIn, Effect, Cond, Txt, CallRT, NewspaperDef, EndingInfo, TruthDef, VideoDef, LineIn, FieldCaseDef, VagaZeroContent,
 } from './types';
 
 export interface GuideOption {
@@ -219,6 +219,8 @@ export interface Content {
   };
   /** plantão extra na Intervenção (ambulância): banco de ocorrências */
   field?: { cases: FieldCaseDef[] };
+  /** 1.1: vaga zero negociada com o plantonista do Regional (src/content/vagazero.ts) */
+  vagazero?: VagaZeroContent;
   /** efeitos reutilizáveis nomeados */
   effects?: Record<string, Effect>;
   /** nomes para geração procedural */

@@ -9,7 +9,7 @@ import type {
 } from './types';
 import type { Content } from './content-api';
 import { callBox, extraBox } from './categories';
-import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL, recordIncome } from './state';
+import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL, recordIncome, COFFEE_HOME_COST } from './state';
 import { hm, fmtTime, clamp, Rng, hashString } from './util';
 import { normLines, txt, cluesIn, resolveTokens, stripMarkup, beneForm } from './text';
 import { resolveAddress, landmarkPos, destLandmark, addrText, type AddrResult } from './city/map';
@@ -17,6 +17,10 @@ import { route, addressTarget, type FloodMode } from './city/path';
 import { grade, colorFor, decisionLabel, NOTE_COST, WARNING_COST } from './grading';
 import { buildGeneratedCall } from './generator';
 import { videoBudget, videoEnabled, videoView, startVideo, videoLook, videoWide, endVideo, videoProofOnStamp, type VideoView, type VideoStartResult } from './video';
+import {
+  vzEnabled, vzOnStamp, vzOnMci, vzTryOpen, vzEnqueue, vzChoose, vzTimeout, vzPeixoto, vzDesviar, vzDesistir, vzClose, vzAtHospital, vzEvent,
+  vzInterceptRequest, vzPromiseAnswer, vzScreen, vzCardInfo, type VzScreen,
+} from './vagazero';
 
 export const SHIFT_START = hm('07:00');
 export const SHIFT_END = hm('19:00');
@@ -29,6 +33,13 @@ export const BONUS_CAP = 160;
 export const PRODUCTIVITY_BONUS = 30;
 export const COST_USA = 1850;
 export const COST_USB = 720;
+/** 1.1 — café: foco por 2 h (1h30/1h com noites seguidas). Perguntas e ferramentas custam 40% menos… */
+export const COFFEE_QUESTIONS = 0.6;
+/** …e, com uma ligação aberta, o relógio anda a 75% (o tempo de pensar pesa menos na fila) */
+export const COFFEE_CLOCK = 0.75;
+/** 1.1 — caso grave decidido sem nenhuma pergunta à toa (e com as obrigatórias feitas): bônus */
+export const OBJECTIVE_BONUS = 10;
+
 
 export type ShiftEvent =
   | { type: 'ring'; callId: string }
@@ -383,15 +394,28 @@ export class ShiftSim {
       const g = (sh.flags['guideScale'] as number) ?? 0.3;
       return g;
     }
+    // 1.1: café — com uma ligação aberta (ainda sem decisão), o relógio anda mais devagar
+    if (this.focused() && sh.activeId) {
+      const a = sh.calls[sh.activeId];
+      if (a && a.status === 'ativa' && !a.decision) s *= COFFEE_CLOCK;
+    }
     return s;
   }
 
+  /** café fazendo efeito agora (foco) */
+  focused(): boolean {
+    return this.sh.coffeeUntil > this.sh.time;
+  }
+
   isBlocked(): boolean {
-    return this.sh.modals.some((m) => m.blocking) || this.paused || this.sh.ended || !!this.st.gameOver;
+    // 1.1: negociação de vaga zero aberta = o tempo para
+    return this.sh.modals.some((m) => m.blocking) || this.paused || this.sh.ended || !!this.st.gameOver || !!this.sh.vz;
   }
 
   /** avança pelo relógio real */
   tick(realMs: number) {
+    // negociação de vaga zero esperando a mesa ficar livre (orientação, aviso)
+    if (this.sh.vzQueue?.length && !this.sh.vz) vzTryOpen(this);
     if (this.isBlocked()) return;
     const sh = this.sh;
     // pálpebras fecharam sem o jogador reagir
@@ -484,7 +508,9 @@ export class ShiftSim {
    */
   riskElapsed(call: CallRT, at: number): number {
     const from = call.riskFrom ?? call.arrived;
-    return Math.max(0, at - from - (1 - CALL_RISK_RATE) * (call.talk ?? 0));
+    // 1.1: num caso grave, o tempo de perguntas que não mudavam a conduta conta inteiro (call.waste)
+    const talk = Math.max(0, (call.talk ?? 0) - (call.waste ?? 0));
+    return Math.max(0, at - from - (1 - CALL_RISK_RATE) * talk);
   }
 
   private handle(ev: SchedEvent) {
@@ -511,6 +537,8 @@ export class ShiftSim {
         return this.onScheduledOutcome(ev.ref, ev.data);
       case 'ai':
         return this.onAi(ev.ref);
+      case 'vz':
+        return vzEvent(this, ev.ref, ev.data);
       case 'notice':
         if (ev.ref === 'almoco') {
           this.sh.flags['almocoPendente'] = true;
@@ -747,7 +775,7 @@ export class ShiftSim {
   // ---------------------------------------------------------------------------
   questionCost(base: number): number {
     let c = base;
-    if (this.sh.coffeeUntil > this.sh.time) c *= 0.7;
+    if (this.focused()) c *= COFFEE_QUESTIONS;
     if (this.st.vars.desgaste > 60) c *= 1.1;
     return Math.max(1, Math.round(c));
   }
@@ -870,6 +898,7 @@ export class ShiftSim {
       if (!this.tarm && base.tarmOnly) return false;
       if (call.asked.includes(qid)) return false;
       call.asked.push(qid);
+      this.noteWaste(call, qid, this.questionCost(base.cost));
       // perguntar algo de uma caixa fechada (atalho, bot) abre a caixa
       if (!this.tarm && base.box) this.openBoxFor(call, Array.isArray(base.box) ? base.box : [base.box]);
       this.regLine(call, base.say);
@@ -889,6 +918,7 @@ export class ShiftSim {
     if (qid === 'confronto_quadro') {
       if (call.asked.includes(qid) || !this.onBoard(call)) return false;
       call.asked.push(qid);
+      this.noteWaste(call, qid, this.questionCost(6));
       this.regLine(call, 'Esse número já passou trote aqui na central.');
       const a = def.q?.[qid] ?? this.c.defaults(qid, def, c);
       this.pushLines(call, a, def);
@@ -909,6 +939,38 @@ export class ShiftSim {
     if (x.onAsk) x.onAsk(this.eff());
     this.advance(this.questionCost(x.cost ?? 8));
     return true;
+  }
+
+  /**
+   * 1.1 — a pergunta muda a conduta deste chamado? Sempre: as cinco fixas, as obrigatórias da
+   * verdade (`must`), as perguntas próprias da ligação (`extra`) e as da caixa certa que têm
+   * resposta escrita. Não: as de outra caixa, as que só têm a resposta genérica, "Ligar de volta"
+   * e o confronto do quadro numa emergência real, as frases de folgado num caso urgente.
+   */
+  relevantQuestion(call: CallRT, qid: string): boolean {
+    const def = this.defOf(call);
+    const t = this.truthOf(call);
+    if (qid === 'acalmar') return true;
+    if (t.must?.includes(qid)) return true;
+    const base = this.c.questions.find((q) => q.id === qid);
+    if (base?.fixed) return true;
+    if (base?.act) return t.sev !== 'vermelho' && t.sev !== 'amarelo';
+    if (qid === 'callback' || qid === 'confronto_quadro') return t.sev === 'trote';
+    if ((def.extra ?? []).some((x) => x.id === qid)) return true;
+    const written = def.q?.[qid] !== undefined;
+    if (base?.box) {
+      const boxes = Array.isArray(base.box) ? base.box : [base.box];
+      if (!boxes.includes(this.callCat(call))) return false;
+    }
+    return written;
+  }
+
+  /** num caso grave, o tempo de uma pergunta que não muda a conduta conta inteiro para a janela de risco */
+  private noteWaste(call: CallRT, qid: string, cost: number) {
+    if (this.tarm) return;
+    if (this.truthOf(call).sev !== 'vermelho') return;
+    if (this.relevantQuestion(call, qid)) return;
+    call.waste = (call.waste ?? 0) + cost;
   }
 
   /**
@@ -1064,6 +1126,14 @@ export class ShiftSim {
     call.dxAtStamp = truth.dx;
     const verdict = grade({ truth, decision, asked: call.asked, day: this.st.day });
     call.verdict = verdict;
+    // 1.1: num caso grave, perguntar bem paga; perguntar à toa custou ao paciente (aparece na revelação)
+    if (!this.tarm && truth.sev === 'vermelho') {
+      const w = Math.round(call.waste ?? 0);
+      if (w === 0 && call.asked.length > 0 && (verdict.kind === 'correto' || verdict.kind === 'defensavel')) {
+        verdict.bonus += OBJECTIVE_BONUS;
+        verdict.text += ` Direto ao ponto: nenhuma pergunta à toa (+R$ ${OBJECTIVE_BONUS}).`;
+      } else if (w >= 5) verdict.text += ` ${w} min em perguntas que não mudavam a conduta contaram inteiros contra o paciente.`;
+    }
     sh.regTimes.push(sh.time - (call.answered ?? sh.time));
     sh.handled++;
     this.st.totals.handled++;
@@ -1109,11 +1179,14 @@ export class ShiftSim {
     }
     // peixoto
     this.peixotoWatch();
+    // 1.1: vaga zero negociada (ligação marcada em content/vagazero.ts indo para o Regional)
+    vzOnStamp(this, call);
     const g = def.guide;
     const worsenGuide = (call as CallRT & { pendingGuide?: string }).pendingGuide;
     const gid = worsenGuide ?? (g && (!g.when || g.when(this.ctx())) && g.auto !== false ? (typeof g.id === 'function' ? g.id(this.ctx()) : g.id) : undefined);
     if (gid) this.startGuide(call, gid, Math.max(1, unit.t1 - sh.time));
     else this.closeCall(call);
+    vzTryOpen(this);
     return { ok: true };
   }
 
@@ -1262,6 +1335,8 @@ export class ShiftSim {
     this.revealVerdict(call);
     this.closeCall(call);
     if (lostReds === 0) e.set('mci_sem_obitos');
+    // 1.1: o Regional também precisa aceitar as vítimas do show
+    if (vzOnMci(this, call)) vzTryOpen(this);
     summary.unshift(`Triagem: ${rightTriage} de ${mci.victims.length} corretas.`);
     return { ok: true, summary };
   }
@@ -1375,7 +1450,7 @@ export class ShiftSim {
       case 'leave': {
         if (u.status !== 'LOCAL' || u.callId !== data.callId) return;
         if (call && this.needsTransport(call)) {
-          const dest = call.decision?.dest ?? this.defaultDest(call);
+          const dest = call.vz?.result === 'desviado' ? 'UPA' : call.decision?.dest ?? this.defaultDest(call);
           u.dest = dest;
           this.moveUnit(u, landmarkPos(destLandmark(dest).id), 'TRANSP', 'hospital', call.id);
         } else this.returnToBase(u);
@@ -1546,17 +1621,31 @@ export class ShiftSim {
     }
     // retenção de maca
     let ret = 25 + Math.floor(randOf(this.st) * 55);
-    if (dest === 'REG' && this.sh.noVacancy && !(call as CallRT & { vagaZero?: boolean }).vagaZero) {
+    let note = `Retenção de maca · ${destLandmark(dest).short}`;
+    // 1.1: vaga zero negociada para esta ligação (aceita = maca solta logo; sem acordo = presa 40–60 min)
+    const vzr = dest === 'REG' ? vzAtHospital(this, u, call) : undefined;
+    if (vzr) {
+      ret = vzr.ret;
+      note = vzr.note;
+      this.radio(u.radioName, vzr.text, ret > 20 ? 'alerta' : 'info', call.id);
+    } else if (dest === 'REG' && this.sh.noVacancy && !(call as CallRT & { vagaZero?: boolean }).vagaZero) {
       ret += 60;
+      const neg = vzEnabled(this);
       this.makeRequest({
         kind: 'vaga',
         from: u.radioName,
         text: `Central, ${u.label} na porta do Regional. Sem vaga, sem maca. Paciente ${t.sev === 'vermelho' ? 'grave' : 'estável'} na nossa prancha.`,
-        options: [
-          { id: 'vagazero', label: 'Ligar e negociar "vaga zero" (10 min)', cost: 10 },
-          { id: 'upa', label: 'Desviar para a UPA Norte' },
-          { id: 'aguardar', label: 'Aguardar liberação' },
-        ],
+        options: neg
+          ? [
+              { id: 'negociar', label: 'Ligar pro Regional e negociar a vaga zero' },
+              { id: 'upa', label: 'Desviar para a UPA Norte' },
+              { id: 'aguardar', label: 'Aguardar liberação' },
+            ]
+          : [
+              { id: 'vagazero', label: 'Ligar e negociar "vaga zero" (10 min)', cost: 10 },
+              { id: 'upa', label: 'Desviar para a UPA Norte' },
+              { id: 'aguardar', label: 'Aguardar liberação' },
+            ],
         defaultOpt: 'aguardar',
         callId: call.id,
         data: { unit: u.id },
@@ -1565,7 +1654,7 @@ export class ShiftSim {
     }
     u.status = 'RETIDO';
     u.until = this.sh.time + ret;
-    u.note = `Retenção de maca · ${destLandmark(dest).short}`;
+    u.note = note;
     this.schedule(u.until, 'unit', u.id, { phase: 'released' });
     if (call.outcome === 'pendente' || call.outcome === 'salvo') call.outcome = call.outcome === 'pendente' ? 'transportado' : 'salvo';
     if (ret > 70 && randOf(this.st) < 0.35 && !this.sh.requests.some((r) => r.kind === 'retencao')) {
@@ -1628,8 +1717,66 @@ export class ShiftSim {
     sh.requests.splice(idx, 1);
     const o = req.options.find((x) => x.id === opt);
     this.radio('VOCÊ', o ? o.label : opt, 'info');
+    // 1.1: "negociar" com o Regional abre a tela da vaga zero (o efeito da opção só vale com acordo)
+    if (vzInterceptRequest(this, req, opt)) return;
     this.applyRequest(req, opt);
     if (o?.cost) this.advance(o.cost);
+  }
+
+  /** aplica a opção de um pedido já retirado da bandeja (a vaga zero aplica o pedido do roteiro só com acordo) */
+  applyRequestNow(req: PendingRequest, opt: string) {
+    this.applyRequest(req, opt);
+  }
+
+  /** esquece as opções de um pedido de roteiro que não vai mais ser aplicado */
+  dropInlineRequest(id: string) {
+    this.inlineReqs.delete(id);
+  }
+
+  /** destino padrão da ligação (verdade; vermelho → Regional) */
+  defaultDestOf(call: CallRT): Dest {
+    return this.defaultDest(call);
+  }
+
+  /** desvia para a UPA Norte as viaturas desta ligação que iam (ou estão presas) no Regional */
+  divertToUPA(call: CallRT) {
+    for (const uid of call.units) {
+      const u = this.sh.units[uid];
+      if (!u || u.callId !== call.id) continue;
+      if ((u.status === 'TRANSP' && u.dest !== 'UPA') || u.status === 'RETIDO') {
+        u.dest = 'UPA';
+        u.note = undefined;
+        this.moveUnit(u, landmarkPos('upa'), 'TRANSP', 'hospital', call.id);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 1.1: vaga zero negociada (lógica em vagazero.ts) — a tela chama estes
+  // ---------------------------------------------------------------------------
+  vzScreen(): VzScreen | undefined {
+    return vzScreen(this);
+  }
+  vzChoose(cardId: string): boolean {
+    return vzChoose(this, cardId);
+  }
+  vzTimeout(): boolean {
+    return vzTimeout(this);
+  }
+  vzPeixoto(): boolean {
+    return vzPeixoto(this);
+  }
+  vzDesviar(): boolean {
+    return vzDesviar(this);
+  }
+  vzDesistir(): boolean {
+    return vzDesistir(this);
+  }
+  vzClose(): boolean {
+    return vzClose(this);
+  }
+  vzCardInfo(id: string) {
+    return vzCardInfo(this, id);
   }
 
   private onRequestExpire(id: string) {
@@ -1712,6 +1859,9 @@ export class ShiftSim {
         }
         return;
       }
+      case 'promessa':
+        vzPromiseAnswer(this, call, opt);
+        return;
       case 'timeline': {
         if (req.data?.inline) {
           const opts = this.inlineReqs.get(req.id) ?? [];
@@ -2098,6 +2248,7 @@ export class ShiftSim {
       if (w.resetRisk) {
         call.riskFrom = this.sh.time;
         call.talk = 0;
+        call.waste = 0;
       }
       if (w.guide) (call as CallRT & { pendingGuide?: string }).pendingGuide = w.guide;
       if (w.onTrigger) w.onTrigger(this.eff());
@@ -2109,6 +2260,15 @@ export class ShiftSim {
   // orientação ativa (minijogos)
   // ---------------------------------------------------------------------------
   startGuide(call: CallRT, guideId: string, etaMin: number) {
+    // 1.1: o roteiro fixo "vagazero" virou a negociação com o Saulo (tela do tempo parando)
+    if (guideId === 'vagazero' && vzEnabled(this)) {
+      if (!call.vz) {
+        call.vz = { key: 'generico', tries: 0 };
+        vzEnqueue(this, { key: 'generico', callId: call.id, unit: call.decision?.unit, origin: 'carimbo' });
+      }
+      this.closeCall(call);
+      return;
+    }
     const script = this.c.guides[guideId];
     if (this.tarm) {
       // o regulador orienta por telefone; a qualidade depende de quem está na mesa
@@ -2170,6 +2330,8 @@ export class ShiftSim {
       this.evaluateCare(call, dc.at, dc.level, dc.unit ? sh.units[dc.unit] : undefined);
     }
     this.emit({ type: 'guide', callId: id, start: false });
+    // negociação de vaga zero que esperava a orientação acabar
+    vzTryOpen(this);
     void def;
   }
 
@@ -2185,7 +2347,10 @@ export class ShiftSim {
     // com noites seguidas sem dormir, o café segura menos (2 h, 1 h 30, 1 h)
     const dur = (sh.noites ?? 1) >= 3 ? 60 : (sh.noites ?? 1) === 2 ? 90 : 120;
     sh.coffeeUntil = Math.max(sh.time, sh.coffeeUntil) + dur;
-    this.toast(`Café: perguntas mais rápidas por ${dur === 120 ? '2 h' : dur === 90 ? '1 h 30' : '1 h'}${sh.semSono ? ' e sem cochilar' : ''}. Em casa você vai chegar irritad${this.st.gender === 'M' ? 'o' : 'a'}.`, 'info');
+    this.toast(
+      `Café: foco por ${dur === 120 ? '2 h' : dur === 90 ? '1 h 30' : '1 h'}. Perguntas 40% mais rápidas e, na linha, o relógio anda mais devagar${sh.semSono ? '; sem cochilar' : ''}. Em casa: Desgaste +${COFFEE_HOME_COST} e irritad${this.st.gender === 'M' ? 'o' : 'a'}.`,
+      'info',
+    );
     return true;
   }
 

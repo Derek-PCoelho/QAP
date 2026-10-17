@@ -28,6 +28,14 @@ function step(g: Game): boolean {
       return true;
     }
     const sh = g.shift!;
+    // 1.1: vaga zero aberta (o relógio para): primeiro argumento; sem acordo, desliga
+    const vz = sh.sh.vz;
+    if (vz) {
+      if (vz.state === 'fim') sh.vzClose();
+      else if (vz.state === 'impasse') sh.vzDesistir();
+      else sh.vzChoose(vz.cards[0].id);
+      return true;
+    }
     for (const m of [...sh.sh.modals]) sh.ackModal(m.id, m.options?.[0]?.id);
     for (const r of [...sh.sh.requests]) sh.answerRequest(r.id, r.options[0].id);
     if (sh.sh.guideCallId) sh.finishGuide(0.8, true);

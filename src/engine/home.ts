@@ -4,7 +4,7 @@
 // =============================================================================
 import type { GameState, SceneDef, SceneNode, Choice, BillDef, ShopItem, InterludeDef, Ctx, EffCtx, Effect, DLine, MemberStatus, FamilyMember, FieldShift } from './types';
 import type { Content } from './content-api';
-import { makeCtx, makeEffCtx, VAR_LABEL } from './state';
+import { makeCtx, makeEffCtx, VAR_LABEL, COFFEE_HOME_COST } from './state';
 import { txt, resolveTokens } from './text';
 import { clamp } from './util';
 import { FieldSim, createFieldShift, FIELD_WEAR, FIELD_WEAR_DEATH, FIELD_SLEEP_DEBT } from './field';
@@ -74,7 +74,7 @@ export class HomeSim {
     st.home = { step: 'pre', lineIdx: 0, paid: [], bought: [], found: [], tried: [], inspected: false, log: [], sceneDone: false };
     // café: chega irritado
     if (st.irritado > 0) {
-      e.add('desgaste', 8 * st.irritado, 'café');
+      e.add('desgaste', COFFEE_HOME_COST * st.irritado, 'café');
       this.toast('Você chega em casa {m:irritado|irritada}. As falas mais carinhosas ficam difíceis hoje.', 'ruim');
     }
     // renda do ateliê

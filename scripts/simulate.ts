@@ -1,14 +1,19 @@
 // Simulação de balanceamento: joga a campanha inteira com os perfis de bot e
 // compara com as metas do documento de design (Revisão 2.2–2.7).
-// Uso: npm run simulate -- [seeds=20] [--md arquivo.md]
+// Uso: npm run simulate -- [seeds=20] [--md arquivo.md] [--extra] [--only lento,medio]
+//  --extra acrescenta os perfis de comparação (ex.: Médio sem recursos)
 import { writeFileSync } from 'node:fs';
 import { CONTENT } from '../src/content/index';
-import { playBot, PROFILES, type BotResult } from '../src/engine/bot';
+import { playBot, PROFILES, EXTRA_PROFILES, type BotProfile, type BotResult } from '../src/engine/bot';
 
 const args = process.argv.slice(2);
 const seeds = Number(args.find((a) => /^\d+$/.test(a)) ?? 20);
 const mdIdx = args.indexOf('--md');
 const mdFile = mdIdx >= 0 ? args[mdIdx + 1] : undefined;
+const onlyIdx = args.indexOf('--only');
+const only = onlyIdx >= 0 ? args[onlyIdx + 1].split(',') : undefined;
+const ALL: Record<string, BotProfile> = args.includes('--extra') ? { ...PROFILES, ...EXTRA_PROFILES } : PROFILES;
+const RUN = Object.fromEntries(Object.entries(ALL).filter(([k]) => !only || only.includes(k)));
 
 const TARGET: Record<string, string> = {
   lento: 'termina negativo sem plantões extras (meta: −650 antes deles), 5–6 ligações/dia',
@@ -31,7 +36,7 @@ out('');
 out('| Perfil | Fim (bom/normal/ruim/secreto) | Game over | Chegou ao D20 | Dias jogados | Lig./dia | Saldo D5 | D10 | D15 | D19/20 | Noites na ambulância | Advert. | Notas | Óbitos | Chaves salvas | Laços | Integr. | Desgaste |');
 out('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
 const all: Record<string, BotResult[]> = {};
-for (const [key, prof] of Object.entries(PROFILES)) {
+for (const [key, prof] of Object.entries(RUN)) {
   const rs: BotResult[] = [];
   for (let s = 1; s <= seeds; s++) rs.push(playBot(CONTENT, prof, 1000 + s));
   all[key] = rs;
@@ -48,8 +53,17 @@ for (const [key, prof] of Object.entries(PROFILES)) {
   );
 }
 out('');
+out('Recursos por campanha (média): cafés, vídeos, vagas zero negociadas (aceitas / pelo Peixoto / sem acordo) e a confiança do Saulo no fim.');
+out('');
+out('| Perfil | Cafés | Vídeos | Vagas zero | Aceitas | Peixoto | Sem acordo | Confiança do Saulo |');
+out('|---|---|---|---|---|---|---|---|');
+for (const [key, rs] of Object.entries(all)) {
+  const r = (f: (x: BotResult) => number) => fmt(avg(rs.map(f)));
+  out(`| ${RUN[key].name} | ${r((x) => x.res.coffee)} | ${r((x) => x.res.videos)} | ${r((x) => x.res.vz)} | ${r((x) => x.res.vzOk)} | ${r((x) => x.res.vzPeixoto)} | ${r((x) => x.res.vzFail)} | ${r((x) => x.res.saulo)} |`);
+}
+out('');
 out('Metas do documento de design:');
-for (const [k, t] of Object.entries(TARGET)) out(`- **${PROFILES[k]?.name ?? k}**: ${t}`);
+for (const [k, t] of Object.entries(TARGET)) out(`- **${ALL[k]?.name ?? k}**: ${t}`);
 const errs = Object.values(all).flatMap((rs) => rs.flatMap((r) => r.errors));
 out('');
 out(errs.length ? `Erros encontrados (${errs.length}):\n\n` + [...new Set(errs)].slice(0, 30).map((e) => '- ' + e).join('\n') : 'Nenhum erro de execução.');

@@ -201,6 +201,7 @@ export function startVideo(sim: ShiftSim): VideoStartResult {
   sim.advance(conn);
   b.credits = Math.max(0, b.credits - 1);
   b.used++;
+  sim.st.flags['videos_total'] = (Number(sim.st.flags['videos_total']) || 0) + 1;
   b.minutes += conn;
   const t = sim.truthOf(call);
   call.video = {
@@ -216,8 +217,53 @@ export function startVideo(sim: ShiftSim): VideoStartResult {
   sim.sysLine(call, `📹 Videochamada conectada · sinal ${signal}${signal !== 'bom' ? ' (a imagem trava)' : ''}.`);
   pushVideoLines(sim, call, vd.first);
   videoNotes(sim, call);
+  videoReading(sim, call);
   sim.emit({ type: 'lines', callId: call.id });
   return 'conectou';
+}
+
+/** 1.1: quem liga pode enganar (exagera, minimiza, trota, não sabe): o vídeo mostra o que a conversa esconde */
+export const VIDEO_UNRELIABLE = new Set(['trotista', 'exagerador', 'minimizador', 'embriagado', 'crianca', 'disfarcado', 'frequentador', 'testemunha']);
+/** 1.1: perguntas que a câmera responde sozinha (sem custo de tempo) */
+export const VIDEO_SEES = ['respira', 'pele', 'consciencia'];
+
+/**
+ * 1.1 — o que o vídeo resolve de uma vez:
+ *  · com o paciente no quadro, "Respira?", "Cor da pele?" e "Está acordado?" ficam respondidas
+ *    (contam como perguntadas, sem gastar tempo);
+ *  · quando quem liga não é confiável (exagera, minimiza, trota, não sabe), aparece a leitura da
+ *    gravidade que nenhuma pergunta dá.
+ */
+export function videoReading(sim: ShiftSim, call: CallRT) {
+  const v = call.video;
+  if (!v || sim.tarm) return;
+  const def = sim.defOf(call);
+  const t = sim.truthOf(call);
+  const c = sim.ctx();
+  if (v.scene.patient) {
+    const seen = VIDEO_SEES.filter((q) => !call.asked.includes(q) && sim.c.questions.some((x) => x.id === q && (!x.day || x.day <= sim.st.day)));
+    if (seen.length) {
+      const label: Record<string, string> = { respira: 'se respira', pele: 'a cor da pele', consciencia: 'se está acordado' };
+      sim.sysLine(call, `📹 Com a câmera no paciente, dá para ver sem perguntar: ${seen.map((q) => label[q]).join(', ')}.`);
+      for (const q of seen) {
+        call.asked.push(q);
+        const a = def.q?.[q];
+        sim.pushLines(call, a !== undefined ? a : sim.c.defaults(q, def, c), def);
+      }
+    }
+  }
+  if (!VIDEO_UNRELIABLE.has(def.type) || call.unlocked.includes('vimpressao')) return;
+  if (!v.scene.patient && t.sev !== 'trote') return;
+  call.unlocked.push('vimpressao');
+  const txt =
+    t.sev === 'trote'
+      ? 'Pelo vídeo: ninguém passando mal. A cena não bate com a história.'
+      : t.sev === 'vermelho'
+        ? 'Pelo vídeo: é grave. A cor e o jeito de respirar dizem mais do que a conversa.'
+        : t.sev === 'amarelo'
+          ? 'Pelo vídeo: precisa de atendimento, mas não está morrendo agora.'
+          : 'Pelo vídeo: está bem, conversando, cor boa. Não tem cara de caso de viatura.';
+  sim.sysLine(call, txt, 'insight');
 }
 
 /** pede para mostrar algo */

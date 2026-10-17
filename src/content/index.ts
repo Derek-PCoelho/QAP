@@ -10,6 +10,7 @@ import { ENDINGS, ACHIEVEMENTS } from './endings';
 import { BANK } from './bank/index';
 import { SIMONE } from './simone/index';
 import { buildVideo, remoteLines, VIDEO_FROM_DAY, VIDEO_CREDITS, VIDEO_INTRO } from './video';
+import { VAGAZERO } from './vagazero';
 import * as M01 from './days/d01';
 import * as M02 from './days/d02';
 import * as M03 from './days/d03';
@@ -59,6 +60,7 @@ export const CONTENT: Content = {
   docs: ALL_DOCS,
   defaults: defaultAnswer,
   field: { cases: FIELD_CASES },
+  vagazero: VAGAZERO,
   video: { fromDay: VIDEO_FROM_DAY, credits: VIDEO_CREDITS, build: buildVideo, remoteLines: (call) => remoteLines(call), intro: VIDEO_INTRO },
   names: NAMES,
   fleetForDay,
