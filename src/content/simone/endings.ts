@@ -128,7 +128,7 @@ function fios(c: Ctx, st: Status): Thread[] {
     text: c.flag('sd14_fonte')
       ? 'Na matéria da Carla, uma frase sem nome: "A gente é cronometrada pra desligar." A Carla mandou o recorte pelo correio, com um bilhete: "Obrigada por ficar na linha."'
       : c.flag('sd14_desculpa') || c.flag('sd14_linha')
-        ? 'A Carla manda mensagem todo dia 12 de abril, o dia do Murilo. Uma palavra: "Linha." A Simone responde: "Tô aqui."'
+        ? 'A Carla manda mensagem todo dia 12 de abril, o dia do Rafael. Uma palavra: "Linha." A Simone responde: "Tô aqui."'
         : 'O cartão da Carla Nunes continua no bolso do uniforme, junto do bloco de post-it.',
   });
   out.push({

@@ -88,11 +88,23 @@ export class HomeSim {
       e.pay(-40, 'Internação da Dona Zélia (táxi e farmácia)');
       st.family.zelia.status = 'doente';
     }
+    // 1.1: a volta do plantão (ônibus, rua, portão) abre a noite; depois dela, a cena `pre` do dia
+    const volta = st.mode === 'campanha' ? this.day?.volta?.(this.ctx()) : undefined;
+    if (volta) {
+      st.home.volta = true;
+      this.enterScene(volta, 'pre');
+      return;
+    }
+    this.startPre();
+  }
+
+  private startPre() {
+    const st = this.st;
     const pre = this.inter?.pre;
     if (pre) {
       const sc = typeof pre === 'function' ? pre(this.ctx()) : pre;
       this.enterScene(sc, 'pre');
-    } else st.home.step = 'escolha';
+    } else st.home!.step = 'escolha';
   }
 
   present(m: FamilyMember): boolean {
@@ -193,6 +205,9 @@ export class HomeSim {
       if (sum.hurt) e.add('desgaste', 6, 'equipe ferida');
       st.flags['noite_em_claro'] = true;
       st.flags['fez_intervencao'] = true;
+      // contador de noites na Intervenção (ROTEIRO 3.1): total e por dia (bicosRecent em state.ts)
+      st.flags['bico_d' + st.day] = true;
+      st.flags['bicos_total'] = (Number(st.flags['bicos_total']) || 0) + 1;
       for (const r of sum.results) st.flags['field_' + r.id] = true;
       e.achievement('dobra');
       if (sum.results.length >= 3 && sum.stable === sum.results.filter((r) => r.outcome !== 'trote').length && sum.stable > 0) e.achievement('noite_limpa');
@@ -229,11 +244,11 @@ export class HomeSim {
     if (!sc) {
       // recarregado de save: reconstrói
       const inter = this.inter;
-      const cands: (SceneDef | ((c: Ctx) => SceneDef) | undefined)[] = [inter?.pre, inter?.scene, inter?.bico];
+      const cands: (SceneDef | ((c: Ctx) => SceneDef | undefined) | undefined)[] = [inter?.pre, inter?.scene, inter?.bico, this.day?.volta];
       for (const x of cands) {
         if (!x) continue;
         const s = typeof x === 'function' ? x(this.ctx()) : x;
-        if (s.id === h.sceneId) sc = s;
+        if (s && s.id === h.sceneId) sc = s;
       }
       if (!sc) {
         const g = this.c.home.genericScene(this.ctx());
@@ -318,6 +333,12 @@ export class HomeSim {
   endScene() {
     const h = this.st.home!;
     h.sceneDone = true;
+    if (h.step === 'pre' && h.volta) {
+      h.volta = false;
+      h.sceneId = undefined;
+      h.node = undefined;
+      return this.startPre();
+    }
     if (h.step === 'pre') {
       h.step = 'escolha';
       h.sceneId = undefined;

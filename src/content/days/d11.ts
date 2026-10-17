@@ -401,7 +401,7 @@ export const DAY = day({
         sangramento: 'Sangramento não. Só o vômito.',
         historico: 'Nada. Nunca ficou doente. Nem quer ir em médico.',
         dengue: '{{Dor forte na barriga e vômito sem parar, isso tem|alarme}}. E ele levantou pra ir no banheiro e teve que sentar no meio do caminho.',
-        paciente: ['CAÍQUE: Tô bem, mãe... é só... [{{ânsia de vômito|ansia}}]', 'CAÍQUE: Desculpa... a barriga... aperta.'],
+        paciente: ['MURILO: Tô bem, mãe... é só... [{{ânsia de vômito|ansia}}]', 'MURILO: Desculpa... a barriga... aperta.'],
         seguranca: 'Seguro.',
       },
       extra: [{ id: 'urina', label: 'Está urinando?', say: 'Ele está urinando? Quando foi a última vez?', a: '{{Desde ontem à noite não fez xixi|sem_urina}}.' }],
@@ -409,10 +409,10 @@ export const DAY = day({
         { a: 'alarme', b: 'manual:dengue_alarme', insight: 'Dor abdominal intensa e vômitos persistentes no 4º dia: dengue COM sinais de alarme. USB → UPA (Manual p.11).' },
         { a: 'vomita', b: 'sem_urina', insight: 'Vomita até água e não urina desde ontem: está desidratando. Não dá pra hidratar em casa.' }, // Conferido (RC11: vômitos persistentes e sinais de desidratação → USI/USB; USP cap. 58: vômito persistente é sinal de alarme, hidratação venosa)
       ],
-      patient: { name: 'Caíque Moreira', age: 28, sex: 'M' },
+      patient: { name: 'Murilo Moreira', age: 28, sex: 'M' },
       truth: { dx: 'Dengue com sinais de alarme (dor abdominal e vômitos persistentes)', sev: 'amarelo', ok: ['USB'], dest: ['UPA'], risk: { good: 100, bad: 260, needs: 'USB' } },
       radio: { ok: 'Central, {unit} no local. Dengue com sinal de alarme, desidratado, pressão no limite. Acesso venoso, soro correndo. Removendo pra UPA.' },
-      diary: { alive: 'Caíque, 28. Dengue com sinal de alarme. A mãe ligou; ele dizia que estava bem.' },
+      diary: { alive: 'Murilo, 28. Dengue com sinal de alarme. A mãe ligou; ele dizia que estava bem.' },
     }),
     // ----------------------------------------------------------------- 4 (no lugar da Dona Cida) Dona Neusa, a vizinha
     call({

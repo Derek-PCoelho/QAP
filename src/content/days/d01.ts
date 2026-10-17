@@ -51,9 +51,65 @@ export const DAY = day({
       fim: { lines: [{ who: 'SIMONE', t: 'O telefone vai tocar, {dr}. Clica no cartão da fila pra atender. Eu vou falando o resto.' }] },
     },
   }),
+  // 1.1 — exemplo dos ganchos novos (o texto dos 20 dias é da Onda 2; ver docs/roteiro-1.1/)
+  ida: () => ({
+    id: 'd01_ida',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:20. O Ozzy late para a moto do entregador como se fosse a primeira vez. É a sua primeira vez também.' },
+          { who: 'DIRCE', t: '(varrendo a calçada às seis da manhã) Primeiro dia, {dr}? Vai com Deus e volta com o mesmo nome.' },
+          { who: 'NARRADOR', t: 'No ônibus 12, o motorista olha o crachá novo pendurado no seu pescoço.' },
+          { who: 'AÍLTON', t: 'Central da Regulação? Ih. Senta aqui na frente. Quem trabalha lá desce no ponto da XV com cara de enterro. Na volta, com cara de velório.' },
+        ],
+      },
+    },
+  }),
+  almoco: () => ({
+    id: 'd01_almoco',
+    bg: 'central',
+    cast: ['SIMONE', 'BENE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. A Simone empurra o teclado para o lado e abre um pote de margarina que não tem margarina: tem bolacha de água e sal. Seis.' },
+          { who: 'SIMONE', t: 'Almoço é aqui mesmo, {dr}. Vinte minutos. Se tocar, a gente finge que não ouviu. Se tocar duas vezes, a gente ouviu.' },
+          { who: 'NARRADOR', t: 'Pela janela, a USA 01 encosta no pátio. O Bené desce e acena para a central como quem acena para um aquário.' },
+          { who: 'BENÉ', t: '(da porta) Primeiro dia, né? Come. Quem regula de barriga vazia manda USA pra azia.' },
+          { who: 'SIMONE', t: 'E o Henrique? Ele nunca almoça. Ele janta às sete da manhã.' },
+          { who: 'NARRADOR', t: 'Ela ri de um jeito que não é bem riso.' },
+        ],
+        choices: [
+          { label: '"Divide comigo. Eu trouxe arroz e feijão pra dois sem querer."', next: 'dividiu', effect: fx.all(fx.add('lealSimone', 1, 'dividiu o almoço'), fx.set('almoco_d1_dividiu')) },
+          { label: '"Janta o quê, às sete?"', next: 'janta' },
+          { label: '(Comer lendo o Manual.)', next: 'manual' },
+        ],
+      },
+      dividiu: { lines: [{ who: 'SIMONE', t: 'Sem querer, sei. ...Obrigada. A bolacha é pra pressão, sabia? Sal pouco. Mentira, é pro bolso.' }] },
+      janta: { lines: [{ who: 'SIMONE', t: 'Pergunta pra ele. Ele te responde "noite tranquila".' }] },
+      manual: { lines: [{ who: 'NARRADOR', t: 'A página 1 tem uma mancha de café em forma de Brasil. Você aprende que "não existe reserva técnica".' }] },
+    },
+  }),
+  volta: (c) => ({
+    id: 'd01_volta',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:20. O ônibus para no semáforo da Av. Brasil, 2650. Na calçada, um vendedor de bilhete fala alto com um amigo.' },
+          { who: 'NARRADOR', t: '"...e eu fiquei apertando o peito dele até a ambulância chegar, igual a moça do telefone mandou!"' },
+          c.s.diary.some((d) => d.callDef === 'd01_parada' && d.kind === 'vivo')
+            ? { who: 'NARRADOR', t: 'O Wellington ri e chora ao mesmo tempo. O ônibus arranca antes de você decidir se acena.' }
+            : { who: 'NARRADOR', t: 'Ele fala baixo agora. O amigo põe a mão no ombro dele. O ônibus arranca.' },
+        ],
+      },
+    },
+  }),
   timeline: [
     { at: '07:01', kind: 'radio', who: 'USA 01 · BENÉ', text: 'Central, USA 01 em QRV na base Centro. Bom dia pr{o} {dr} nov{o}. Bené na escuta.' },
-    { at: '12:20', kind: 'simone', who: 'SIMONE', text: 'Almoço é aqui na mesa mesmo, {dr}. Na central ninguém para.' },
     { at: '16:00', kind: 'interfone', who: 'DR. PEIXOTO', text: 'Bem-vind{m:o|a}, {dr}. Peixoto, coordenação. Passei o dia em reunião com a OS, por isso só agora. Qualquer coisa, pode me chamar. Só não me chama pra pedir viatura, hein? Brincadeira.' },
   ],
   calls: [

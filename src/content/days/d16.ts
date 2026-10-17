@@ -580,8 +580,8 @@ export const DAY = day({
           id: 'esta_bem',
           label: '"A senhora está bem mesmo?"',
           locked: true,
-          // 1.1: ela esqueceu o nome da novela logo na abertura; conversar ou perguntar dela destrava
-          unlockedBy: ['conversar', 'consciencia', 'historico'],
+          // 1.1 (ROTEIRO, dia 16): perguntar da novela ("Conversar um pouco com ela") destrava
+          unlockedBy: ['conversar'],
           say: 'Dona Cida, a senhora está bem mesmo? A senhora esqueceu o nome da novela...',
           a: [
             '[silêncio]',

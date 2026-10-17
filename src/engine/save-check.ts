@@ -113,6 +113,7 @@ function checkHome(h: unknown, w: string): void {
   for (const k of ['paid', 'bought', 'found', 'tried', 'log']) arrayOf(o[k], `${w}.${k}`, strItem);
   need(isBool(o.inspected) && isBool(o.sceneDone), `${w}: inspected/sceneDone inválidos`);
   need(o.ozzy === undefined || isBool(o.ozzy), `${w}.ozzy inválido`);
+  need(o.volta === undefined || isBool(o.volta), `${w}.volta inválido`);
   if (o.field !== undefined) {
     const f = o.field;
     need(isObj(f), `${w}.field: devia ser um objeto`);

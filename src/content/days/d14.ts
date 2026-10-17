@@ -3,7 +3,7 @@
 // Âncoras: Carla Nunes (ligação-teste da jornalista), Dona Cida pergunta pelo
 // Liam pelo nome, pré-eclâmpsia grave, ciclista com hemorragia (compressão guiada).
 // ⚖ Idosa caída há horas: USB ou USA → Regional, com perguntas obrigatórias.
-// Casa: a Carla na porta (o irmão Murilo, 2019) e a Lúcia, que já era fonte dela.
+// Casa: a Carla na porta (o irmão Rafael, 2019) e a Lúcia, que já era fonte dela.
 // Fios: ↺ Carla, Lúcia · 🌱 Bené (o motorista que chorou no meio-fio) · ordem verbal do D9.
 // =============================================================================
 import type { Ctx, EffCtx, SceneDef, DLine, SceneNode, InspectDef } from '../../engine/types';
@@ -49,7 +49,7 @@ function cenaCarla(c: Ctx): SceneDef {
   else abertura.push({ who: 'CARLA', t: 'Hoje de manhã eu liguei pra central fingindo uma dor no peito. Fiquei esperando na fila até cansar.' });
 
   const tiago: DLine[] = [
-    { who: 'CARLA', t: 'Meu irmão, Murilo, tinha vinte e seis anos. Em 2019 ele caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos.' },
+    { who: 'CARLA', t: 'Meu irmão, Rafael, tinha vinte e seis anos. Em 2019 ele caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos.' },
     { who: 'CARLA', t: 'O motorista da ambulância sentou no meio-fio e chorou. Nunca esqueci a cara dele. Chorava como quem já sabia.' },
     { who: 'CARLA', t: 'Eu sei que o salário de vocês atrasou dois meses. Sei que {{tem um menino de oito anos com asma nesta casa|carla_sabe}}.' },
     { who: 'CARLA', t: 'Não quero o seu nome. Quero saber como é aí dentro: o corte de viatura, as metas, a maca presa no Regional. O que a Saúde+ Gestão não põe no relatório.' },

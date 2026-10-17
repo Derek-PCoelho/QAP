@@ -439,8 +439,8 @@ export const DAY = day({
           label: '"No endereço tem uma igreja."',
           kind: 'confronto',
           locked: true,
-          // 1.1: a Simone anota o marco do endereço no post-it; ou o retorno cai em "número desligado"
-          unlockedBy: ['endereco', 'callback'],
+          // 1.1 (ROTEIRO, dia 10): "Pedir para ouvir o pai" (silêncio); ou a Simone anota o marco do endereço no post-it
+          unlockedBy: ['ouvir_pai', 'endereco', 'callback'],
           say: 'Senhor, na Rua Bahia, 300 fica a Igreja Batista Nova Aliança. O senhor está numa igreja?',
           a: ['...', '[{{um riso curto, abafado|riso_curto}}]', '[desliga]'],
         },
@@ -918,15 +918,15 @@ export const DAY = day({
           id: 'avo',
           kind: 'confronto',
           locked: true,
-          // 1.1: o número está no quadro (9-8877) e o recibo do Seu Jairo, com o número do neto, está na mesa
-          unlockedBy: ['doc:recibo_jairo'],
+          // 1.1 (ROTEIRO, dia 10): o "Ligar de volta" cai na caixa postal do Biel, que se entrega
+          unlockedBy: ['callback'],
           label: '"Gabriel, o seu avô sabe?"',
           say: 'Gabriel, o seu avô sabe que você liga pra cá?',
           a: ['[as risadas param de uma vez]', '[{{silêncio; alguém sussurra: "como é que ele sabe o teu nome?"|silencio_biel}}]', '[desliga]'],
           onAsk: fx.set('d10_biel_nome'),
         },
       ],
-      callback: ['[{{Chama, chama... cai na caixa postal. A mensagem é uma risada gravada.|retorno_caixa}}]'],
+      callback: ['[{{Chama, chama... cai na caixa postal|retorno_caixa}}]', '"Fala aí, é o Biel! Se é serviço de geladeira, liga pro meu vô, o Jairo da refrigeração. Se não é... [risada gravada]"'],
       links: [
         { a: 'num', b: 'doc:jairo_neto', insight: '9-8877: é o número do Gabriel, o neto do Seu Jairo. Está no verso do recibo da geladeira.', unlock: 'avo' },
         { a: 'controle', b: 'risadas', insight: 'Controle de videogame engolido "com pilha e tudo" e gargalhadas ao fundo: trote clássico.' },

@@ -123,6 +123,67 @@ export interface EffSink {
   onAchievement?(id: string): void;
 }
 
+// ---------------------------------------------------------------------------
+// Origem do dinheiro (1.1, ROTEIRO Parte 3.1): a família fala do dinheiro que existe e de onde veio.
+// Cada entrada positiva soma em `flags['renda_<origem>']` (total da campanha) e em
+// `flags['renda_<origem>_d<dia>']` (do dia). Bicos: `flags['bico_d<dia>']` (noite na Intervenção).
+// ---------------------------------------------------------------------------
+export type IncomeOrigin = 'salario' | 'bico' | 'atelie' | 'vereador' | 'outros';
+export const INCOME_ORIGINS: readonly IncomeOrigin[] = ['salario', 'bico', 'atelie', 'vereador', 'outros'];
+
+/** origem pelo motivo escrito no pagamento (fx.money/e.pay) */
+export function incomeOriginOf(reason: string | undefined): IncomeOrigin {
+  const r = (reason ?? '').toLowerCase();
+  if (/vereador|envelope|gabinete|assessor/.test(r)) return 'vereador';
+  if (/ateli|costura|barra|encomenda/.test(r)) return 'atelie';
+  if (/interven|plant[aã]o extra|bico|ambul[aâ]ncia de noite/.test(r)) return 'bico';
+  if (/sal[aá]rio|plant[aã]o do dia|pagamento do plant/.test(r)) return 'salario';
+  return 'outros';
+}
+
+/** soma uma entrada de dinheiro na origem (total e do dia) */
+export function recordIncome(s: GameState, origin: IncomeOrigin, amount: number) {
+  if (!(amount > 0)) return;
+  const k = 'renda_' + origin;
+  s.flags[k] = (Number(s.flags[k]) || 0) + amount;
+  const kd = `${k}_d${s.day}`;
+  s.flags[kd] = (Number(s.flags[kd]) || 0) + amount;
+}
+
+/** quanto entrou de uma origem nos últimos `days` dias (incluindo hoje) */
+export function incomeRecent(s: GameState, origin: IncomeOrigin, days: number): number {
+  let sum = 0;
+  for (let d = Math.max(1, s.day - days + 1); d <= s.day; d++) sum += Number(s.flags[`renda_${origin}_d${d}`]) || 0;
+  return sum;
+}
+
+/** noites na Intervenção nos últimos `days` dias (incluindo hoje) */
+export function bicosRecent(s: GameState, days = 4): number {
+  let n = 0;
+  for (let d = Math.max(1, s.day - days + 1); d <= s.day; d++) if (s.flags['bico_d' + d]) n++;
+  return n;
+}
+
+/**
+ * Origem dominante do dinheiro agora (ROTEIRO 3.1): vereador (envelope aceito/usado e não
+ * devolvido) > bico (2+ noites nos últimos 4 dias) > ateliê (máquina rendendo nos últimos 3 dias)
+ * > aliança (no dia da venda e no seguinte) > salário.
+ */
+export function moneyOrigin(s: GameState): IncomeOrigin | 'alianca' {
+  const f = s.flags;
+  if ((f['envelope_aceito'] || f['envelope_usado']) && !f['envelope_devolvido'] && !f['envelope_entregue']) return 'vereador';
+  if (bicosRecent(s, 4) >= 2) return 'bico';
+  if (f['maquina'] && (incomeRecent(s, 'atelie', 3) > 0 || f['juliana_cliente'])) return 'atelie';
+  const av = Number(f['alianca_vendida_dia']) || 0;
+  if (f['alianca_vendida'] && av && s.day - av <= 1) return 'alianca';
+  return 'salario';
+}
+
+/** faixa do saldo (ROTEIRO 3.1): aperto < 150 ≤ justo < 600 ≤ folga < 1200 ≤ sobra */
+export function moneyBand(money: number): 'aperto' | 'justo' | 'folga' | 'sobra' {
+  return money < 150 ? 'aperto' : money < 600 ? 'justo' : money < 1200 ? 'folga' : 'sobra';
+}
+
 /** Contexto de efeitos: altera o estado com limites e registra notificações. */
 export function makeEffCtx(s: GameState, sink: EffSink = {}): EffCtx {
   const c = makeCtx(s);
@@ -143,6 +204,7 @@ export function makeEffCtx(s: GameState, sink: EffSink = {}): EffCtx {
     },
     pay(amount, reason) {
       s.money += amount;
+      if (amount > 0) recordIncome(s, incomeOriginOf(reason), amount);
       sink.onMoney?.(amount, reason);
     },
     keyPatient(k: KeyPatient, r) {

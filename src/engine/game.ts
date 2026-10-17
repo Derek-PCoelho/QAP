@@ -96,7 +96,7 @@ export class Game {
   shift?: ShiftSim;
   home?: HomeSim;
   scene?: SceneRunner;
-  sceneKind?: 'handover' | 'end' | 'event' | 'night' | 'evening';
+  sceneKind?: 'handover' | 'end' | 'event' | 'night' | 'evening' | 'ida' | 'almoco';
   /** campanha da Simone: resultado do último turno e passo da noite */
   simoneResult?: SimoneDayResult;
   private pendingOut = false;
@@ -307,13 +307,41 @@ export class Game {
     });
     this.st.phase = 'plantao';
     const day = this.dayDef();
-    const ho = day?.handover?.(this.ctx());
+    // 1.1: a ida para o plantão vem antes da passagem de turno (afterScene abre a passagem depois)
+    const ida = this.st.mode === 'campanha' ? day?.ida?.(this.ctx()) : undefined;
+    if (ida) {
+      this.scene = new SceneRunner(ida, () => this.ctx(), () => this.eff(), () => this.st);
+      this.sceneKind = 'ida';
+    } else this.openHandover();
+    this.emit({ type: 'phase', phase: 'plantao' });
+    this.bump();
+  }
+
+  private openHandover() {
+    const ho = this.dayDef()?.handover?.(this.ctx());
     if (ho) {
       this.scene = new SceneRunner(ho, () => this.ctx(), () => this.eff(), () => this.st);
       this.sceneKind = 'handover';
     }
-    this.emit({ type: 'phase', phase: 'plantao' });
-    this.bump();
+  }
+
+  /**
+   * 1.1 — almoço: o ShiftSim marca `almocoPendente` às 13:00; a cena abre no primeiro momento sem
+   * ligação ativa, orientação ou aviso bloqueante. Com a cena aberta, `tick` não anda: o relógio
+   * para e a fila congela.
+   */
+  private checkLunch(): boolean {
+    const sh = this.shift;
+    if (!sh || this.scene || this.st.mode !== 'campanha') return false;
+    const s = sh.sh;
+    if (!s.flags['almocoPendente'] || s.activeId || s.guideCallId || s.ended || s.closing || s.modals.some((m) => m.blocking)) return false;
+    delete s.flags['almocoPendente'];
+    s.flags['almocou'] = true;
+    const sc = this.dayDef()?.almoco?.(this.ctx());
+    if (!sc) return false;
+    this.scene = new SceneRunner(sc, () => this.ctx(), () => this.eff(), () => this.st);
+    this.sceneKind = 'almoco';
+    return true;
   }
 
   sceneContinue() {
@@ -330,6 +358,7 @@ export class Game {
       this.scene = undefined;
       this.sceneKind = undefined;
       if (kind === 'end' || kind === 'evening') this.setPhase('relatorio');
+      if (kind === 'ida') this.openHandover();
       if (kind === 'night') {
         this.st.flags['noite_passo'] = 'contas';
       }
@@ -350,8 +379,13 @@ export class Game {
       this.bump();
       return;
     }
+    if (this.checkLunch()) {
+      this.bump();
+      return;
+    }
     this.shift.tick(ms);
     this.shift.expirePhantoms();
+    this.checkLunch();
     this.bump();
   }
 

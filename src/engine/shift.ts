@@ -9,7 +9,7 @@ import type {
 } from './types';
 import type { Content } from './content-api';
 import { callBox, extraBox } from './categories';
-import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL } from './state';
+import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL, recordIncome } from './state';
 import { hm, fmtTime, clamp, Rng, hashString } from './util';
 import { normLines, txt, cluesIn, resolveTokens, stripMarkup, beneForm } from './text';
 import { resolveAddress, landmarkPos, destLandmark, addrText, type AddrResult } from './city/map';
@@ -279,6 +279,8 @@ export class ShiftSim {
     // piloto de videochamada: aviso no primeiro dia (no primeiro minuto do relógio, depois da passagem de turno)
     const vi = this.c.video;
     if (vi?.intro && this.st.mode === 'campanha' && this.st.day === vi.fromDay) this.schedule(SHIFT_START + 1, 'notice', 'video_intro');
+    // 1.1: almoço com a equipe (a cena é aberta pelo Game: relógio parado, fila congelada)
+    if (this.day.almoco && this.st.mode === 'campanha') this.schedule(hm(this.day.almocoAt ?? '13:00'), 'notice', 'almoco');
   }
 
   private pickVariant(def: CallDef, idx: number, force = false) {
@@ -510,6 +512,11 @@ export class ShiftSim {
       case 'ai':
         return this.onAi(ev.ref);
       case 'notice':
+        if (ev.ref === 'almoco') {
+          this.sh.flags['almocoPendente'] = true;
+          this.sh.fast = false;
+          return;
+        }
         if (ev.ref === 'video_intro' && this.c.video?.intro) this.pushModal({ kind: 'aviso', who: this.c.video.intro.who, text: this.c.video.intro.text, blocking: true });
         if (ev.ref === 'sem_sono')
           this.toast(
@@ -2784,6 +2791,7 @@ export class ShiftSim {
     sh.bonus = capped;
     const pay = FIXED_PAY + capped - sh.deductions;
     this.st.money += pay;
+    recordIncome(this.st, 'salario', pay);
     // desgaste do plantão
     this.st.vars.desgaste = clamp(this.st.vars.desgaste + 5 + (sh.photoUsed ? 0 : 1), 0, 100);
     this.st.history.push({

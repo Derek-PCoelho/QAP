@@ -33,7 +33,7 @@ export const DOCS_EXTRA: Record<string, DeskDoc> = {
     text: (c) =>
       [
         '"QUANTO VALE UMA AMBULÂNCIA" — por Carla Nunes.',
-        'Em 2019, Murilo Nunes, 26 anos, caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos.',
+        'Em 2019, Rafael Nunes, 26 anos, caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos.',
         c.s.sources.bene ? 'O motorista daquela USA, Benedito, que sentou no meio-fio e chorou, aceitou falar com nome e foto: "Não tinha viatura. Tinha meta."' : 'O motorista daquela USA, que sentou no meio-fio e chorou, não quis se identificar.',
         c.s.sources.peixoto ? 'Planilhas internas mostram que o bônus da coordenação dependia de manter "menos de 4 USA por plantão".' : '',
         c.s.sources.voce ? 'Um médico regulador, que pediu anonimato, descreve ordens verbais sem respaldo no manual.' : '',
@@ -44,7 +44,7 @@ export const DOCS_EXTRA: Record<string, DeskDoc> = {
         .filter(Boolean)
         .join(' '),
     until: 18,
-    clues: [{ id: 'doc:materia_tiago', text: 'Matéria: Murilo Nunes, 26, esperou a USA por 40 minutos em 2019, na Av. Brasil' }],
+    clues: [{ id: 'doc:materia_tiago', text: 'Matéria: Rafael Nunes, 26, esperou a USA por 40 minutos em 2019, na Av. Brasil' }],
   },
 };
 
@@ -367,7 +367,7 @@ export const DAY = day({
       sub = 'Regulador da Central, que pediu anonimato, descreve ordens verbais e corte de frota. A Saúde+ Gestão está em nome do cunhado do vereador Arlindo Matos.';
     } else if (forte && S.bene) {
       headline = '"Cansei de chegar tarde": condutor de ambulância quebra o silêncio';
-      sub = 'Com nome e foto, o motorista da USA que chegou tarde para Murilo Nunes em 2019 fala de frota cortada e salários atrasados.';
+      sub = 'Com nome e foto, o motorista da USA que chegou tarde para Rafael Nunes em 2019 fala de frota cortada e salários atrasados.';
     } else if (forte) {
       headline = 'Salários atrasados e frota cortada: a Central de Regulação por dentro';
       sub = 'Familiares de servidores descrevem a rotina da regulação sob a Saúde+ Gestão.';
@@ -379,7 +379,7 @@ export const DAY = day({
     }
     const stories: { title: string; text: string }[] = [];
     if (c.flag('envelope_aceito')) stories.push({ title: 'O envelope do gabinete', text: 'A reportagem cita {m:o médico regulador|a médica reguladora} {tit} {nome} Moura, que teria recebido R$ 1.000 do gabinete do vereador Arlindo Matos. {m:O regulador não foi localizado|A reguladora não foi localizada}.' });
-    stories.push({ title: 'Murilo, 26 anos, 40 minutos', text: 'Em 2019, o irmão da repórter caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos. "Escrevo esta matéria há cinco anos", diz Carla Nunes.' });
+    stories.push({ title: 'Rafael, 26 anos, 40 minutos', text: 'Em 2019, o irmão da repórter caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos. "Escrevo esta matéria há cinco anos", diz Carla Nunes.' });
     if (S.bene) stories.push({ title: '"Eu sentei no meio-fio e chorei"', text: 'Benedito, o Seu Bené, condutor da USA 01, com 31 anos de volante, era o motorista daquela ambulância. Aceitou falar com nome: "Não tinha viatura. Tinha meta."' });
     if (S.peixoto) stories.push({ title: 'A planilha', text: 'Pela planilha, o bônus da coordenação dependia de manter "menos de 4 USA por plantão". A fonte entregou os arquivos impressos.' });
     if (S.voce) stories.push({ title: 'Ordem verbal', text: c.flag('ordem_peixoto_registrada') ? 'O regulador entregou uma anotação de próprio punho, com data e hora: "USA 01 só sai pra parada". A ordem não existe no manual.' : 'O regulador descreve ordens dadas pelo interfone que não constam do manual.' });
@@ -446,7 +446,7 @@ export const DAY = day({
           : 'Central, USA 01 em QRV. ...Saiu no jornal o motorista que sentou no meio-fio e chorou, em 2019. Sem nome. Era eu. Quarenta minutos, a quatro quadras do Regional. Achei que alguém aí devia saber.',
       options: [
         { id: 'obrigado', label: '"Valeu por me contar, Bené."', effect: (c) => c.add('intimBene', 1, 'ouviu o Bené'), reply: (c) => `De nada. Bora trabalhar, ${beneNome(c)}.` },
-        { id: 'tiago', label: '"Você lembra dele? Do Murilo?"', effect: (c) => c.add('humanidade', 1, 'perguntou do Murilo'), reply: 'Lembro todo dia. Vinte e seis anos, capacete azul. A gente tava preso numa transferência que nem precisava de USA. Quando eu cheguei, a irmã tava ajoelhada no asfalto, segurando a mão dele. Ninguém tinha ensinado nada pra ela no telefone.' },
+        { id: 'tiago', label: '"Você lembra dele? Do Rafael?"', effect: (c) => c.add('humanidade', 1, 'perguntou do Rafael'), reply: 'Lembro todo dia. Vinte e seis anos, capacete azul. A gente tava preso numa transferência que nem precisava de USA. Quando eu cheguei, a irmã tava ajoelhada no asfalto, segurando a mão dele. Ninguém tinha ensinado nada pra ela no telefone.' },
         { id: 'silencio', label: '(Não responder.)' },
       ],
       defaultOption: 'silencio',
@@ -549,7 +549,7 @@ export const DAY = day({
         },
       ],
       links: [
-        { a: 'espera_pai', b: 'doc:materia_tiago', kind: 'confirma', insight: 'Murilo esperou quarenta minutos em 2019. O pai dela, cinquenta e cinco, em 2022. A matéria não inventou nada. Não é emergência: é luto.' },
+        { a: 'espera_pai', b: 'doc:materia_tiago', kind: 'confirma', insight: 'Rafael esperou quarenta minutos em 2019. O pai dela, cinquenta e cinco, em 2022. A matéria não inventou nada. Não é emergência: é luto.' },
         { a: 'nao_emergencia', b: 'manual:azul', kind: 'confirma', insight: 'Ninguém em risco, ninguém doente: não é caso de viatura. Encerrar com respeito, sem punir o desabafo.' },
       ],
       patient: { name: 'Filha do Seu Nestor Gonçalves' },
@@ -900,8 +900,8 @@ export const DAY = day({
           label: '"Dr. Peixoto?"',
           kind: 'confronto',
           locked: true,
-          // 1.1: o retorno cai na coordenação; ou ele se entrega dizendo que "vê programa de médico"/"sozinho em casa"
-          unlockedBy: ['callback', 'profissao', 'paciente'],
+          // 1.1 (ROTEIRO, dia 18): o "Ligar de volta" cai no ramal da coordenação; ou ele se entrega na profissão
+          unlockedBy: ['callback', 'profissao'],
           say: 'Dr. Peixoto?',
           a: (c: Ctx) =>
             c.key('osvaldo') === 'salvo'

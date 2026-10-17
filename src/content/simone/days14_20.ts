@@ -1,6 +1,6 @@
 // =============================================================================
 // Campanha 2 ("Simone") — dias 14 a 20.
-// Colheitas: 🌾 2019 (a Carla e o Murilo; a Simone era a do telefone) · 🌾 Rose e a
+// Colheitas: 🌾 2019 (a Carla e o Rafael; a Simone era a do telefone) · 🌾 Rose e a
 // Yasmin (D15 → a lista do D18) · 🌾 Peixoto e o pai (D16 → a lista) · 🌾 a moto (D16)
 // · 🌾 D17: a crise (remédio, receita, Wesley na chuva) · 🌾 D18: a lista, a matéria, o
 // Bené · 🌾 D19: Dona Cida · 🌾 D20: o Henrique às 18:58 e o último post-it.
@@ -68,7 +68,7 @@ const D14: SimoneDayDef = {
           start: {
             lines: [
               { who: 'NARRADOR', t: 'Mulher, voz firme. Dor no peito "do lado esquerdo... direito... no meio". Quer saber quanto tempo a ambulância leva pra chegar no Centro.' },
-              { who: 'NARRADOR', t: 'Embaixo do número, o sistema mostra: "1 atendimento anterior — 2019 — Av. Brasil — Murilo Nunes, 26 — óbito."' },
+              { who: 'NARRADOR', t: 'Embaixo do número, o sistema mostra: "1 atendimento anterior — 2019 — Av. Brasil — Rafael Nunes, 26 — óbito."' },
               { who: 'NARRADOR', t: 'A Simone lembra da voz. Lembra da ligação inteira. Foi ela que atendeu. Anotou, passou, e ninguém ficou na linha com a moça ajoelhada no asfalto. Quarenta minutos.' },
               { who: 'NARRADOR', t: 'Carla Nunes. Gazeta de Santa Aurora. Ligando de novo, cinco anos depois, pra cronometrar.' },
             ],
@@ -156,7 +156,7 @@ const D14: SimoneDayDef = {
           paLine(),
         ],
         choices: [
-          { label: 'Contar do Murilo, de 2019. Pela primeira vez.', next: 'tiago', effect: fx.all(fx.set('contou_tiago'), fx.add('wesley', 2, 'ela contou'), fx.add('desgaste', -2, 'falou')) },
+          { label: 'Contar do Rafael, de 2019. Pela primeira vez.', next: 'tiago', effect: fx.all(fx.set('contou_tiago'), fx.add('wesley', 2, 'ela contou'), fx.add('desgaste', -2, 'falou')) },
           { label: '"Nada. Trânsito."', next: 'nada' },
         ],
       },

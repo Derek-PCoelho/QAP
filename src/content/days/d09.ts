@@ -136,7 +136,7 @@ export const DAY = day({
       options: [
         {
           id: 'anotar',
-          label: 'Anotar a ordem, com hora, no diário',
+          label: 'Anotar a ordem num post-it, com a hora',
           cost: 1,
           effect: fx.all(fx.set('ordem_peixoto_registrada'), fx.diary('13:45 — Peixoto: "USA 01 só sai pra parada". Ordem verbal sem respaldo no Manual (p.1: não existe "reserva técnica").', 'Ordem verbal')),
           reply: '(ele vê você escrevendo) Anota o que quiser, {dr}. Pra parada. Só pra parada.',
@@ -627,7 +627,7 @@ export const DAY = day({
         { id: 'nome', label: 'Nome completo da paciente?', say: 'Qual o nome completo dela?', a: '{{Márcia Albuquerque Reis|marcia_nome}}. Pelo amor de Deus, manda!' },
         { id: 'inchaco', label: 'Inchaço? Manchas?', say: 'Tem inchaço? Manchas na pele?', a: 'A boca e o olho tão inchando, tá cheio de mancha vermelha no braço.' },
         { id: 'adrenalina', label: 'Tem caneta de adrenalina?', say: 'Ela tem caneta de adrenalina em casa?', a: 'Tem uma caneta que a médica deu, mas {{tá vencida desde o ano passado|vencida}}!' },
-        { id: 'professora', label: 'Ela é professora?', locked: true, unlockedBy: ['nome'], onAsk: fx.set('sabia_que_era_marcia'), say: 'Ela é professora? Da escola Monteiro Lobato?', a: 'É... do 3º B. Como {m:o senhor|a senhora} sabe?' },
+        { id: 'professora', label: 'Ela é professora?', locked: true, unlockedBy: ['nome', 'flag:falou_marcia_almoco'], onAsk: fx.set('sabia_que_era_marcia'), say: 'Ela é professora? Da escola Monteiro Lobato?', a: 'É... do 3º B. Como {m:o senhor|a senhora} sabe?' },
       ],
       links: [
         { a: 'marcia_nome', b: 'doc:marcia', insight: 'Márcia Albuquerque Reis. É a Tia Márcia, a professora do Liam. O bilhete está na sua mesa.', unlock: 'professora', onFind: fx.set('sabia_que_era_marcia') },

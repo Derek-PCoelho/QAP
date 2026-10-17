@@ -829,6 +829,24 @@ export interface DayDef {
   goal?: { maxUSA: number; bonus: number };
   newspaper: (c: Ctx) => NewspaperDef;
   handover?: (c: Ctx) => SceneDef | undefined;
+  /**
+   * 1.1 — cena de IDA para o plantão (casa → ônibus → central), antes da passagem de turno.
+   * Roda numa cena da central (SceneOverlay); o relógio ainda não começou. bg sugerido: 'rua'/'calcada'.
+   */
+  ida?: (c: Ctx) => SceneDef | undefined;
+  /**
+   * 1.1 — ALMOÇO com a equipe. Às `almocoAt` (padrão '13:00') o relógio para, a fila congela e a
+   * cena roda (assim que não houver ligação ativa nem orientação em curso). bg sugerido: 'central'.
+   * Devolva undefined para pular (ex.: almoço interrompido escrito na linha do tempo).
+   */
+  almoco?: (c: Ctx) => SceneDef | undefined;
+  /** horário do almoço 'HH:MM' (padrão '13:00') */
+  almocoAt?: string;
+  /**
+   * 1.1 — cena de VOLTA do plantão (central → ônibus → portão), depois do fim do turno e do
+   * relatório, antes da casa (é a primeira cena da noite, antes de `interlude.pre`).
+   */
+  volta?: (c: Ctx) => SceneDef | undefined;
   calls: CallDef[];
   timeline?: TimelineDef[];
   endScene?: (c: Ctx) => SceneDef | undefined;
@@ -1299,6 +1317,8 @@ export interface HomeState {
   sceneDone: boolean;
   /** já brincou com o Ozzy hoje (uma vez por noite) */
   ozzy?: boolean;
+  /** 1.1: a cena aberta no passo 'pre' é a volta do plantão (DayDef.volta); depois dela vem o `pre` do dia */
+  volta?: boolean;
 }
 
 export interface GameOverInfo {
