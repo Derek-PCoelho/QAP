@@ -10,7 +10,8 @@ import { route, addressTarget } from '../../engine/city/path';
 import { drawScene, SCENE_BGS, HOUSE_ROOMS, houseExits, objectsFor, objectRect, type SceneCast, type ArtSceneBg, type SceneOpts } from './scenes';
 import { newsPhoto, NEWS_KINDS, NEWS_W, NEWS_H, NEWS_CROP_W, NEWS_CROP_H } from './newsPhotos';
 import { drawEnding, renderEnding as renderEndingPix, ENDING_KINDS, MURAL_FRAMES } from './endingArt';
-import { figurePix, type CastId } from './figures';
+import { figurePix, extraFigurePix, EXTRA_IDS, type CastId } from './figures';
+
 import { drawDog, DOG_POSES, dogPortrait, dogFramePix, DOG_FRAMES, ozzyPlayDuration, OZZY_PLAY_PATHS } from './dog';
 import { ozzySticker, OZZY_STICKERS, OZZY_STICKER_LABELS } from './stickers';
 import { installFontFixes, FONT_FIX_UI, FONT_FIX_MAST } from './fontFix';
@@ -490,6 +491,24 @@ const SAMPLE: Record<ArtSceneBg, { objects: string[]; cast: SceneCast[] }> = {
     }
     s.appendChild(row);
   }
+}
+
+// ---------------------------------------------------------------- extras de corpo inteiro (finais e vaga zero)
+{
+  const fscale = Number(params.get('famscale') ?? 6);
+  const s = section('extras', `Extras de corpo inteiro (finais, central, Regional) — em pé e sentado (×${fscale})`);
+  const row = document.createElement('div');
+  row.className = 'flex';
+  for (const id of EXTRA_IDS) {
+    const p = new Pix(44, 36);
+    p.clear('#3d5248');
+    const a = extraFigurePix(id);
+    const b = extraFigurePix(id, { pose: 'sentado', chair: true });
+    p.blit(a, 2, 35 - a.h);
+    p.blit(b, 24, 35 - b.h);
+    row.appendChild(cell(img(p.toDataURL(fscale), 1, 44 * fscale, 36 * fscale), id));
+  }
+  s.appendChild(row);
 }
 
 // ---------------------------------------------------------------- Ozzy: quadros e brincadeira

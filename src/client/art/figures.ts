@@ -22,8 +22,14 @@ interface Body {
   top2?: string;
   bottom: string;
   shoes: string;
-  hairStyle: 'curly_big' | 'straight_long' | 'wavy_m' | 'kid_straight' | 'short_m' | 'bun_low' | 'kid' | 'bun_top' | 'bucket_hat' | 'curly_short';
-  topStyle: 'blouse_tape' | 'shirt_tape' | 'scrubs' | 'stripes' | 'floral' | 'plaid';
+  hairStyle: 'curly_big' | 'straight_long' | 'wavy_m' | 'kid_straight' | 'short_m' | 'bun_low' | 'kid' | 'bun_top' | 'bucket_hat' | 'curly_short' | 'pixie' | 'cap' | 'bald' | 'bob';
+  topStyle: 'blouse_tape' | 'shirt_tape' | 'scrubs' | 'stripes' | 'floral' | 'plaid' | 'jaleco' | 'cardigan' | 'uniform' | 'tie' | 'jacket';
+  /** bigode */
+  mustache?: boolean;
+  /** cor do boné (hairStyle 'cap') */
+  cap?: string;
+  /** fone de operador (headset) na cabeça */
+  headset?: boolean;
   bottomStyle: 'skirt' | 'pants' | 'shorts' | 'long_skirt';
   glasses?: boolean;
   earrings?: boolean;
@@ -32,8 +38,9 @@ interface Body {
   beard?: boolean;
 }
 
-/** personagens extras só para vinhetas de final */
-export type ExtraId = 'ANTONIO' | 'ESPOSA';
+/** personagens extras só para vinhetas de final e do clímax da vaga zero (a central, o Regional, a cidade) */
+export type ExtraId = 'ANTONIO' | 'ESPOSA' | 'SIMONE' | 'HENRIQUE' | 'BENE' | 'PAULA' | 'SAULO' | 'PEIXOTO' | 'CARLA';
+export const EXTRA_IDS: ExtraId[] = ['ANTONIO', 'ESPOSA', 'SIMONE', 'HENRIQUE', 'BENE', 'PAULA', 'SAULO', 'PEIXOTO', 'CARLA'];
 
 const EXTRA: Record<ExtraId, Body> = {
   ANTONIO: {
@@ -43,6 +50,41 @@ const EXTRA: Record<ExtraId, Body> = {
   ESPOSA: {
     kind: 'elder_f', skin: SKIN[2], hair: HAIR[3], top: '#c86a8a', bottom: '#5a4a6a', shoes: '#5a3a2a',
     hairStyle: 'bun_top', topStyle: 'floral', bottomStyle: 'long_skirt', glasses: true,
+  },
+  // a TARM: ruivo curtinho, cardigã, o fone de operador
+  SIMONE: {
+    kind: 'adult_f', skin: SKIN[0], hair: '#a3402a', top: '#6a4a7a', top2: '#e8e4dc', bottom: '#2f3a4f', shoes: '#2a1a12',
+    hairStyle: 'pixie', topStyle: 'cardigan', bottomStyle: 'skirt', glasses: true, headset: true,
+  },
+  // o regulador da noite: cabelo bagunçado, barba cerrada, jaleco aberto
+  HENRIQUE: {
+    kind: 'adult_m', skin: SKIN[0], hair: HAIR[1], top: '#3a4a5a', bottom: '#2a2e38', shoes: '#1e1a18',
+    hairStyle: 'wavy_m', topStyle: 'jaleco', bottomStyle: 'pants', beard: true,
+  },
+  // o condutor da USA 01: bigode branco, boné e o uniforme laranja de faixa refletiva
+  BENE: {
+    kind: 'adult_m', skin: SKIN[2], hair: HAIR[3], top: '#e8702a', top2: '#d8dce0', bottom: '#e8702a', shoes: '#1e1a18',
+    hairStyle: 'cap', topStyle: 'uniform', bottomStyle: 'pants', mustache: true, cap: '#e8702a',
+  },
+  // a substituta do noturno: crespo curtinho, jaleco
+  PAULA: {
+    kind: 'adult_f', skin: SKIN[4], hair: HAIR[0], top: '#4a6a8a', bottom: '#2a2e38', shoes: '#1e1a18',
+    hairStyle: 'curly_short', topStyle: 'jaleco', bottomStyle: 'pants',
+  },
+  // o plantonista do Regional: magro, óculos, pijama azul por baixo do jaleco amassado
+  SAULO: {
+    kind: 'adult_m', skin: SKIN[1], hair: HAIR[1], top: '#3a5a8a', bottom: '#3a5a8a', shoes: '#d8dcd4',
+    hairStyle: 'short_m', topStyle: 'jaleco', bottomStyle: 'pants', glasses: true, stubble: true,
+  },
+  // o coordenador: calvo, bigode, camisa social de manga curta e gravata
+  PEIXOTO: {
+    kind: 'adult_m', skin: SKIN[0], hair: HAIR[3], top: '#e8eef2', top2: '#8a2a2a', bottom: '#3a3a44', shoes: '#1e1a18',
+    hairStyle: 'bald', topStyle: 'tie', bottomStyle: 'pants', mustache: true,
+  },
+  // a jornalista: chanel, jaqueta, caderninho
+  CARLA: {
+    kind: 'adult_f', skin: SKIN[0], hair: HAIR[1], top: '#5a6a3a', bottom: '#2a2e38', shoes: '#2a1a12',
+    hairStyle: 'bob', topStyle: 'jacket', bottomStyle: 'pants',
   },
 };
 
@@ -365,6 +407,61 @@ function drawHeadAndHair(p: Pix, b: Body, g: Geo, c: Paint, o: { blink: boolean;
       H(fx1 + 1, g.fy0 + 2, c.hairD);
       break;
     }
+    case 'pixie': {
+      // curtinho de lado, com a franja varrida e a nuca à mostra
+      for (let x = fx0; x <= fx1; x++) {
+        H(x, g.fy0 - 2, x < fx0 + 2 ? c.hairL : c.hair);
+        H(x, g.fy0 - 1, x === fx1 ? c.hairD : c.hair);
+      }
+      for (let x = fx0; x <= fx0 + 3; x++) H(x, g.fy0, x === fx0 + 1 ? c.hairL : c.hair);
+      H(fx0 - 1, g.fy0 - 1, c.hair);
+      H(fx0 - 1, g.fy0, c.hair);
+      H(fx0 - 1, g.fy0 + 1, c.hairD);
+      H(fx1 + 1, g.fy0 - 1, c.hairD);
+      H(fx1 + 1, g.fy0, c.hairD);
+      H(fx0 + 1, g.fy0 - 3, c.hairL);
+      H(fx0 + 2, g.fy0 - 3, c.hair);
+      break;
+    }
+    case 'bob': {
+      // chanel assimétrico até o queixo
+      for (let x = fx0; x <= fx1; x++) {
+        H(x, g.fy0 - 2, x < fx0 + 2 ? c.hairL : c.hair);
+        H(x, g.fy0 - 1);
+      }
+      for (let x = fx0; x <= fx1 - 3; x++) H(x, g.fy0, c.hair);
+      for (let y = g.fy0 - 1; y <= g.fy1; y++) {
+        H(fx0 - 1, y, y % 3 === 0 ? c.hairL : c.hair);
+        H(fx1 + 1, y, c.hairD);
+      }
+      H(fx0, g.fy1, c.hair);
+      H(fx1 + 1, g.fy1 + 1, c.hairD);
+      break;
+    }
+    case 'bald': {
+      // calvo: só a coroa de cabelo grisalho dos lados
+      H(fx0 - 1, g.fy0 + 1, c.hair);
+      H(fx0 - 1, g.fy0 + 2, c.hairD);
+      H(fx1 + 1, g.fy0 + 1, c.hairD);
+      H(fx1 + 1, g.fy0 + 2, c.hairD);
+      for (let x = fx0; x <= fx1; x++) p.px(x, g.fy0 - 1 + dy, x === fx0 + 1 ? shade(c.skin, 0.18) : x >= fx1 ? c.skinS : c.skin);
+      p.px(fx0 + 1, g.fy0 + dy, shade(c.skin, 0.2));
+      break;
+    }
+    case 'cap': {
+      // boné com aba para a frente e o cabelo dos lados
+      const cap = b.cap ?? '#e8702a';
+      for (let x = fx0 - 1; x <= fx1 + 1; x++) {
+        H(x, g.fy0 - 2, x < fx0 + 2 ? shade(cap, 0.2) : x > fx1 ? shade(cap, -0.25) : cap);
+        H(x, g.fy0 - 1, x > fx1 ? shade(cap, -0.25) : cap);
+      }
+      for (let x = fx0 + 1; x <= fx1; x++) H(x, g.fy0 - 3, cap);
+      for (let x = fx0 - 1; x <= fx1 + 2; x++) H(x, g.fy0, x > fx1 ? shade(cap, -0.35) : shade(cap, -0.15));
+      H(Math.floor((fx0 + fx1) / 2), g.fy0 - 2, '#f2f2ee');
+      H(fx0 - 1, g.fy0 + 1, c.hair);
+      H(fx1 + 1, g.fy0 + 1, c.hairD);
+      break;
+    }
     case 'bun_top': {
       for (let x = fx0; x <= fx1; x++) {
         H(x, g.fy0 - 1, x < 6 ? c.hairL : c.hair);
@@ -432,6 +529,21 @@ function drawHeadAndHair(p: Pix, b: Body, g: Geo, c: Paint, o: { blink: boolean;
     p.px(g.fx1 - 1, g.fy1 + dy, c.hairD);
     p.px(mx, g.fy1 + 1 + dy, c.hair);
     p.px(mx + 1, g.fy1 + 1 + dy, c.hairD);
+  }
+  if (b.mustache) {
+    const mx = Math.floor((g.fx0 + g.fx1) / 2);
+    p.px(mx - 1, g.mouthY - 1 + dy, c.hair);
+    p.px(mx, g.mouthY - 1 + dy, c.hair);
+    p.px(mx + 1, g.mouthY - 1 + dy, c.hairD);
+    p.px(mx + 2, g.mouthY - 1 + dy, c.hairD);
+  }
+  if (b.headset) {
+    // arco por cima da cabeça, a concha na orelha e a haste do microfone
+    for (let x = g.fx0; x <= g.fx1; x++) p.px(x, g.fy0 - 3 + dy, '#2a2a30');
+    p.px(g.fx0 - 1, g.fy0 - 2 + dy, '#2a2a30');
+    p.px(g.fx0 - 1, g.eyeY + dy, '#2a2a30');
+    p.px(g.fx0 - 1, g.eyeY + 1 + dy, '#3a3a44');
+    p.px(g.fx0, g.mouthY + dy, '#3a3a44');
   }
   if (b.stubble) {
     for (let x = g.fx0; x <= g.fx1; x++) p.pxa(x, g.fy1 + dy, '#3a3030', 0.35);
@@ -532,6 +644,57 @@ function drawTorso(p: Pix, b: Body, g: Geo, c: Paint, o: { shawl: boolean }): vo
       p.px(cx - 1, g.torsoY0, '#d8c8b0');
       p.px(cx, g.torsoY0, '#b8a890');
       break;
+    case 'jaleco': {
+      // jaleco branco aberto por cima da roupa (a cor do top aparece no meio)
+      const w = '#eef0ea';
+      const ws = '#c8ccc4';
+      for (let y = g.torsoY0; y <= g.torsoY1 + 2; y++) {
+        for (const x of [g.tx0, g.tx0 + 1, g.tx1 - 1, g.tx1]) p.px(x, y, x === g.tx1 ? ws : w);
+      }
+      for (let y = g.torsoY0; y <= g.torsoY1; y++) {
+        p.px(g.armL, y, y <= g.sleeveTo + 2 ? w : c.skin);
+        p.px(g.armR, y, y <= g.sleeveTo + 2 ? ws : c.skinS);
+      }
+      p.px(cx - 1, g.torsoY0, c.skin);
+      p.px(cx, g.torsoY0, c.skin);
+      p.px(g.tx1 - 1, g.torsoY0 + 3, '#2a5aa0');
+      break;
+    }
+    case 'cardigan': {
+      // cardigã aberto com a blusa clara por baixo
+      for (let y = g.torsoY0 + 1; y <= g.torsoY1; y++) for (let x = cx - 1; x <= cx; x++) p.px(x, y, b.top2 ?? '#e8e4dc');
+      p.px(cx - 1, g.torsoY0, c.skin);
+      p.px(cx, g.torsoY0, c.skin);
+      for (let y = g.torsoY0 + 2; y <= g.torsoY1; y += 2) p.px(cx - 2, y, shade(b.top, 0.3));
+      break;
+    }
+    case 'uniform': {
+      // uniforme de socorrista: a faixa refletiva no peito e nos braços
+      const refl = b.top2 ?? '#d8dce0';
+      for (let x = g.tx0; x <= g.tx1; x++) p.px(x, g.torsoY0 + 3, x === g.tx1 ? shade(refl, -0.2) : refl);
+      p.px(g.armL, g.torsoY0 + 3, refl);
+      p.px(g.armR, g.torsoY0 + 3, shade(refl, -0.2));
+      p.px(cx - 1, g.torsoY0, c.skinS);
+      p.px(cx, g.torsoY0, c.skinS);
+      p.px(g.tx0 + 1, g.torsoY0 + 1, '#3a6ad0');
+      break;
+    }
+    case 'tie': {
+      // camisa social clara com a gravata e o crachá
+      p.px(cx - 1, g.torsoY0, c.skinS);
+      p.px(cx, g.torsoY0, c.skinS);
+      for (let y = g.torsoY0; y <= g.torsoY1 - 1; y++) p.px(cx, y, b.top2 ?? '#8a2a2a');
+      p.px(g.tx1 - 1, g.torsoY0 + 3, '#2f8f86');
+      break;
+    }
+    case 'jacket': {
+      // jaqueta aberta com a camiseta clara
+      for (let y = g.torsoY0; y <= g.torsoY1; y++) p.px(cx, y, '#e8e4dc');
+      p.px(cx - 1, g.torsoY0, c.skin);
+      p.px(cx - 1, g.torsoY0 + 1, shade(b.top, 0.25));
+      p.px(cx + 1, g.torsoY0 + 1, shade(b.top, -0.3));
+      break;
+    }
     case 'floral': {
       const fl = ['#e6a0bc', '#f2d45c', '#efe6cf'];
       for (let y = g.torsoY0 + 1; y <= g.torsoY1; y++)
@@ -792,17 +955,20 @@ export function figurePix(id: CastId, pose: Pose, o: FigOpts = {}): Pix {
   return p;
 }
 
-/** sprite de personagem extra (só vinhetas), em pé */
-export function extraFigurePix(id: ExtraId, o: FigOpts = {}): Pix {
-  const key = `X:${id}|${o.inhale ? 1 : 0}|${o.blink ? 1 : 0}`;
+/** sprite de personagem extra (só vinhetas e o clímax da vaga zero), em pé ou sentado */
+export function extraFigurePix(id: ExtraId, o: FigOpts & { pose?: 'em_pe' | 'sentado' } = {}): Pix {
+  const pose = o.pose ?? 'em_pe';
+  const key = `X:${id}|${pose}|${o.inhale ? 1 : 0}|${o.blink ? 1 : 0}|${o.chair ? 1 : 0}|${o.status ?? ''}`;
   let p = cache.get(key);
   if (p) return p;
-  const b = EXTRA[id];
-  p = standing(b, colors(b), o);
+  const b = EXTRA[id] ?? EXTRA.ANTONIO;
+  p = pose === 'sentado' ? sitting(b, colors(b, o.status), o) : standing(b, colors(b, o.status), o);
   p.outline('#120c08');
   cache.set(key, p);
+  if (cache.size > 400) cache.delete(cache.keys().next().value as string);
   return p;
 }
+
 
 /** altura útil (px) do sprite na pose — para posicionar ícones acima da cabeça */
 export function figureHeight(id: CastId, pose: Pose): number {
