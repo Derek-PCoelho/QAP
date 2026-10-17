@@ -1,5 +1,7 @@
 # Passagem de plantão (contexto para a próxima sessão)
 
+> **Atualização de 17/10 (fim do dia):** o estado atual da 1.1 e o que falta estão em [`docs/HANDOFF-1.1.md`](HANDOFF-1.1.md). Leia esse arquivo primeiro.
+
 Leia isto primeiro, depois `docs/FEEDBACK-1.1.md` (a lista de trabalho, 58 itens) e `docs/ARQUITETURA.md`.
 
 ## O projeto
