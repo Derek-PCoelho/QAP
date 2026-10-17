@@ -8,6 +8,9 @@ import { playBot, PROFILES, EXTRA_PROFILES, type BotProfile, type BotResult } fr
 
 const args = process.argv.slice(2);
 const seeds = Number(args.find((a) => /^\d+$/.test(a)) ?? 20);
+// --from N: primeira semente (padrão 1001, as mesmas da linha de base)
+const fromIdx = args.indexOf('--from');
+const first = fromIdx >= 0 ? Number(args[fromIdx + 1]) : 1001;
 const mdIdx = args.indexOf('--md');
 const mdFile = mdIdx >= 0 ? args[mdIdx + 1] : undefined;
 const onlyIdx = args.indexOf('--only');
@@ -38,7 +41,7 @@ out('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
 const all: Record<string, BotResult[]> = {};
 for (const [key, prof] of Object.entries(RUN)) {
   const rs: BotResult[] = [];
-  for (let s = 1; s <= seeds; s++) rs.push(playBot(CONTENT, prof, 1000 + s));
+  for (let s = 0; s < seeds; s++) rs.push(playBot(CONTENT, prof, first + s));
   all[key] = rs;
   const ends = { bom: 0, normal: 0, ruim: 0, secreto: 0 } as Record<string, number>;
   const gos: Record<string, number> = {};

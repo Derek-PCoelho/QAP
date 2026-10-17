@@ -504,6 +504,7 @@ function finish(sim: ShiftSim, vz: VzRT, result: NonNullable<VzRT['result']>) {
   const e = sim.eff();
   const now = sim.sh.time;
   const day = sim.st.day;
+  const fem = sim.defOf(call).patient.sex === 'F';
   sim.st.flags['vz_d' + day] = result;
   // contadores da campanha (relatório de balanceamento, finais)
   const cnt = (k: string) => (sim.st.flags[k] = (Number(sim.st.flags[k]) || 0) + 1);
@@ -540,7 +541,7 @@ function finish(sim: ShiftSim, vz: VzRT, result: NonNullable<VzRT['result']>) {
       sim.setUnit(x.id, 'RETIDO', until, 'Vaga zero · maca liberando');
       sim.radio(x.radioName, `${x.label}: vaga zero aceita. Paciente na sala vermelha, maca liberando.`, 'ok');
     }
-    sim.radio('REGULAÇÃO', `Vaga zero no Regional${result === 'peixoto' ? ' (pela coordenação)' : ''}: ${vz.patient} recebido(a) na sala vermelha.`, 'ok');
+    sim.radio('REGULAÇÃO', `Vaga zero no Regional${result === 'peixoto' ? ' (pela coordenação)' : ''}: ${vz.patient} recebid${fem ? 'a' : 'o'} na sala vermelha.`, 'ok');
   } else if (result === 'recusado') {
     v.hold = holdFor(sim, call, def);
     if (def?.onRecusa) def.onRecusa(e);
@@ -553,7 +554,7 @@ function finish(sim: ShiftSim, vz: VzRT, result: NonNullable<VzRT['result']>) {
     sim.radio('REGULAÇÃO', `Sem vaga zero no Regional para ${vz.patient}. ${held.length ? 'A maca segue presa.' : 'A viatura vai ficar com a maca presa quando chegar.'}`, 'alerta');
   } else if (result === 'desviado') {
     if (vz.precisa) {
-      sim.addPenalty('nota', `${vz.patient} desviado(a) para a UPA: precisava de ${vz.recurso}.`);
+      sim.addPenalty('nota', `${vz.patient} desviad${fem ? 'a' : 'o'} para a UPA: precisava de ${vz.recurso}.`);
     } else {
       addConfianca(sim, 1);
       vz.log.push({ who: 'SAULO', text: say(sim, 'Obrigado, {reg}. (crec) De verdade.', vz) });

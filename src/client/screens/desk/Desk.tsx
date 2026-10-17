@@ -19,6 +19,7 @@ import { Tutorial } from './Tutorial';
 import { GuideOverlay } from '../../minigames/GuideOverlay';
 import { MciPanel, MciSummary } from '../../minigames/MciPanel';
 import { Toasts } from '../../ui/Toasts';
+import { VagaZero } from './VagaZero';
 
 export type Overlay = null | 'manual' | 'quadro' | 'diario';
 
@@ -36,7 +37,7 @@ export function Desk() {
       if (store.paused || !sh) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (!sh.sh.guideCallId && !g.scene) {
+      if (!sh.sh.guideCallId && !g.scene && !sh.sh.vz) {
         if (e.key === 'm' || e.key === 'M') setOverlay((o) => (o === 'manual' ? null : 'manual'));
         if (e.key === 'q' || e.key === 'Q') setOverlay((o) => (o === 'quadro' ? null : 'quadro'));
         if (e.key === 'd' || e.key === 'D') setOverlay((o) => (o === 'diario' ? null : 'diario'));
@@ -94,6 +95,7 @@ export function Desk() {
       {active && sh.defOf(active).special === 'mci' && !active.decision && active.lines.length > 0 && <MciPanel />}
       <MciSummary />
       {g.scene && <SceneOverlay />}
+      {sh.sh.vz && !g.scene && <VagaZero />}
       {g.st.day === 1 && s.settings.tutorial && g.st.mode === 'campanha' && !g.scene && <Tutorial />}
       <Toasts items={sh.sh.toasts.slice(-5)} />
       {desg > 60 && <div className="fluor-flicker" aria-hidden />}

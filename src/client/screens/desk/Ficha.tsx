@@ -191,6 +191,8 @@ export function Ficha() {
                   ))}
                 </div>
               )}
+              {/* 1.1: gestão da frota — a última USA livre pesa */}
+              {res === 'USA' && free.length === 1 && !decided && <p className="f-last-usa">Última USA livre: se ela sair agora, a próxima parada espera.</p>}
             </fieldset>
           )}
 

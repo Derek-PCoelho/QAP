@@ -334,7 +334,7 @@ export class Game {
     const sh = this.shift;
     if (!sh || this.scene || this.st.mode !== 'campanha') return false;
     const s = sh.sh;
-    if (!s.flags['almocoPendente'] || s.activeId || s.guideCallId || s.ended || s.closing || s.modals.some((m) => m.blocking)) return false;
+    if (!s.flags['almocoPendente'] || s.activeId || s.guideCallId || s.ended || s.closing || s.vz || s.modals.some((m) => m.blocking)) return false;
     delete s.flags['almocoPendente'];
     s.flags['almocou'] = true;
     const sc = this.dayDef()?.almoco?.(this.ctx());

@@ -41,7 +41,7 @@ export function RadioPanel() {
           return (
             <button
               key={u.id}
-              className={`unit-chip st-${u.status}` + (u.type === 'USA' ? ' usa' : ' usb') + (sel.unit === u.id ? ' sel' : '')}
+              className={`unit-chip st-${u.status}` + (u.type === 'USA' ? ' usa' : ' usb') + (sel.unit === u.id ? ' sel' : '') + (/sem vaga zero/i.test(u.note ?? '') ? ' presa' : '')}
               disabled={!free}
               title={`${u.crew}${u.note ? ' · ' + u.note : ''}`}
               onClick={() => {
@@ -51,7 +51,8 @@ export function RadioPanel() {
               }}
             >
               <b>{u.label}</b>
-              <span>{STATUS_SHORT[u.status]}</span>
+              {/* 1.1: maca presa no hospital mostra quanto falta (vaga zero sem acordo: até 60 min) */}
+              <span>{u.status === 'RETIDO' && u.until !== undefined ? `retida · ${Math.max(0, Math.ceil(u.until - S.time))} min` : STATUS_SHORT[u.status]}</span>
             </button>
           );
         })}

@@ -32,8 +32,12 @@ export interface BotProfile {
   ethic: 'bom' | 'neutro' | 'pragmatico';
   /** 1.1: horários (minutos do relógio) em que toma cada café */
   coffeeAt?: number[];
-  /** 1.1: chance de pedir vídeo quando vale (quem liga não é confiável; caso grave, com franquia sobrando) */
+  /** 1.1: chance de pedir vídeo quando quem liga não é confiável (exagera, minimiza, trota, não sabe) */
   video?: number;
+  /** 1.1: chance de pedir vídeo num post-it vermelho ("pega essa") */
+  videoUrgent?: number;
+  /** 1.1: vídeos guardados para os casos duvidosos (não usa no post-it vermelho abaixo disso) */
+  videoKeep?: number;
   /** 1.1: chance de escolher o argumento que responde à objeção na vaga zero */
   vzSkill?: number;
   /** 1.1: chance de passar ao Peixoto quando o botão acende e o Saulo empacou */
@@ -49,10 +53,10 @@ export interface BotProfile {
 //  · Experiente: dois cafés na hora do aperto, vídeo onde rende, argumentos certos, Peixoto quando precisa;
 //  · Oráculo: referência (não precisa de café).
 export const PROFILES: Record<string, BotProfile> = {
-  lento: { name: 'Lento', accuracy: 0.75, think: [80, 120], questions: 4, coffee: 1, coffeeAt: [600], bicoBelow: 60, inspects: false, guideQuality: 0.55, overBias: 0.75, ethic: 'neutro', video: 0.35, vzSkill: 0.55, peixoto: 0.4, askSkill: 0.5 },
-  medio: { name: 'Médio', accuracy: 0.86, think: [40, 60], questions: 3, coffee: 2, coffeeAt: [600, 900], bicoBelow: 40, inspects: true, guideQuality: 0.75, overBias: 0.6, ethic: 'neutro', video: 0.7, vzSkill: 0.72, peixoto: 0.8, askSkill: 0.7 },
-  experiente: { name: 'Experiente', accuracy: 0.95, think: [35, 50], questions: 2, coffee: 2, coffeeAt: [570, 960], bicoBelow: 0, inspects: true, guideQuality: 0.92, overBias: 0.5, ethic: 'bom', video: 0.9, vzSkill: 0.9, peixoto: 1, askSkill: 0.9 },
-  oraculo: { name: 'Oráculo', accuracy: 1, think: [15, 25], questions: 1, coffee: 0, bicoBelow: -999, inspects: true, guideQuality: 1, overBias: 0.5, ethic: 'bom', video: 1, vzSkill: 1, peixoto: 1, askSkill: 1 },
+  lento: { name: 'Lento', accuracy: 0.75, think: [80, 120], questions: 4, coffee: 1, coffeeAt: [600], bicoBelow: 60, inspects: false, guideQuality: 0.55, overBias: 0.75, ethic: 'neutro', video: 0.5, videoUrgent: 0.5, videoKeep: 0, vzSkill: 0.55, peixoto: 0.4, askSkill: 0.5 },
+  medio: { name: 'Médio', accuracy: 0.86, think: [40, 60], questions: 3, coffee: 2, coffeeAt: [600, 900], bicoBelow: 40, inspects: true, guideQuality: 0.75, overBias: 0.6, ethic: 'neutro', video: 0.7, videoUrgent: 0.5, videoKeep: 1, vzSkill: 0.72, peixoto: 0.8, askSkill: 0.7 },
+  experiente: { name: 'Experiente', accuracy: 0.95, think: [35, 50], questions: 2, coffee: 2, coffeeAt: [570, 960], bicoBelow: 0, inspects: true, guideQuality: 0.92, overBias: 0.5, ethic: 'bom', video: 0.9, videoUrgent: 0.7, videoKeep: 1, vzSkill: 0.9, peixoto: 1, askSkill: 0.9 },
+  oraculo: { name: 'Oráculo', accuracy: 1, think: [15, 25], questions: 1, coffee: 0, bicoBelow: -999, inspects: true, guideQuality: 1, overBias: 0.5, ethic: 'bom', video: 1, videoUrgent: 0, videoKeep: 3, vzSkill: 1, peixoto: 1, askSkill: 1 },
 };
 
 /**
@@ -61,7 +65,7 @@ export const PROFILES: Record<string, BotProfile> = {
  * na vaga zero, não lembra do Peixoto e pergunta ao acaso (como os bots da 1.0.4).
  */
 export const EXTRA_PROFILES: Record<string, BotProfile> = {
-  medio_sem: { ...PROFILES.medio, name: 'Médio sem recursos', coffee: 0, coffeeAt: [], video: 0, vzSkill: 0, peixoto: 0, askSkill: 0 },
+  medio_sem: { ...PROFILES.medio, name: 'Médio sem recursos', coffee: 0, coffeeAt: [], video: 0, videoUrgent: 0, vzSkill: 0, peixoto: 0, askSkill: 0 },
 };
 
 export interface BotResult {
@@ -257,7 +261,7 @@ function decide(sh: Game['shift'] & {}, call: CallRT, p: BotProfile, rng: Rng, d
   const unreliable = VIDEO_UNRELIABLE.has(def.type);
   let viu = false;
   const vv = sh.videoView(call);
-  const wantVideo = (p.video ?? 0) > 0 && vv.canStart && (unreliable ? rng.chance(p.video ?? 0) : !!call.noteUrgent && vv.credits >= 2 && rng.chance((p.video ?? 0) * 0.6));
+  const wantVideo = vv.canStart && (unreliable ? rng.chance(p.video ?? 0) : !!call.noteUrgent && vv.credits > (p.videoKeep ?? 1) && rng.chance(p.videoUrgent ?? 0));
   if (wantVideo) {
     const r = sh.startVideo();
     if (r === 'conectou') {
@@ -298,8 +302,9 @@ function decide(sh: Game['shift'] & {}, call: CallRT, p: BotProfile, rng: Rng, d
     return;
   }
   // casos vermelhos costumam ser óbvios: o erro se concentra na fronteira amarelo/verde
-  // 1.1: o vídeo tira a dúvida — com quem engana, quase toda; com os outros, um pouco
-  const errP = (1 - p.accuracy) * (t.sev === 'vermelho' ? 0.4 : 1.15) * (viu ? (unreliable ? 0.2 : 0.8) : 1);
+  // 1.1: o vídeo tira a dúvida — com quem engana e no caso grave (a cor, a respiração), quase toda;
+  // nos outros, um pouco
+  const errP = (1 - p.accuracy) * (t.sev === 'vermelho' ? 0.4 : 1.15) * (viu ? (unreliable || t.sev === 'vermelho' ? 0.25 : 0.8) : 1);
   const right = rng.next() >= errP;
   let res: Resource = t.best ?? t.ok[0];
   if (!right) {

@@ -38,7 +38,12 @@ export function TopBar({ onPhoto }: { onPhoto: () => void }) {
         </span>
       </div>
       <div className="tb-clock">
-        <span className={'clock' + (S.closing ? ' late' : '')}>{fmtTime(S.time)}</span>
+        <span className={'clock' + (S.closing ? ' late' : '') + (S.vz ? ' frozen' : '')}>{fmtTime(S.time)}</span>
+        {sh.focused() && (
+          <span className="tb-foco" title="Café: perguntas 40% mais rápidas e, com a ligação aberta, o relógio anda a 70%">
+            ☕ foco {Math.max(0, Math.ceil(S.coffeeUntil - S.time))} min
+          </span>
+        )}
         <div className="shift-bar" aria-label="Progresso do turno">
           <div style={{ width: `${prog * 100}%` }} />
         </div>
@@ -78,7 +83,11 @@ export function TopBar({ onPhoto }: { onPhoto: () => void }) {
       <div className="tb-desk">
         <button
           className="desk-obj thermos"
-          title={S.coffee >= 2 ? 'Garrafa vazia (máx. 2 copos)' : 'Café: perguntas 30% mais rápidas por 2h. Em casa você chega irritado.'}
+          title={
+            S.coffee >= 2
+              ? 'Garrafa vazia (máx. 2 copos)'
+              : 'Café: foco por 2h30 — perguntas 40% mais rápidas e, com a ligação aberta, o relógio anda mais devagar. Guarde para a hora do aperto. Em casa: Desgaste +2 por copo e você chega irritado(a).'
+          }
           disabled={S.coffee >= 2}
           onClick={() => {
             if (sh.coffee()) audio.sfx('coffee');

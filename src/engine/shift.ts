@@ -33,10 +33,12 @@ export const BONUS_CAP = 160;
 export const PRODUCTIVITY_BONUS = 30;
 export const COST_USA = 1850;
 export const COST_USB = 720;
-/** 1.1 — café: foco por 2 h (1h30/1h com noites seguidas). Perguntas e ferramentas custam 40% menos… */
+/** 1.1 — café: foco. Perguntas custam 40% menos… */
 export const COFFEE_QUESTIONS = 0.6;
-/** …e, com uma ligação aberta, o relógio anda a 75% (o tempo de pensar pesa menos na fila) */
-export const COFFEE_CLOCK = 0.75;
+/** …e, com uma ligação aberta, o relógio anda a 70% (o tempo de pensar pesa menos na fila) */
+export const COFFEE_CLOCK = 0.7;
+/** …por 2h30 de jogo (1h45 / 1h15 depois de noites seguidas na ambulância) */
+export const COFFEE_FOCUS = [150, 105, 75];
 /** 1.1 — caso grave decidido sem nenhuma pergunta à toa (e com as obrigatórias feitas): bônus */
 export const OBJECTIVE_BONUS = 10;
 
@@ -2344,11 +2346,14 @@ export class ShiftSim {
     sh.coffee++;
     this.st.irritado++;
     this.st.totals.coffee++;
-    // com noites seguidas sem dormir, o café segura menos (2 h, 1 h 30, 1 h)
-    const dur = (sh.noites ?? 1) >= 3 ? 60 : (sh.noites ?? 1) === 2 ? 90 : 120;
+    // com noites seguidas sem dormir, o café segura menos
+    const n = sh.noites ?? 1;
+    const dur = COFFEE_FOCUS[Math.min(2, Math.max(0, sh.semSono ? n - 1 : 0))];
     sh.coffeeUntil = Math.max(sh.time, sh.coffeeUntil) + dur;
+    const h = Math.floor(dur / 60);
+    const m = dur % 60;
     this.toast(
-      `Café: foco por ${dur === 120 ? '2 h' : dur === 90 ? '1 h 30' : '1 h'}. Perguntas 40% mais rápidas e, na linha, o relógio anda mais devagar${sh.semSono ? '; sem cochilar' : ''}. Em casa: Desgaste +${COFFEE_HOME_COST} e irritad${this.st.gender === 'M' ? 'o' : 'a'}.`,
+      `Café: foco por ${h ? h + ' h' : ''}${m ? (h ? ' ' : '') + m + (h ? '' : ' min') : ''}. Perguntas 40% mais rápidas e, na linha, o relógio anda mais devagar${sh.semSono ? '; sem cochilar' : ''}. Em casa: Desgaste +${COFFEE_HOME_COST} e irritad${this.st.gender === 'M' ? 'o' : 'a'}.`,
       'info',
     );
     return true;

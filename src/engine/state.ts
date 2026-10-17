@@ -242,7 +242,7 @@ export function makeEffCtx(s: GameState, sink: EffSink = {}): EffCtx {
 }
 
 /** 1.1 — cada café do plantão vira este Desgaste em casa (antes: 8), além de chegar irritado */
-export const COFFEE_HOME_COST = 3;
+export const COFFEE_HOME_COST = 2;
 
 export function seedFromLabel(label: string): number {
   return hashString(label);

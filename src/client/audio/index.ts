@@ -17,6 +17,7 @@ import { CentralHum, Heart, Metronome, ringBurst, RingLoop } from './phone';
 import { LOW_PRIORITY, playSfx, SFX_NAMES, type SfxName } from './sfx';
 import { buildPlan, MAX_LINE, parseText, PROFILES, specFor, speechSeed, type Channel } from './speech';
 import { Speaker } from './voice';
+import { FreezeFx } from './vagazero';
 
 export type { SfxName } from './sfx';
 export type { ThemeKind } from './music';
@@ -523,8 +524,42 @@ export class AudioEngine {
     this.theme = null;
   }
 
+  // ---------------------------------------------------------------- 1.1: vaga zero (o tempo parando)
+  private freezeFx: FreezeFx | null = null;
+
+  /**
+   * Liga/desliga o "tempo parando" da negociação de vaga zero: a central passa por um passa-baixa
+   * e baixa, entra um pulso grave (bpm sobe com a resistência do plantonista) e uma nota
+   * sustentada; a voz do fone fica limpa. Chamar de novo com `on` só atualiza o bpm.
+   */
+  vagaZero(on: boolean, bpm = 60): void {
+    const rig = this.rig;
+    if (!rig) return;
+    try {
+      this.freezeFx ??= new FreezeFx(rig);
+      if (!on) this.freezeFx.exit();
+      else if (this.freezeFx.on) this.freezeFx.setBpm(bpm);
+      else this.freezeFx.enter(bpm);
+    } catch {
+      /* sem áudio: segue o jogo */
+    }
+  }
+
+  /** sons próprios da tela da vaga zero (fora do filtro da central) */
+  vagaZeroSfx(kind: 'crec' | 'stamp' | 'busy' | 'resolve' | 'ring'): void {
+    const rig = this.rig;
+    if (!rig) return;
+    try {
+      this.freezeFx ??= new FreezeFx(rig);
+      this.freezeFx[kind]();
+    } catch {
+      /* noop */
+    }
+  }
+
   /** Para tudo (não fecha o contexto). */
   stopAll(): void {
+    this.freezeFx?.exit();
     this.want = { hum: false, ring: null, ambient: { ids: [], intensity: 0.6 }, home: null, theme: null, metronome: null, heart: null };
     const s = this.sys;
     const rig = this.rig;
