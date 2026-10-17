@@ -625,27 +625,39 @@ export const FIELD_POOL: FieldCaseX[] = [
 // Mistério: um senhor de capa cinza chega antes da ambulância em ocorrências
 // de noites diferentes. Os meninos da USB chamam ele de "Sereno" (aparece com
 // o sereno). Ele ouve o rádio da Regulação num aparelho de radioamador e anota
-// num caderno a hora de cada chamado e de cada chegada. Reviravolta: é o
-// Seu Aurélio Nunes, pai do rapaz que morreu em 2019 esperando quarenta minutos
-// na Av. Brasil (irmão da jornalista Carla). Ele não chega para salvar: chega
-// "pra ninguém ficar sozinho". E a cidade dorme sem saber de outra coisa: da
-// meia-noite às seis, a Saúde+ Gestão deixa só a USA 01 na rua.
+// num caderno a hora de cada chamado e de cada chegada; quando o noturno passa
+// endereço errado, ele liga para a central e corrige. Reviravolta: é o Seu
+// Anselmo Nunes, pai do Rafael (morto em 12/04/2019 na Av. Brasil, 2400,
+// esperando quarenta minutos) e da jornalista Carla. Ele não chega para salvar:
+// chega "pra ninguém ficar sozinho". E a cidade dorme sem saber de outra coisa:
+// da meia-noite às seis, a Saúde+ Gestão deixa só a USA 01 na rua.
 //
-// O que ninguém pode estragar: a revelação de que o Bené era o condutor de
-// 2019 só aparece no dia 18. Antes disso, a noite só planta (o meio-fio, a
-// volta no quarteirão, as mãos no volante). O nome do irmão da Carla não é
-// dito aqui (o roteiro da 1.1 pode renomeá-lo).
+// Coerente com a bíblia da 1.1 (docs/ROTEIRO-1.1.md, R3 "A noite de 2019 tinha
+// três pessoas"): naquela noite a 01 era Bené, Dr. Castro e Márcio, com a maca
+// presa no Regional; quem regulava era o Henrique; quem disse "sem maca" era o
+// Saulo; a TARM era a Simone. Isso só se revela no dia 18. Antes, a noite só
+// planta: o Henrique trava no rádio no endereço da cruz, o Bené evita a Av.
+// Brasil e senta no meio-fio, o Saulo diz "sem maca" e alguém insiste. O Seu
+// Anselmo corrige toda madrugada a voz do regulador daquela noite sem saber de
+// quem é (e ninguém conta para ele aqui).
+//
+// Voz do noturno no rádio: o Henrique, piorando noite a noite (ou a Dra.
+// Paula, se ele foi denunciado e afastado no dia 12).
 // =============================================================================
 const afastado = (s: StoryCtx) => !!s.flag('henrique_afastado');
 const henrique = (text: string, extra?: (s: StoryCtx) => boolean): StoryLine => ({ who: 'RÁDIO · DR. HENRIQUE', text, when: (s) => !afastado(s) && (!extra || extra(s)) });
 const paula = (text: string, extra?: (s: StoryCtx) => boolean): StoryLine => ({ who: 'RÁDIO · DRA. PAULA', text, when: (s) => afastado(s) && (!extra || extra(s)) });
 /** a pessoa já conheceu a Carla Nunes (dia 14) */
 const conheceCarla = (s: StoryCtx) => s.day >= 15;
-/** o Bené já contou que era o condutor de 2019 (dia 18) */
+/** o Bené já contou que era o condutor de 2019 (dia 18, 07:05) */
 const beneContou = (s: StoryCtx) => s.day >= 18;
+/** o almoço do dia 18 já contou quem regulava em 2019 (escolhas da bíblia: contar à Carla, ligar para o Henrique ou guardar) */
+const sabeRegulador = (s: StoryCtx) => s.day >= 18 && (!!s.flag('carla_sabe_regulador') || !!s.flag('ligou_henrique_2019') || !!s.flag('guardou_2019'));
 
-/** o Seu Aurélio na cena (figurante) */
+/** o Seu Anselmo na cena (figurante) */
 const SERENO = { role: 'curioso', age: 'idoso', sex: 'M', wear: 'social' } as const;
+/** a cruz do Rafael: Av. Brasil, 2400 (o poste que o ônibus 12 mostra no dia 4) */
+const CRUZ = { rua: 'Av. Brasil', n: 2400, bairro: 'Centro' };
 
 export const FIELD_STORY_CASES: FieldCaseX[] = [
   // ---------------------------------------------------------------------------
@@ -666,7 +678,7 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       cast: [{ ...SERENO, act: 'segurando_mao', hold: 'caneta' }],
     },
     see: [
-      'Banco da plataforma 3. Seu Osmar, 78, sentado, a mão aberta no peito, suando. Do lado dele, um senhor magro de capa cinza segura o pulso dele e olha o relógio.',
+      'Banco da plataforma 3. Seu Ladislau, 78, sentado, a mão aberta no peito, suando. Do lado dele, um senhor magro de capa cinza segura o pulso dele e olha o relógio.',
       'O senhor de capa: "A dor começou trinta e dois minutos antes de vocês chegarem. Eu marquei. Não dei remédio nenhum, que isso não é comigo." Ele põe um papel na sua mão: o verso de uma passagem, com "32 min" escrito a lápis.',
     ],
     vitals: { pa: '148x92', fc: '92', fr: '20', sat: '96%', glic: '140', ritmo: 'Supra de ST de V1 a V4' },
@@ -675,13 +687,13 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
     decay: 0.8,
     actions: [
       { id: 'ecg', label: 'Monitor e ECG de 12 derivações', group: 'circ', cost: 7, kind: 'critico', shows: ['pa', 'fc', 'sat', 'ritmo'], focus: 'peito', scene: { patient: { gear: ['eletrodos'] } }, say: 'ECG: supra de ST de V1 a V4. Infarto anterior. PA 148x92, FC 92, saturação 96%.' },
-      { id: 'aas', label: 'AAS 300 mg mastigado', group: 'med', cost: 3, kind: 'critico', say: 'Ele mastiga devagar, como quem come pastel de vento. "Já tomei pior, {dr}."' },
+      { id: 'aas', label: 'AAS 300 mg mastigado', group: 'med', cost: 3, kind: 'critico', say: 'Ele mastiga devagar, como quem mastiga bala de goma. "Já tomei pior, {dr}."' },
       { id: 'clopi75', label: 'Clopidogrel 75 mg (acima de 75 anos)', group: 'med', cost: 3, kind: 'critico', until: ['clopi300'], say: 'Um comprimido de 75 mg, junto com o AAS. Aos 78 a dose é essa, sem ataque de 300.' },
       { id: 'clopi300', label: 'Clopidogrel 300 mg (até 75 anos)', group: 'med', cost: 3, kind: 'dano', until: ['clopi75'], satisfies: 'clopi75', delta: -6, say: 'Quatro comprimidos. Acima de 75 anos, a dose é 75 mg: a de ataque só aumenta o risco de sangrar. Ninguém sangrou hoje, mas o Dr. Castro levanta uma sobrancelha.' },
       { id: 'acesso', label: 'Acesso venoso', group: 'circ', cost: 6, kind: 'critico', focus: 'maos', scene: { patient: { gear: ['soro'] } }, say: 'Acesso no antebraço, veia boa. "Doador de sangue trinta anos", ele avisa.' },
       { id: 'dinitrato', label: 'Dinitrato 5 mg sublingual', group: 'med', cost: 3, kind: 'ajuda', delta: 6, say: 'PAS acima de 90, FC entre 50 e 100, parede anterior, nada de remédio para disfunção erétil ("Na minha idade, {dr}? Deus me livre."). A dor cai de 8 para 5.' },
       { id: 'glicemia', label: 'Glicemia capilar', group: 'neuro', cost: 3, kind: 'info', shows: ['glic'], focus: 'maos', say: 'Glicemia 140.' },
-      { id: 'perguntar', label: 'Perguntar ao senhor de capa quem ele é', group: 'cena', cost: 2, kind: 'info', focus: 'pessoas', sets: { noite_capa_perguntou: true }, scene: { cast: [] }, say: 'Você vira para perguntar. O banco do lado está vazio. Na plataforma, só o vento, um papel de bala e o barulho de um radinho de pilha indo embora pelo escuro.' },
+      { id: 'perguntar', label: 'Perguntar ao senhor de capa quem ele é', group: 'cena', cost: 2, kind: 'info', focus: 'pessoas', sets: { noite_capa_perguntou: true }, scene: { cast: [] }, say: 'Você vira para perguntar. O banco do lado está vazio. Na plataforma, só o vento, um papel de bala e o chiado de um radinho de pilha indo embora pelo escuro.' },
     ],
     dest: ['REG'],
     destNote: { UPA: 'A UPA não tem hemodinâmica: infarto com supra vai para o Regional.' },
@@ -695,15 +707,15 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       minDay: 1,
       crew: 'Seu Bené (condutor) · Dr. Castro (só olhando) · Enf. Márcio · você',
       open: [
-        { who: 'DR. CASTRO', text: 'Castro, da 01. Hoje eu vou junto, só olhando. Depois a 01 da noite é sua quando quiser: eu tô velho pra dobrar. Regra da casa: o Bené escolhe a música e eu pago o pastel.' },
-        { who: 'BENÉ', text: 'Paga nada, {dr}. Ele me deve um pastel desde 2019. Tá anotado no quebra-sol.' },
-        { who: 'DR. CASTRO', text: '...Tá anotado. Bora.' },
+        { who: 'DR. CASTRO', text: 'Castro, da 01. Hoje eu vou junto, só olhando. Depois a 01 da noite é sua quando quiser: eu tô velho pra dobrar. O Bené não tá.' },
+        { who: 'BENÉ', text: 'Eu dobro até o dia 20, {dr}. Aposentadoria do INSS é do tamanho de um pastel. Falando nisso: o Castro deve um pastel pra Simone desde 2019.' },
+        { who: 'DR. CASTRO', text: 'Eu devo pra ela. Não ela pra mim. A Simone conta errado. ...Bora, Bené.' },
         henrique('Boa noite, zero um. Henrique no noturno. Noite tranquila, se Deus quiser. E se Ele não quiser, eu tô aqui. Eu sempre tô aqui.'),
-        paula('Boa noite, zero um. Paula no noturno. Qualquer coisa, me chama pelo nome.'),
+        paula('Boa noite, zero um. Paula no noturno. Qualquer coisa, me chama pelo nome. Funciona.'),
       ],
       before: [{ who: 'BENÉ', text: 'Rodoviária velha. De noite lá só fica o vento e quem não tem pra onde ir.' }],
       epilogue: [
-        { who: 'DR. CASTRO', text: 'Na base, o Dr. Castro desce: "Gostei. A 01 da noite é sua." Você pergunta do pastel de 2019. Ele finge que não ouviu. Isso ele faz bem.' },
+        { who: 'DR. CASTRO', text: 'Na base, o Dr. Castro desce: "Gostei. A 01 da noite é sua." Você pergunta da aposta do pastel de 2019. Ele finge que não ouviu. Isso ele faz bem.' },
         { who: 'NARRADOR', text: 'O Bené prende o papel da passagem no quebra-sol, ao lado de um santinho de São Benedito: "32 min". Ninguém pergunta por quê.' },
       ],
     },
@@ -756,9 +768,9 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       title: 'Rua errada',
       minDay: 2,
       open: [
-        henrique('Zero um, Henrique. Noite... comprida. O café acabou na central. Alguém aí tem café?'),
+        henrique('Zero um, Henrique. Noite... comprida. O café acabou na central. A Cleide diz que eu bebo café demais. Café.'),
         paula('Zero um, Paula. A Cleide trouxe bolo. Se sobrar, eu guardo pra vocês.'),
-        { who: 'RÁDIO · USB 01 (JOANA)', text: 'Central, USB 01, QRR 2 pro Regional com a gestante da Vila. Sangrando pouco, consciente. Chegamos em oito.' },
+        { who: 'RÁDIO · USB 01 (JOANA)', text: 'Central, USB 01, QRR 2 pro Regional com a gestante da Vila. Sangrando pouco, consciente. Chegamos em oito. Tá todo mundo vivo, por enquanto.' },
       ],
       before: [{ who: 'BENÉ', text: 'Jardim Norte. Conheço cada buraco. Se a numeração não mudou, é lá no alto, perto do fim da rua.' }],
       epilogue: [
@@ -786,7 +798,7 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       cast: [{ ...SERENO, act: 'rcp' }, { role: 'curioso', act: 'maos_na_cabeca', at: 'fundo', age: 'idoso' }, { role: 'curioso', act: 'olhando', at: 'fundo', age: 'idoso' }],
     },
     see: [
-      'Mesa de dominó virada, pedras no chão. Seu Dorival, 63, de costas no cimento. Quem comprime o peito dele é o senhor de capa cinza, contando alto, sem pressa e sem parar: "...vinte e oito, vinte e nove, trinta."',
+      'Mesa de dominó virada, pedras no chão. Seu Agenor, 63, de costas no cimento. Quem comprime o peito dele é o senhor de capa cinza, contando alto, sem pressa e sem parar: "...vinte e oito, vinte e nove, trinta."',
       '"Caiu faz quatro minutos. Parou de respirar um minuto depois. Eu comecei no minuto seguinte," ele diz, sem olhar para você. "Pode assumir."',
     ],
     vitals: { pa: '—', fc: '0', fr: '0', sat: '—', ritmo: 'Taquicardia ventricular sem pulso' },
@@ -813,12 +825,12 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
         after: ['choque'],
         focus: 'chao',
         sets: { noite_leu_caderno: true },
-        say: 'Caiu do bolso da capa: um caderno de capa dura, colunas a lápis. Data, rua, "chamado", "chegada". "14/03 · Rua Sabiá · 22:10 · 22:51." "02/05 · Av. Brasil · 23:40 · 00:19." Centenas de linhas. Na última página escrita: "Noturno passou rua errada. 3ª vez este mês."',
+        say: 'Caiu do bolso da capa: um caderno de capa dura, colunas a lápis. Data, rua, "chamado", "chegada". "14/03 · Rua Sabiá · 22:10 · 22:51." "02/05 · Av. Brasil · 23:40 · 00:19." Centenas de linhas. Na última página escrita: "Noturno passou rua errada. Liguei e corrigi. 3ª vez este mês."',
       },
     ],
     dest: ['REG'],
     debrief:
-      'Complexos largos, rápidos e regulares, sem pulso: taquicardia ventricular sem pulso. Trata-se como a FV: é chocável. Choque, dois minutos de RCP, adrenalina 1 mg a cada 3 a 5 minutos e amiodarona 300 mg. O leigo que começou a massagem em um minuto deu ao Seu Dorival a chance que ele teve.',
+      'Complexos largos, rápidos e regulares, sem pulso: taquicardia ventricular sem pulso. Trata-se como a FV: é chocável. Choque, dois minutos de RCP, adrenalina 1 mg a cada 3 a 5 minutos e amiodarona 300 mg. O leigo que começou a massagem em um minuto deu ao Seu Agenor a chance que ele teve.',
     source: 'SAV AC5–AC8 (FV/TV sem pulso; AHA 2015) · fichas de adrenalina e amiodarona',
     crew: ['MÁRCIO: Quem é esse senhor, {dr}? A compressão dele é melhor que a minha.', 'BENÉ: Ele tá indo embora. ...Deixou cair alguma coisa.'],
     story: {
@@ -826,13 +838,13 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       title: 'O caderno',
       minDay: 3,
       open: [
-        henrique('Zero um... confirma o QTH? ...QSL. QSL. Eu ouvi. Pode ir.'),
+        henrique('Zero um... confirma o QTH? ...QSL. QSL. Eu ouvi. Pode ir. (pausa) Eu ouvi, Cleide.'),
         paula('Zero um, Paula. Noite de lua cheia. A Cleide diz que é noite de parto e de doido.'),
         { who: 'BENÉ', text: 'Sabe o que me incomoda, {dr}? Ele sabia o número certo antes da gente.' },
       ],
       epilogue: [
-        { who: 'NARRADOR', text: 'Você fica com o caderno para devolver. O Bené dirige calado. Na volta para a base, ele não pega a Av. Brasil: dá a volta pelo quarteirão de trás do Regional, a quatro quadras. "Costume", diz.', when: (s) => !!s.flag('noite_leu_caderno') },
-        { who: 'NARRADOR', text: 'Quando vocês voltam para buscar o que ele deixou cair, o banco da praça está vazio. Na volta para a base, o Bené não pega a Av. Brasil: dá a volta pelo quarteirão de trás do Regional. "Costume", diz.', when: (s) => !s.flag('noite_leu_caderno') },
+        { who: 'NARRADOR', text: 'Você fica com o caderno para devolver. O Bené dirige calado e não pega a Av. Brasil: corta pela Santos Dumont. "É mais longe", diz. "Eu gosto de longe."', when: (s) => !!s.flag('noite_leu_caderno') },
+        { who: 'NARRADOR', text: 'Quando vocês voltam para buscar o que ele deixou cair, o banco da praça está vazio. Na volta, o Bené não pega a Av. Brasil: corta pela Santos Dumont. "É mais longe", diz. "Eu gosto de longe."', when: (s) => !s.flag('noite_leu_caderno') },
       ],
     },
   },
@@ -868,13 +880,13 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       { id: 'acesso', label: 'Acesso e soro moderado', group: 'circ', cost: 6, kind: 'critico', focus: 'maos', scene: { patient: { gear: ['soro'] } }, say: 'Dois acessos. Soro aquecido, só até a sistólica de 80 a 90.' },
       { id: 'aquecer', label: 'Manta e cobertor', group: 'exp', cost: 3, kind: 'ajuda', delta: 4, scene: { patient: { gear: ['manta'] } }, say: 'Manta aluminizada. Quem sangra esfria, e quem esfria sangra mais.' },
       { id: 'soro_aberto', label: 'Correr dois litros rápido', group: 'circ', cost: 5, kind: 'dano', delta: -12, say: 'A pressão sobe e o sangue volta a escorrer. Soro com moderação.' },
-      { id: 'como', label: 'Perguntar como ele chegou antes', group: 'cena', cost: 2, kind: 'info', focus: 'pessoas', sets: { noite_sereno_radio: true }, say: '"Eu ouço o rádio de vocês, {dr}. Um aparelho velho de radioamador, desde 2019. Hoje, à meia-noite, eu ouvi a Central ler aquele papel. Moro perto. Vim de bicicleta." Ele bate no bolso da capa: o caderno.' },
+      { id: 'como', label: 'Perguntar como ele chegou antes', group: 'cena', cost: 2, kind: 'info', focus: 'pessoas', sets: { noite_sereno_radio: true }, say: '"Eu ouço o rádio de vocês, {dr}. Um aparelho velho de radioamador, desde 2019. Hoje, à meia-noite, eu ouvi a central ler aquele papel. Moro perto. Vim de bicicleta." Ele bate no bolso da capa: o caderno.' },
     ],
     dest: ['REG'],
     debrief:
       'Hemorragia de membro com choque: torniquete acima do corte, oxigênio com reservatório (trauma grave com choque pede alto fluxo), soro aquecido com moderação e manta. O resto é no centro cirúrgico. E, da meia-noite às seis, a cidade tem uma ambulância avançada. Ninguém votou nisso.',
     source: 'SAV AT1 · AT21 · AC16 (choque) · AP19/AP20 (torniquete)',
-    crew: ['CASTRO NO RÁDIO: Zero um, Castro no PS do Regional. Sangue O negativo separado. Vem.', 'BENÉ: Vinte e seis minutos. Eu fiz em vinte e seis o que é de doze. E ainda tô ouvindo que foi rápido.'],
+    crew: ['SAULO NO RÁDIO: Zero um, Saulo, PS do Regional. Tô com trinta e oito no corredor e sem maca. ...Torniquete na coxa? Manda. Sala vermelha. Eu dou um jeito na maca.', 'BENÉ: Vinte e seis minutos. Eu fiz em vinte e seis o que é de doze. E ainda tô ouvindo que foi rápido.'],
     story: {
       chapter: 4,
       title: 'Meia-noite',
@@ -887,6 +899,7 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       ],
       before: [{ who: 'BENÉ', text: 'A cidade inteira dormindo e uma ambulância acordada. E ninguém vai ficar sabendo, {dr}. É assim que eles fazem: de noite.' }],
       epilogue: [
+        { who: 'NARRADOR', text: 'No Regional, o Saulo recebe na sala vermelha com uma bolacha de água e sal na boca e a maca de um corredor qualquer. O Bené fica parado na porta do PS olhando a maca chegar. Solta o ar como quem segurava desde muito tempo.' },
         { who: 'NARRADOR', text: 'Na base, às 0h58, o Bené pega uma caneta e escreve na palma da mão: "0h–6h: só a 01." "Pra não esquecer que eu sei", diz. Lá fora, Santa Aurora dorme sem saber.' },
       ],
       flags: { estavel: { noite_plano_noturno: true }, instavel: { noite_plano_noturno: true }, obito: { noite_plano_noturno: true } },
@@ -931,9 +944,9 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
         needs: ['glicemia', 'acesso'],
         delta: 30,
         scene: { patient: { pose: 'encostado', skin: 'normal', signs: ['suor'] } },
-        say: 'Glicose na veia. Ele abre os olhos e olha o relógio da parede antes de olhar para você: "Nove minutos. Vocês chegaram em nove minutos." A vizinha: "Seu Aurélio, o senhor esqueceu de jantar de novo." "Eu esqueço", ele diz. "De noite eu tenho mais o que fazer."',
+        say: 'Glicose na veia. Ele abre os olhos e olha o relógio da parede antes de olhar para você: "Nove minutos. Vocês chegaram em nove minutos." A vizinha: "Seu Anselmo, o senhor esqueceu de jantar de novo." "Eu esqueço", ele diz. "Fui vigia de usina trinta anos. De noite eu tenho mais o que fazer."',
       },
-      { id: 'mapa', label: 'Olhar o mapa da parede', group: 'exp', cost: 2, kind: 'info', focus: 'ambiente', sets: { noite_viu_mapa: true }, say: 'Cada alfinete tem um papelzinho: hora do chamado, hora da chegada. Vermelho quando passou de trinta minutos. Quase todos os vermelhos são de madrugada. Na Av. Brasil, a quatro quadras do Regional, o alfinete mais velho, enferrujado: "40 min".' },
+      { id: 'mapa', label: 'Olhar o mapa da parede', group: 'exp', cost: 2, kind: 'info', focus: 'ambiente', sets: { noite_viu_mapa: true }, say: 'Cada alfinete tem um papelzinho: hora do chamado, hora da chegada. Vermelho quando passou de trinta minutos. Quase todos os vermelhos são de madrugada. Na Av. Brasil, perto do 2400, a quatro quadras do Regional, o alfinete mais velho, enferrujado: "40 min".' },
       {
         id: 'retrato',
         label: 'Desvirar o porta-retrato',
@@ -942,7 +955,7 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
         kind: 'info',
         focus: 'objeto',
         sets: { noite_viu_retrato: true },
-        say: 'Um rapaz de capacete azul, sorrindo, encostado numa moto. Presa no vidro, uma conta de luz: "Aurélio Nunes". O Bené, que entrou atrás de você, olha a foto um tempo. Depois sai sem dizer nada e senta no meio-fio, do lado da ambulância. "É a coluna", diz o Márcio, sem acreditar.',
+        say: 'Um rapaz de capacete azul, sorrindo, encostado numa moto. Presa no vidro, uma conta de luz: "Anselmo Nunes". O Bené, que entrou atrás de você, olha a foto um tempo. Depois sai sem dizer nada e senta no meio-fio, do lado da ambulância. "É a coluna", diz o Márcio, sem acreditar, e vai sentar do lado dele.',
       },
     ],
     dest: ['UPA', 'REG'],
@@ -961,11 +974,11 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       ],
       before: [{ who: 'BENÉ', text: 'Rua Sabiá, 77. (pausa) {Dr}... essa casa tem uma antena no telhado. Eu passo aqui toda noite. Nunca reparei.' }],
       epilogue: [
-        { who: 'NARRADOR', text: 'O Seu Aurélio vai para a observação reclamando: "E quem vai ouvir o rádio hoje?" O Bené dirige com as duas mãos no volante, coisa que ele nunca faz.' },
+        { who: 'NARRADOR', text: 'O Seu Anselmo vai para a observação reclamando: "E quem vai ouvir o rádio hoje?" O Bené dirige com as duas mãos no volante, coisa que ele nunca faz.' },
         { who: 'NARRADOR', text: 'Nunes. Como a jornalista da Gazeta. Você pensa nisso a madrugada inteira e não fala em voz alta.', when: conheceCarla },
         { who: 'NARRADOR', text: 'Na base, o Bené tira o papel da passagem do quebra-sol ("32 min"), olha um tempo e põe de volta.', when: (s) => !conheceCarla(s) },
       ],
-      flags: { estavel: { noite_nome_aurelio: true }, instavel: { noite_nome_aurelio: true }, obito: { noite_nome_aurelio: true } },
+      flags: { estavel: { noite_nome_anselmo: true }, instavel: { noite_nome_anselmo: true }, obito: { noite_nome_anselmo: true } },
     },
   },
   // ---------------------------------------------------------------------------
@@ -973,20 +986,20 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
   // ---------------------------------------------------------------------------
   {
     id: 'noite_quarenta',
-    title: 'Motociclista com trauma de crânio (a pastelaria)',
+    title: 'Motociclista com trauma de crânio (a cruz do poste)',
     special: true,
     qrr: 3,
-    radio: '{unit}, QRR 3. QTH Av. Brasil, 2900, Centro, em frente à pastelaria. Motociclista caído, inconsciente, roncando.',
-    addr: { rua: 'Av. Brasil', n: 2900, bairro: 'Centro' },
+    radio: '{unit}, QRR 3. QTH Av. Brasil, 2400, Centro, no poste da cruz. Motociclista caído, inconsciente, roncando.',
+    addr: CRUZ,
     scene: {
       place: 'rua',
       light: 'noite',
       patient: { pose: 'deitado', age: 'adulto', sex: 'M', skin: 'palido', signs: ['olhos_fechados', 'sangue_cabeca', 'respira_fraco'], wear: 'motoboy', hat: 'capacete', wound: { kind: 'galo', at: 'cabeca' } },
-      props: ['moto'],
+      props: ['moto', 'poste'],
       cast: [{ ...SERENO, act: 'segurando_cabeca', at: 'cabeca' }],
     },
     see: [
-      'Em frente à pastelaria fechada, um rapaz de jaqueta de entrega no asfalto, capacete ainda na cabeça. Ajoelhado atrás da cabeça dele, segurando o capacete alinhado com as duas mãos, o Seu Aurélio. Um radinho de pilha no bolso da capa chia a frequência de vocês.',
+      'Av. Brasil, 2400. No poste, uma cruz de madeira pintada de branco com flor de plástico desbotada. Embaixo dela, um rapaz de jaqueta de entrega no asfalto, capacete ainda na cabeça. Ajoelhado atrás da cabeça dele, segurando o capacete alinhado com as duas mãos: o Seu Anselmo. Um radinho de pilha no bolso da capa chia a frequência de vocês.',
       '"Ele ronca, {dr}. Ronco não é sono. Eu não mexi no capacete. Aprendi."',
     ],
     vitals: { pa: '138x86', fc: '64', fr: '8', sat: '85%', glasgow: '7' },
@@ -996,27 +1009,27 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
     decay: 1.2,
     scoop: true,
     actions: [
-      { id: 'cervical', label: 'Capacete fora em dupla, colar e prancha', group: 'via', cost: 5, kind: 'critico', scene: { patient: { hat: null, gear: ['colar'] } }, say: 'O Seu Aurélio segura a cabeça enquanto o Márcio tira o capacete em dupla. Colar, prancha, em bloco. "Bonito", diz o velho, baixinho.' },
+      { id: 'cervical', label: 'Capacete fora em dupla, colar e prancha', group: 'via', cost: 5, kind: 'critico', scene: { patient: { hat: null, gear: ['colar'] } }, say: 'O Seu Anselmo segura a cabeça enquanto o Márcio tira o capacete em dupla. Colar, prancha, em bloco. "Bonito", diz o velho, baixinho.' },
       { id: 'avaliar', label: 'Glasgow, pupilas e respiração', group: 'neuro', cost: 3, kind: 'info', shows: ['glasgow', 'fr', 'sat', 'pa', 'fc'], focus: 'rosto', say: 'Não abre os olhos, geme, retira à dor: Glasgow 7. Pupila direita maior que a esquerda. Ronco, FR 8, saturação 85%. Ele não protege a via aérea.' },
-      { id: 'aspirar', label: 'Aspirar a boca', group: 'via', cost: 3, kind: 'ajuda', delta: 3, say: 'Sangue e saliva. O ronco diminui um pouco, mas volta.' },
+      { id: 'aspirar', label: 'Aspirar a boca', group: 'via', cost: 3, kind: 'ajuda', delta: 3, say: 'Saliva e um fio de sangue. O ronco diminui um pouco, mas volta.' },
       { id: 'acesso', label: 'Acesso venoso', group: 'circ', cost: 6, kind: 'ajuda', delta: 2, focus: 'maos', scene: { patient: { gear: ['soro'] } }, say: 'Acesso no braço. PAS acima de 90 é o alvo no trauma de crânio.' },
-      { id: 'hiperventilar', label: 'Ventilar rápido para "baixar a pressão"', group: 'via', cost: 3, kind: 'dano', after: ['iot'], delta: -8, say: 'O Bené para sua mão: "Devagar, {dr}." No trauma de crânio, sem hiperventilar: 10 a 12 por minuto.' },
+      { id: 'hiperventilar', label: 'Ventilar rápido para "baixar a pressão"', group: 'via', cost: 3, kind: 'dano', after: ['iot'], delta: -8, say: 'O Bené segura a sua mão: "Devagar, {dr}." No trauma de crânio, sem hiperventilar: 10 a 12 por minuto.' },
       {
         id: 'historia',
-        label: 'Sentar no meio-fio com o Seu Aurélio',
+        label: 'Sentar no meio-fio com o Seu Anselmo',
         group: 'cena',
         cost: 3,
         kind: 'info',
         after: ['iot'],
         focus: 'pessoas',
-        sets: { noite_aurelio_historia: true },
-        say: '"O meu filho caiu aqui. Bem aqui, na frente da pastelaria. Vinte e seis anos, capacete azul. Em 2019. A ambulância levou quarenta minutos, e quando eu cheguei do serviço já tinha acabado. A minha filha tava com ele, segurando a mão. Ninguém tinha ensinado nada pra ela." Ele olha o rapaz na prancha. "Eu fiz o curso dos Bombeiros. Comprei o rádio. Eu não chego pra salvar, {dr}. Eu chego pra ninguém ficar sozinho."',
+        sets: { noite_anselmo_historia: true },
+        say: '"O meu filho caiu aqui. Embaixo dessa cruz. Vinte e seis anos, capacete azul. Em 2019, quase duas da manhã. A ambulância levou quarenta minutos. Eu era vigia da usina; quando me ligaram, já tinha acabado. A minha filha tava com ele, segurando a mão. Ninguém tinha ensinado nada pra ela." Ele olha o rapaz na prancha. "Eu fiz o curso dos Bombeiros. Comprei o rádio. Eu não chego pra salvar, {dr}. Eu chego pra ninguém ficar sozinho."',
       },
     ],
     dest: ['REG'],
     debrief: 'Trauma de crânio grave: Glasgow 7, ronco, respiração lenta, pupilas diferentes. Glasgow 8 ou menos é via aérea definitiva: máscara nenhuma resolve quem não protege a via aérea, e a intubação aqui era a indicação certa. Cervical desde o início, sem hiperventilar, PAS acima de 90 e Regional.',
     source: 'SAV AT5 (TCE) · AP7/AP10 (intubação) · AP28 (Glasgow) · AT1',
-    crew: ['MÁRCIO: Pupila direita maior, {dr}. Anisocoria.', 'BENÉ: (o Bené não desce da cabine. As mãos no volante, olhando a pastelaria.)'],
+    crew: ['MÁRCIO: Pupila direita maior, {dr}. (o Márcio olha a cruz no poste, depois o chão) Anisocoria.', 'BENÉ: (o Bené não desce da cabine. As mãos no volante, olhando o poste.)'],
     story: {
       chapter: 6,
       title: 'Quarenta minutos',
@@ -1026,19 +1039,20 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
         paula('Zero um, Paula. O Henrique ligou pra central hoje, da clínica. Pediu pra avisar que tá vivo. Achei que vocês iam querer saber.'),
       ],
       before: [
-        henrique('Zero um... QRR 3, Av. Brasil, trinta e... trinta e cinco... motoqueiro. (quatro minutos de chiado)'),
-        { who: 'RÁDIO · VOZ DESCONHECIDA', text: 'Zero um, QTH Av. Brasil, 2900. Dois, nove, zero, zero. Em frente à pastelaria. Ele tá roncando, eu tô segurando a cabeça. Desculpa invadir a frequência.', when: (s) => !afastado(s) },
-        { who: 'RÁDIO · VOZ DESCONHECIDA', text: 'Zero um, desculpa invadir a frequência. Av. Brasil, 2900, em frente à pastelaria. Ele tá roncando, eu tô segurando a cabeça.', when: afastado },
-        { who: 'BENÉ', text: 'Isso é crime, sabia? Transmitir na nossa frequência. (pausa) Anota aí, {dr}: 2900.' },
+        henrique('Zero um... QRR 3, Av. Brasil, vinte e qua... (quatro minutos de chiado. Do outro lado, alguém respira perto do microfone e não fala.)'),
+        { who: 'RÁDIO · VOZ DESCONHECIDA', text: 'Zero um, QTH Av. Brasil, 2400. Dois, quatro, zero, zero. No poste da cruz. Ele tá roncando, eu tô segurando a cabeça. Desculpa invadir a frequência.', when: (s) => !afastado(s) },
+        { who: 'RÁDIO · VOZ DESCONHECIDA', text: 'Zero um, desculpa invadir a frequência. Av. Brasil, 2400, no poste da cruz. Ele tá roncando, eu tô segurando a cabeça.', when: afastado },
+        { who: 'BENÉ', text: 'Isso é crime, sabia? Transmitir na nossa frequência. (pausa longa) ...Dois mil e quatrocentos. Segura, {dr}. Vou pela Brasil.' },
       ],
       epilogue: [
-        { who: 'NARRADOR', text: 'Desta vez o Bené desce. Atravessa a avenida, para na frente do Seu Aurélio e tira o boné. "Fui eu, seu Aurélio. Em 2019. Era eu dirigindo." O velho demora. Depois segura a mão dele com as duas mãos: "A minha filha me contou que o motorista chorou. Eu vim agradecer o choro. Demorei." Vocês três ficam ali até o rádio chamar.', when: beneContou },
-        { who: 'NARRADOR', text: 'O Seu Aurélio pergunta: "O motorista de vocês... sempre foi o mesmo, na 01?" Da cabine, o Bené liga o motor antes de você responder. "Bora, {dr}. Hospital." No caminho ele diz uma frase só, na frente do Regional, a quatro quadras dali: "Trinta e um anos de volante. A gente carrega umas noites."', when: (s) => !beneContou(s) },
-        { who: 'NARRADOR', text: 'De madrugada, a voz do Henrique volta ao rádio: "Zero um... tudo certo aí?" Ninguém responde de primeira.', when: (s) => !afastado(s) },
+        { who: 'NARRADOR', text: 'Desta vez o Bené desce. Atravessa a avenida, para na frente do Seu Anselmo e tira o boné. "Fui eu, seu Anselmo. Em 2019. Era eu dirigindo." O velho demora. Depois segura a mão dele com as duas mãos: "A minha filha me contou que o motorista chorou. Eu vim agradecer o choro. Demorei." O Márcio, que também estava lá naquela noite, põe a mão no ombro do Bené e não diz nada. Vocês ficam ali até o rádio chamar.', when: beneContou },
+        { who: 'NARRADOR', text: 'O Seu Anselmo pergunta: "O motorista de vocês... sempre foi o mesmo, na 01?" Da cabine, o Bené liga o motor antes de você responder. "Bora, {dr}. Hospital." No caminho ele diz uma frase só, na porta do Regional, a quatro quadras dali: "Trinta e um anos de volante. A gente carrega umas noites."', when: (s) => !beneContou(s) },
+        { who: 'NARRADOR', text: 'Você pensa no almoço. Quem estava no rádio naquela noite era o Henrique. O mesmo Henrique que, hoje, travou quatro minutos no número 2400. O Seu Anselmo não sabe. Você não conta. Não hoje, não aqui.', when: sabeRegulador },
+        { who: 'NARRADOR', text: 'De madrugada, a voz do Henrique volta ao rádio: "Zero um... tudo certo aí?" Ninguém responde de primeira.', when: (s) => !afastado(s) && !sabeRegulador(s) },
       ],
       flags: {
-        estavel: { noite_voz_no_radio: true },
-        instavel: { noite_voz_no_radio: true },
+        estavel: { noite_voz_no_radio: true, noite_motoboy_vivo: true },
+        instavel: { noite_voz_no_radio: true, noite_motoboy_vivo: true },
         obito: { noite_voz_no_radio: true },
       },
     },
@@ -1048,21 +1062,21 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
   // ---------------------------------------------------------------------------
   {
     id: 'noite_desfecho',
-    title: 'Parada na pastelaria (o Seu Aurélio)',
+    title: 'Parada na cruz do poste (o Seu Anselmo)',
     special: true,
     qrr: 3,
-    radio: '{unit}, QRR 3, prioridade absoluta. QTH Av. Brasil, 2900, Centro, pastelaria. Homem de setenta e poucos anos caído na calçada, não respira. A dona da pastelaria está fazendo massagem "do jeito que ele ensinou".',
-    addr: { rua: 'Av. Brasil', n: 2900, bairro: 'Centro' },
+    radio: '{unit}, QRR 3, prioridade absoluta. QTH Av. Brasil, 2400, Centro, no poste da cruz. Homem de setenta e poucos anos caído na calçada, não respira. Um motoboy está fazendo massagem "do jeito que ele ensinou".',
+    addr: CRUZ,
     scene: {
       place: 'calcada',
       light: 'noite',
       patient: { pose: 'deitado', age: 'idoso', sex: 'M', skin: 'cianose', signs: ['olhos_fechados'], wear: 'social' },
-      props: ['sacola', 'celular'],
-      cast: [{ role: 'curioso', act: 'rcp', sex: 'F', wear: 'avental' }, { role: 'curioso', act: 'mao_na_boca', at: 'fundo' }],
+      props: ['poste', 'moto', 'celular'],
+      cast: [{ role: 'curioso', act: 'rcp', sex: 'M', wear: 'motoboy' }, { role: 'curioso', act: 'mao_na_boca', at: 'fundo' }],
     },
     see: [
-      'Quatro minutos. O Bené marca no relógio do painel e diz em voz alta: "Quatro." Na calçada da pastelaria, a dona comprime o peito do Seu Aurélio contando como ele contava: "...vinte e oito, vinte e nove, trinta."',
-      'No chão, a capa cinza aberta e o radinho chiando a frequência de vocês. Num saco de papel ao lado, um pastel inteiro, ainda quente. "Ele vem toda noite, compra um e não come", diz a dona. "Faz anos."',
+      'Quatro minutos. O Bené marca no relógio do painel e diz em voz alta: "Quatro." Embaixo da cruz do poste, um rapaz de jaqueta de entrega comprime o peito do Seu Anselmo, contando como ele contava: "...vinte e oito, vinte e nove, trinta."',
+      'No chão, a capa cinza aberta, o caderno e o radinho chiando a frequência de vocês. Na mão do Seu Anselmo, ainda fechada, uma flor de verdade, de floricultura. A de plástico do poste está no bolso dele.',
     ],
     vitals: { pa: '—', fc: '0', fr: '0', sat: '—', ritmo: 'Fibrilação ventricular' },
     vitalsAfter: { pa: '96x60', fc: '88', fr: '14', sat: '94%', ritmo: 'Sinusal' },
@@ -1077,9 +1091,9 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
     decay: 1.15,
     treatOnScene: true,
     actions: [
-      { id: 'rcp', label: 'Assumir as compressões (30:2)', group: 'circ', cost: 4, kind: 'critico', delta: 6, focus: 'peito', scene: { cast: [{ role: 'socorrista', act: 'rcp' }, { role: 'socorrista', act: 'ventilando', at: 'cabeca' }, { role: 'curioso', act: 'chorando', at: 'fundo', sex: 'F', wear: 'avental' }], patient: { gear: ['ambu'] } }, say: 'O Márcio assume. A dona da pastelaria senta no degrau, com as mãos tremendo, e continua contando baixinho.' },
+      { id: 'rcp', label: 'Assumir as compressões (30:2)', group: 'circ', cost: 4, kind: 'critico', delta: 6, focus: 'peito', scene: { cast: [{ role: 'socorrista', act: 'rcp' }, { role: 'socorrista', act: 'ventilando', at: 'cabeca' }, { role: 'curioso', act: 'chorando', at: 'fundo', sex: 'M', wear: 'motoboy' }], patient: { gear: ['ambu'] } }, say: 'O Márcio assume. O rapaz senta no meio-fio, com as mãos tremendo, e continua contando baixinho.' },
       { id: 'monitor', label: 'Pás do monitor: ver o ritmo', group: 'circ', cost: 5, kind: 'critico', shows: ['ritmo', 'fc'], scene: { patient: { gear: ['eletrodos'] } }, say: 'Pás no peito. O traçado aparece na tela. Pulso carotídeo: ausente. Leia o monitor.' },
-      { id: 'choque', label: 'Desfibrilar (200 J bifásico)', group: 'circ', cost: 4, kind: 'critico', needs: ['monitor'], when: [...SHOCK], wrongSay: CHOQUE_ERRADO, delta: 10, say: '"Todos afastados!" Choque. O Bené fala sozinho, olhando o relógio: "Vai, seu Aurélio."' },
+      { id: 'choque', label: 'Desfibrilar (200 J bifásico)', group: 'circ', cost: 4, kind: 'critico', needs: ['monitor'], when: [...SHOCK], wrongSay: CHOQUE_ERRADO, delta: 10, say: '"Todos afastados!" Choque. O Bené fala sozinho, olhando o poste: "Vai, seu Anselmo."' },
       { id: 'cagada', label: 'CA-GA-DA (cabos, ganho, derivação)', group: 'circ', cost: 4, kind: 'neutro', needs: ['monitor'], when: ['ASSISTOLIA'], wrongSay: CAGADA_ERRADO, wrongDelta: -3, say: 'Linha reta confirmada.' },
       { id: 'acesso', label: 'Acesso venoso', group: 'circ', cost: 6, kind: 'ajuda', focus: 'maos', scene: { patient: { gear: ['soro'] } }, say: 'Acesso no braço, a veia de doador de sempre.' },
       {
@@ -1100,7 +1114,7 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
     debrief:
       'Fibrilação ventricular (choque), que virou atividade elétrica sem pulso depois do choque (sem choque: adrenalina e 5H/5T), e voltou a FV (choque de novo e amiodarona 300 mg). O ritmo muda durante a RCP; cada checagem de dois minutos é uma leitura nova. Quatro minutos de chegada e massagem de leigo desde o primeiro minuto.',
     source: 'SAV AC5–AC8 (FV, AESP, 5H/5T; AHA 2015) · fichas de adrenalina e amiodarona',
-    crew: ['DR. CASTRO: Eu cuido da via aérea, {dr}. O ritmo é seu. Lê com calma: calma é rápido.', 'BENÉ: (o Bené segura o radinho do Seu Aurélio na mão e não larga)'],
+    crew: ['DR. CASTRO: Eu cuido da via aérea, {dr}. O ritmo é seu. Lê com calma: calma é rápido.', 'BENÉ: (o Bené segura o radinho do Seu Anselmo na mão e não larga)'],
     story: {
       chapter: 7,
       title: 'Quatro minutos',
@@ -1110,31 +1124,32 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       open: [
         { who: 'DR. CASTRO', text: 'Castro. Hoje eu vou junto. Não pergunta por quê: pressentimento de velho. E eu trouxe dinheiro trocado.' },
         { who: 'BENÉ', text: 'Dinheiro trocado pra quê?' },
-        { who: 'DR. CASTRO', text: 'Pastelaria não aceita cartão de madrugada, Bené.' },
+        { who: 'DR. CASTRO', text: 'A Lurdinha não aceita cartão de madrugada, Bené.' },
       ],
       before: [
-        henrique('Zero um... (a voz firme, pela primeira vez em semanas) QRR 3, Av. Brasil, 2900, pastelaria. É o senhor do rádio, Bené. O que liga aqui toda noite pra corrigir os meus endereços. Ninguém sabe disso, só eu e a Cleide. Vai rápido.'),
-        paula('Zero um, QRR 3, Av. Brasil, 2900. A dona da pastelaria pediu pelo nome: "a 01 do Seu Bené". Vai.'),
-        { who: 'BENÉ', text: 'Segura, {dr}.' },
+        henrique('Zero um... (a voz firme, pela primeira vez em semanas) QRR 3, Av. Brasil, 2400. É o senhor do rádio, Bené. O que liga aqui toda noite pra corrigir os meus endereços. Ninguém sabe disso, só eu e a Cleide. (pausa) Vai rápido. Desta vez vai rápido.'),
+        paula('Zero um, QRR 3, Av. Brasil, 2400. Quem ligou pediu pelo nome: "a 01 do Seu Bené". Vai.'),
+        { who: 'BENÉ', text: 'Segura, {dr}. Hoje eu vou pela Brasil.' },
       ],
       epilogue: [
-        { who: 'NARRADOR', text: 'Uma da manhã. O Seu Aurélio sobe para a UTI do Regional com pulso e o caderno no peito, embaixo do lençol. Na última página, com a sua letra, porque ele pediu com os olhos: "01 · 4 min."', when: (s) => !!s.flag('noite_aurelio_vivo') },
-        { who: 'NARRADOR', text: 'Uma da manhã. Vocês fizeram tudo, e não voltou. A dona da pastelaria baixa a porta de aço devagar. O Bené guarda o caderno no porta-luvas da 01; na última página, com a letra dele: "01 · 4 min. Não deu. Mas ninguém ficou sozinho."', when: (s) => !!s.flag('noite_aurelio_morreu') },
-        { who: 'DR. CASTRO', text: 'Na calçada, o Dr. Castro compra três pastéis com o dinheiro trocado. "2019 tá pago, Bené." O Bené come de pé, olhando a avenida, e não fala nada por um pastel inteiro.' },
+        { who: 'NARRADOR', text: 'Uma da manhã. O Seu Anselmo sobe para a UTI do Regional com pulso e o caderno no peito, embaixo do lençol. Na última página, com a sua letra, porque ele pediu com os olhos: "01 · 4 min." A flor de floricultura ficou com o Bené, para pôr no poste quando ele puder.', when: (s) => !!s.flag('noite_anselmo_vivo') },
+        { who: 'NARRADOR', text: 'Uma da manhã. Vocês fizeram tudo, e não voltou. O Bené guarda o caderno no porta-luvas da 01; na última página, com a letra dele: "01 · 4 min. Não deu. Mas ninguém ficou sozinho." Depois amarra a flor de floricultura no poste, do lado da cruz.', when: (s) => !!s.flag('noite_anselmo_morreu') },
+        { who: 'NARRADOR', text: 'O rapaz que fez a massagem era o motoboy da outra noite, o da cruz. "Ele segurou a minha cabeça", diz. "Agora eu sei contar até trinta."', when: (s) => !!s.flag('noite_motoboy_vivo') },
+        { who: 'DR. CASTRO', text: 'Na volta, o Castro pede para passar pela Santos Dumont. A Lurdinha abre a porta de aço pela metade. Três pastéis de palmito e um embrulhado "pra Simone". "2019 tá pago", ele diz. "A aposta acaba hoje." Ninguém pergunta qual era a aposta. O Bené come de pé e não fala nada por um pastel inteiro.' },
         { who: 'BENÉ', text: 'Na volta, o Bené diz: "Um dia eu te conto uma coisa, {dr}. Não hoje."', when: (s) => !beneContou(s) },
         { who: 'BENÉ', text: 'Na volta, o Bené diz: "Dessa vez eu cheguei, {dr}. Quatro minutos. Anota aí também, que eu quero ver escrito."', when: beneContou },
-        { who: 'NARRADOR', text: 'Às 0h50 a central chama: "Zero um... ele tá vivo?" É o Henrique. É a primeira vez que você ouve ele perguntar de um paciente depois.', when: (s) => !afastado(s) && !!s.flag('noite_aurelio_vivo') },
+        { who: 'NARRADOR', text: 'Às 0h50 a central chama: "Zero um... ele tá vivo?" É o Henrique. É a primeira vez que você ouve ele perguntar de um paciente depois.', when: (s) => !afastado(s) && !!s.flag('noite_anselmo_vivo') },
       ],
       flags: {
-        estavel: { noite_aurelio_vivo: true, noite_desfecho: true },
-        instavel: { noite_aurelio_vivo: true, noite_desfecho: true },
-        obito: { noite_aurelio_morreu: true, noite_desfecho: true },
+        estavel: { noite_anselmo_vivo: true, noite_desfecho: true },
+        instavel: { noite_anselmo_vivo: true, noite_desfecho: true },
+        obito: { noite_anselmo_morreu: true, noite_desfecho: true },
       },
       afterwards: [
-        { who: 'RÁDIO · USB 01 (JOANA)', text: 'Joana pra 01: o Seu Aurélio tirou a licença de radioamador. Agora é legal. Ele pediu pra avisar que vai continuar corrigindo endereço, mas "com documento".', when: (s) => !!s.flag('noite_aurelio_vivo') },
-        { who: 'BENÉ', text: 'Passei na pastelaria. A dona deixou um pastel separado no balcão, com um papel: "pro motorista". Não comi. Trouxe pra você, {dr}.' },
+        { who: 'RÁDIO · USB 01 (JOANA)', text: 'Joana pra 01: o Seu Anselmo tirou a licença de radioamador. Agora é legal. Ele pediu pra avisar que vai continuar corrigindo endereço, mas "com documento".', when: (s) => !!s.flag('noite_anselmo_vivo') },
+        { who: 'BENÉ', text: 'Passei na Brasil hoje, {dr}. Pela Brasil mesmo. Tem flor nova no poste. Não fui eu. Ou fui. Não lembro.' },
         { who: 'RÁDIO · USB 01 (JOANA)', text: 'Joana pra 01: madrugada sem USA 02 e 03 de novo. Se alguém da Gazeta perguntar, eu não disse nada. Mas eu disse.', when: (s) => !!s.flag('noite_plano_noturno') },
-        { who: 'DR. CASTRO', text: 'Castro na escuta. Alguém viu o caderno? O Bené diz que tá no porta-luvas. Eu digo que é documento histórico.' },
+        { who: 'DR. CASTRO', text: 'Castro na escuta. Alguém viu o caderno do Seu Anselmo? O Bené diz que tá no porta-luvas. Eu digo que é documento histórico.' },
       ],
     },
   },

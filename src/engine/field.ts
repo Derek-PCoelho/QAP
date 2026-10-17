@@ -301,7 +301,7 @@ export function storyCases(all: FieldCaseDef[]): FieldCaseX[] {
 }
 
 /** marcas da campanha que as falas da história consultam (além das "noite_*") */
-const STORY_KEYS = ['henrique_afastado', 'denunciou_henrique', 'encobriu_henrique', 'omitiu_henrique', 'cartao_carla', 'materia_publicada'];
+const STORY_KEYS = ['henrique_afastado', 'denunciou_henrique', 'encobriu_henrique', 'omitiu_henrique', 'cartao_carla', 'materia_publicada', 'carla_sabe_regulador', 'ligou_henrique_2019', 'guardou_2019', 'viu_cruz'];
 
 function storyLines(ls: StoryLine[] | undefined, ctx: StoryCtx): { who: string; text: string }[] {
   return (ls ?? []).filter((l) => !l.when || l.when(ctx)).map((l) => ({ who: l.who, text: l.text }));

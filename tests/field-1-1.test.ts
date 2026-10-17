@@ -250,7 +250,7 @@ describe('Intervenção 1.1: a história das noites', () => {
     }
     expect(seen).toEqual(story.map((c) => c.id));
     expect(st.flags['noite_desfecho']).toBe(true);
-    expect(st.flags['noite_aurelio_vivo']).toBe(true);
+    expect(st.flags['noite_anselmo_vivo']).toBe(true);
     // depois do desfecho: noite comum, com uma fala solta da cidade
     st.day = 12;
     const after = createFieldShift(st, FIELD_CASES);
@@ -268,8 +268,9 @@ describe('Intervenção 1.1: a história das noites', () => {
   });
 
   it('não estraga o dia 18: antes dele o Bené não confessa; depois, sim', () => {
-    const run = (day: number) => {
+    const run = (day: number, flags: Record<string, boolean> = {}) => {
       const st = state(day, 5);
+      Object.assign(st.flags, flags);
       for (const c of storyCases(FIELD_CASES).slice(0, 5)) st.flags['field_' + c.id] = true;
       const sim = playNight(st);
       expect(sim.f.story!.chapters[0].id).toBe('noite_quarenta');
@@ -277,6 +278,10 @@ describe('Intervenção 1.1: a história das noites', () => {
     };
     expect(run(12)).not.toMatch(/Fui eu/);
     expect(run(18)).toMatch(/Fui eu/);
+    // quem regulava em 2019 só aparece depois que o almoço do dia 18 contou
+    expect(run(12)).not.toMatch(/era o Henrique/);
+    expect(run(18)).not.toMatch(/era o Henrique/);
+    expect(run(18, { guardou_2019: true })).toMatch(/era o Henrique/);
   });
 
   it('o desfecho muda com o que acontece na pastelaria', () => {
@@ -284,7 +289,7 @@ describe('Intervenção 1.1: a história das noites', () => {
     for (const c of storyCases(FIELD_CASES).slice(0, 6)) st.flags['field_' + c.id] = true;
     const f = createFieldShift(st, FIELD_CASES);
     const sim = new FieldSim(f, FIELD_CASES, 'padrao');
-    // joga as avulsas direito e abandona a parada do Seu Aurélio
+    // joga as avulsas direito e abandona a parada do Seu Anselmo
     let guard = 0;
     while (sim.f.phase !== 'fim' && guard++ < 50) {
       if (sim.f.phase === 'radio') sim.begin();
@@ -299,7 +304,7 @@ describe('Intervenção 1.1: a história das noites', () => {
         sim.transport(d.dest[0]);
       }
     }
-    expect(sim.storyFlags()['noite_aurelio_morreu']).toBe(true);
+    expect(sim.storyFlags()['noite_anselmo_morreu']).toBe(true);
     expect(sim.epilogue().map((l) => l.text).join(' ')).toMatch(/ninguém ficou sozinho/);
   });
 
