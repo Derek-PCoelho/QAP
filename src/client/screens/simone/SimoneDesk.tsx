@@ -1,6 +1,6 @@
 // Campanha da Simone: a mesa da TARM. Fila e ligação à esquerda, mapa e rádio
 // no centro, pré-triagem e mesas de regulação à direita.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { store, useStore } from '../../store';
 import { Queue } from '../desk/Queue';
 import { CallPanel } from '../desk/CallPanel';
@@ -11,11 +11,9 @@ import { ManualBook } from '../desk/ManualBook';
 import { CorkBoard } from '../desk/CorkBoard';
 import { SceneOverlay } from '../desk/SceneOverlay';
 import { ModalStack } from '../desk/ModalStack';
-import { InspectDrawer } from '../desk/InspectDrawer';
-import { RedThread } from '../desk/RedThread';
 import { Toasts } from '../../ui/Toasts';
 import { audio } from '../../audio';
-import type { Overlay, InspectSel } from '../desk/Desk';
+import type { Overlay } from '../desk/Desk';
 import { SimoneTopBar } from './SimoneTopBar';
 import { TriagePanel } from './TriagePanel';
 import { RegDesks } from './RegDesks';
@@ -25,80 +23,35 @@ export function SimoneDesk() {
   const g = s.game!;
   const sh = g.shift;
   const [overlay, setOverlay] = useState<Overlay>(null);
-  const [sel, setSel] = useState<InspectSel | null>(null);
-  const [thread, setThread] = useState<{ a: HTMLElement | null; b: HTMLElement | null; ok: boolean; key: number } | null>(null);
-  const [insight, setInsight] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const inspect = !!sh?.sh.inspect;
-
-  const toggleInspect = useCallback(() => {
-    if (!sh) return;
-    sh.toggleInspect();
-    setSel(null);
-    audio.sfx(sh.sh.inspect ? 'paper' : 'click');
-    store.notify();
-  }, [sh]);
-
-  const pick = useCallback(
-    (id: string, text: string, el: HTMLElement | null) => {
-      if (!sh || !sh.sh.inspect) return;
-      if (!sel) {
-        setSel({ id, text, el });
-        audio.sfx('pen');
-        return;
-      }
-      if (sel.id === id) {
-        setSel(null);
-        return;
-      }
-      const r = sh.link(sel.id, id);
-      setThread({ a: sel.el, b: el, ok: r.ok, key: Date.now() });
-      if (r.ok && r.insight && !r.already) setInsight(r.insight);
-      if (!r.ok) setInsight(null);
-      setSel(null);
-      store.notify();
-    },
-    [sh, sel],
-  );
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (store.paused || !sh) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        if (!g.scene) toggleInspect();
-      } else if (!g.scene) {
+      if (!g.scene) {
         if (e.key === 'm' || e.key === 'M') setOverlay((o) => (o === 'manual' ? null : 'manual'));
         if (e.key === 'q' || e.key === 'Q') setOverlay((o) => (o === 'quadro' ? null : 'quadro'));
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [sh, g, toggleInspect]);
-
-  useEffect(() => {
-    if (!insight) return;
-    const t = setTimeout(() => setInsight(null), 6500);
-    return () => clearTimeout(t);
-  }, [insight]);
+  }, [sh, g]);
 
   if (!sh) return null;
   const stress = g.st.vars.desgaste;
   const blend = Math.max(0, Math.min(1, (stress - 40) / 60));
   return (
-    <div ref={stageRef} className={'desk tarm-desk' + (inspect ? ' inspecting' : '') + (stress > 80 ? ' exhausted' : '')} style={{ ['--desg' as string]: String(blend) }}>
+    <div ref={stageRef} className={'desk tarm-desk' + (stress > 80 ? ' exhausted' : '')} style={{ ['--desg' as string]: String(blend) }}>
       <SimoneTopBar />
       <div className="desk-main">
         <div className="col-left">
           <Queue />
-          <CallPanel onPick={pick} sel={sel?.id} />
+          <CallPanel />
         </div>
         <div className="col-center">
           <div className="map-slot">
             <MapPanel />
-            {inspect && <InspectDrawer onPick={pick} sel={sel?.id} />}
           </div>
           <RadioPanel />
         </div>
@@ -107,15 +60,7 @@ export function SimoneDesk() {
           <RegDesks />
         </div>
       </div>
-      <DeskBar overlay={overlay} setOverlay={setOverlay} inspect={inspect} toggleInspect={toggleInspect} manualBlocked={false} />
-      {inspect && <div className="inspect-hint">Modo Inconsistência · clique em duas pistas que se contradizem (ou se confirmam). <span className="kbd">TAB</span> sai.</div>}
-      {insight && (
-        <div className="insight-banner" role="status">
-          <b>Inconsistência</b>
-          <span>{insight}</span>
-        </div>
-      )}
-      {thread && <RedThread key={thread.key} a={thread.a} b={thread.b} ok={thread.ok} container={stageRef.current} onDone={() => setThread(null)} />}
+      <DeskBar overlay={overlay} setOverlay={setOverlay} manualBlocked={false} />
       {overlay === 'manual' && <ManualBook onClose={() => setOverlay(null)} />}
       {overlay === 'quadro' && <CorkBoard onClose={() => setOverlay(null)} />}
       <ModalStack />

@@ -439,6 +439,8 @@ export const DAY = day({
           label: '"No endereço tem uma igreja."',
           kind: 'confronto',
           locked: true,
+          // 1.1: a Simone anota o marco do endereço no post-it; ou o retorno cai em "número desligado"
+          unlockedBy: ['endereco', 'callback'],
           say: 'Senhor, na Rua Bahia, 300 fica a Igreja Batista Nova Aliança. O senhor está numa igreja?',
           a: ['...', '[{{um riso curto, abafado|riso_curto}}]', '[desliga]'],
         },
@@ -916,6 +918,8 @@ export const DAY = day({
           id: 'avo',
           kind: 'confronto',
           locked: true,
+          // 1.1: o número está no quadro (9-8877) e o recibo do Seu Jairo, com o número do neto, está na mesa
+          unlockedBy: ['doc:recibo_jairo'],
           label: '"Gabriel, o seu avô sabe?"',
           say: 'Gabriel, o seu avô sabe que você liga pra cá?',
           a: ['[as risadas param de uma vez]', '[{{silêncio; alguém sussurra: "como é que ele sabe o teu nome?"|silencio_biel}}]', '[desliga]'],

@@ -49,7 +49,7 @@ function contextos(day: number): GameState[] {
 }
 
 const chamada = (def: string, o: Partial<CallRT>): CallRT => ({
-  id: def, def, day: 1, status: 'encerrada', arrived: 0, realSec: 0, lines: [], asked: [], unlocked: [], found: [], tried: [], wrongLinks: 0,
+  id: def, def, day: 1, status: 'encerrada', arrived: 0, realSec: 0, lines: [], asked: [], unlocked: [],
   patience: 0, worsenIdx: 0, noteRight: true, noteText: '', units: [], outcome: 'salvo', calmed: 0, holdCount: 0, ...o,
 });
 const mundo = (padrao: Partial<CallRT> | null): SimoneWorld => ({

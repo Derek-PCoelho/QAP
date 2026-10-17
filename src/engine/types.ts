@@ -96,9 +96,19 @@ export interface ExtraQ {
   say?: Txt;
   cost?: number;
   a: AnswerIn;
-  /** só aparece depois de desbloqueada (por uma inconsistência ou outra pergunta) */
+  /** só aparece depois de desbloqueada: por outra pergunta (`unlocks`) ou por um gatilho de `unlockedBy` */
   locked?: boolean;
   unlocks?: string[];
+  /**
+   * Gatilhos que destravam esta pergunta `locked` (basta um):
+   *  - id de pergunta já feita nesta ligação (base, extra ou 'callback' = Ligar de volta);
+   *  - 'video' (a videochamada conectou) ou 'video:<idDoPonto>' (olhou aquele ponto);
+   *  - 'quadro' (o número desta ligação está no quadro de trotes);
+   *  - 'endereco' (a Simone anotou que o endereço não confere ou que há um marco nele);
+   *  - 'doc:<id>' (o documento está na mesa) · 'lido:<id>' (o documento foi lido);
+   *  - 'flag:<nome>' (flag da campanha) · 'sflag:<nome>' (flag do plantão).
+   */
+  unlockedBy?: string[];
   when?: Cond;
   onAsk?: Effect;
   kind?: 'pergunta' | 'confronto' | 'fala' | 'acalmar';
@@ -106,6 +116,8 @@ export interface ExtraQ {
   repeat?: boolean;
 }
 
+/** @deprecated Resto do Modo Inconsistência (removido na 1.1). Nas ligações e nos dias é ignorado;
+ *  na casa, `InspectDef.links` ainda diz o que cada objeto do "reparar" destrava. */
 export interface LinkDef {
   a: string;
   b: string;
@@ -642,7 +654,7 @@ export interface Choice {
   needMoney?: number;
   /** bloqueada quando o protagonista está "Irritado" (café) */
   affectionate?: boolean;
-  /** só aparece após achar a inconsistência indicada */
+  /** só aparece depois de reparar no objeto que destrava este id (casa: `HomeObject.unlock`/`InspectDef.links`) */
   needLink?: string;
   hint?: string;
 }
@@ -664,11 +676,17 @@ export interface HomeObject {
   x: number; y: number; w: number; h: number;
   sprite?: string;
   when?: Cond;
+  /** o que reparar neste objeto destrava (ids usados em `Choice.needLink`) */
+  unlock?: string | string[];
+  /** efeito na primeira vez que ele destrava algo */
+  onFind?: Effect;
 }
 
+/** "Reparar" da casa: objetos marcados na cena. Um clique no objeto mostra `desc` e dispara os
+ *  `unlock`/`onFind` do próprio objeto e dos `links` em que ele aparece (a ou b). */
 export interface InspectDef {
   objects: HomeObject[];
-  /** ids de pistas presentes em falas da cena (marcadas com {{...|id}}) contam automaticamente */
+  /** pares antigos (objeto × fala/objeto): basta o objeto aparecer num lado para destravar */
   links: LinkDef[];
 }
 
@@ -952,9 +970,6 @@ export interface CallRT {
   lines: ShownLine[];
   asked: string[];
   unlocked: string[];
-  found: string[];
-  tried: string[];
-  wrongLinks: number;
   patience: number;
   worsenIdx: number;
   truthPatch?: Partial<TruthDef>;
@@ -962,7 +977,10 @@ export interface CallRT {
   noteText: string;
   /** a Simone marcou "Pega essa agora" (post-it vermelho) */
   noteUrgent?: boolean;
-  mapLookup?: 'ok' | 'invalido' | 'bairro' | 'sem_rua' | 'marco';
+  /** conferência do endereço pela Simone: 'nao_confere' (não existe no cadastro) ou 'marco' (há um marco no endereço) */
+  addrNote?: 'nao_confere' | 'marco';
+  /** a linha que a Simone escreveu sobre o endereço (vai no post-it) */
+  noteAddr?: string;
   decision?: Decision;
   verdict?: Verdict;
   units: string[];
@@ -1113,7 +1131,6 @@ export interface ShiftState {
   noites?: number;
   photoUsed: boolean;
   diaryRead: boolean;
-  inspect: boolean;
   guideCallId?: string;
   simoneAway: boolean;
   report: ReportItem[];

@@ -53,36 +53,11 @@ export function Home() {
   const st = g.st;
   const h = st.home!;
   const sc = home.scene();
-  const [inspect, setInspect] = useState(false);
   const blend = Math.max(0, Math.min(1, (st.vars.desgaste - 35) / 65));
 
   useEffect(() => {
     audio.updateHomeMusic(st.vars.lacos / 10, st.vars.desgaste);
   }, [st.vars.lacos, st.vars.desgaste]);
-
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => {
-      // pausado, o TAB navega o menu de pausa: não liga o Modo Inconsistência (que custa Laços à toa)
-      if (store.paused) return;
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        if (h.step === 'cena' || h.step === 'pre') toggleInspect();
-      }
-    };
-    window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
-  });
-
-  const toggleInspect = () => {
-    const on = !inspect;
-    setInspect(on);
-    if (on) {
-      const msg = home.markInspect();
-      if (msg) store.toast(msg, 'ruim');
-      audio.sfx('paper');
-    }
-    store.notify();
-  };
 
   const bg: SceneBg = (h.step === 'cena' || h.step === 'pre') && sc?.bg ? sc.bg : 'cozinha';
   const objects = useMemo(() => {
@@ -94,7 +69,8 @@ export function Home() {
     if (h.bought.includes('isopor')) o.add('isopor');
     if (st.flags['bombinha']) o.add('bombinha');
     if (st.bills.foodMissed > 0) o.add('mesa_vazia');
-    if ((h.step === 'cena' || h.step === 'pre') && sc?.inspect) for (const ob of sc.inspect.objects) o.add(ob.id);
+    // "reparar": os objetos que dá para reparar ficam desenhados na cena (os de `when` falso, não)
+    if (h.step === 'cena' || h.step === 'pre') for (const ob of home.noticeables()) o.add(ob.id);
     if ((h.step === 'cena' || h.step === 'pre') && sc) for (const id of STAGING[sc.id]?.objects ?? []) o.add(id);
     return [...o];
   }, [st.flags, h.bought, h.step, sc, st.day, st.bills.foodMissed]);
@@ -113,7 +89,7 @@ export function Home() {
   const cast = present.map((c, i) => ({ id: artId(c), pose: staged?.[c] ?? (c === 'ZELIA' ? ('sentado' as const) : ('em_pe' as const)), x: marks[i], status: st.family[memberOf[c]].status }));
 
   return (
-    <div className={'home' + (inspect ? ' inspecting' : '') + (h.step === 'pre' || h.step === 'cena' || h.step === 'escolha' ? ' dlg-open' : '')}>
+    <div className={'home' + (h.step === 'pre' || h.step === 'cena' || h.step === 'escolha' ? ' dlg-open' : '')}>
       <ArtCanvas w={320} h={180} scale={4} animate fps={8} draw={(ctx, t) => drawScene(ctx, { bg, blend, objects, cast: bg === 'preto' ? [] : cast, ozzy: h.ozzy ? 'dormindo' : 'sentado', time: t })} className="home-art" />
       <header className="home-top">
         <div className="fam">
@@ -145,7 +121,7 @@ export function Home() {
         </div>
       </header>
 
-      {(h.step === 'pre' || h.step === 'cena') && <HomeDialogue inspect={inspect} toggleInspect={toggleInspect} />}
+      {(h.step === 'pre' || h.step === 'cena') && <HomeDialogue />}
       {h.step === 'escolha' && <TimeOff />}
       {h.step === 'intervencao' && <Intervencao />}
       {h.step === 'contas' && <Bills />}

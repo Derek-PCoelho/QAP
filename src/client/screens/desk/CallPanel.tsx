@@ -6,14 +6,12 @@ import type { QuestionView } from '../../../engine/shift';
 import { audio } from '../../audio';
 import { fmtDur } from '../../../engine/util';
 
-type PickFn = (id: string, text: string, el: HTMLElement | null) => void;
-
 /** progresso de digitação por ligação (fora do React para sobreviver a re-renderizações).
  *  Chave = o objeto da ligação, não o id: ids se repetem ao refazer o dia e no Infinito (inf1_0...),
  *  e o progresso antigo fazia o texto aparecer pronto e sem voz. */
 const typed = new WeakMap<CallRT, { done: number; cur?: number; start: number }>();
 
-export function CallPanel({ onPick, sel }: { onPick: PickFn; sel?: string }) {
+export function CallPanel() {
   const s = useStore();
   const g = s.game!;
   const sh = g.shift!;
@@ -23,7 +21,7 @@ export function CallPanel({ onPick, sel }: { onPick: PickFn; sel?: string }) {
       <div className="monitor bezel">
         <div className="monitor-screen screen">
           {call ? <CallHeader call={call} /> : <div className="line-free">{sh.sh.closing ? 'Turno encerrado.' : 'Linha livre. Atenda uma ligação da fila.'}</div>}
-          {call && <Transcript call={call} onPick={onPick} sel={sel} />}
+          {call && <Transcript call={call} />}
         </div>
       </div>
       {call && <Keypad call={call} />}
@@ -63,11 +61,10 @@ function voiceFor(call: CallRT): VoiceId {
   return def.voice ?? 'homem';
 }
 
-function Transcript({ call, onPick, sel }: { call: CallRT; onPick: PickFn; sel?: string }) {
+function Transcript({ call }: { call: CallRT }) {
   const s = useStore();
   const g = s.game!;
   const sh = g.shift!;
-  const inspect = sh.sh.inspect;
   const ref = useRef<HTMLDivElement>(null);
   const [, setTick] = useState(0);
   const speed = s.settings.textSpeed;
@@ -164,7 +161,7 @@ function Transcript({ call, onPick, sel }: { call: CallRT; onPick: PickFn; sel?:
       {lines.map((l) => {
         if (l.id > st!.done && l !== animating) return null;
         const partial = l === animating ? Math.min(animLen, revealed) : undefined;
-        return <Line key={l.id} line={l} partial={partial} inspect={inspect} sel={sel} onPick={onPick} />;
+        return <Line key={l.id} line={l} partial={partial} />;
       })}
       {unseen && (
         <button type="button" className="tr-jump" onClick={toBottom}>
@@ -179,30 +176,14 @@ function plainLen(t: string) {
   return parseMarkup(t).reduce((a, x) => a + x.text.length, 0);
 }
 
-function Line({ line, partial, inspect, sel, onPick }: { line: ShownLine; partial?: number; inspect: boolean; sel?: string; onPick: PickFn }) {
+function Line({ line, partial }: { line: ShownLine; partial?: number }) {
   const segs = parseMarkup(line.text);
   let left = partial ?? Infinity;
   const body = segs.map((sg, i) => {
     if (left <= 0) return null;
     const txt = sg.text.slice(0, Math.max(0, left));
     left -= sg.text.length;
-    if (sg.clue) {
-      const on = sel === sg.clue;
-      return (
-        <span
-          key={i}
-          className={'clue' + (inspect ? ' live' : '') + (on ? ' sel' : '')}
-          data-clue={sg.clue}
-          onClick={(e) => {
-            if (!inspect) return;
-            e.stopPropagation();
-            onPick(sg.clue!, sg.text, e.currentTarget);
-          }}
-        >
-          {txt}
-        </span>
-      );
-    }
+    // {{trecho|pista}} é só texto desde a 1.1 (o Modo Inconsistência saiu)
     return <span key={i}>{txt}</span>;
   });
   const cls = `tl ${line.kind}` + (line.style ? ` st-${line.style}` : '');

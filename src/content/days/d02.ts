@@ -136,6 +136,8 @@ export const DAY = day({
           kind: 'confronto',
           label: '"A escola está fechada hoje."',
           locked: true,
+          // 1.1: aparece quando ele diz onde é ("na frente da escola") — o jornal do dia diz que ela está fechada
+          unlockedBy: ['oque', 'seguranca', 'callback'],
           say: 'A Escola Estadual está fechada hoje, para dedetização. Que alunos são esses na porta?',
           a: ['Ah... é que... são os aluno da... da outra escola!', '[gargalhada de três vozes]', '[desliga]'],
         },

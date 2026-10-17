@@ -159,19 +159,9 @@ export function genericBico(c: Ctx): SceneDef {
   };
 }
 
-export function pointlessInspect(c: Ctx): string {
-  const opts = [
-    'ZÉLIA: Para de me examinar, {nome}. Eu sou sua mãe, não paciente.',
-    '{CONJ}: Tá me olhando desse jeito por quê? Eu não sou ligação, {nome}.',
-    'LIAM: Por que você tá olhando assim pra mim, {pai}?',
-  ];
-  return opts[Math.floor(c.rand() * opts.length)];
-}
-
 export const HOME: HomeContent = {
   baseBills,
   shop: SHOP,
   genericScene,
   genericBico,
-  pointlessInspect,
 };

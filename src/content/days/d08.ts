@@ -290,6 +290,8 @@ export const DAY = day({
           id: 'perigo',
           kind: 'confronto',
           locked: true,
+          // 1.1: depois do "Eu sei." (ela sabe que ligou para a emergência) ou do "Não" sobre o local seguro
+          unlockedBy: ['engano', 'seguranca', 'oque'],
           label: '"Você está em perigo? Responda só sim ou não."',
           say: 'Você está em perigo? Responda só sim ou não.',
           a: [{ t: '{{Sim, isso, calabresa.|sim_calabresa}}', style: 'sussurro' }],

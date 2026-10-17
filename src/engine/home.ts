@@ -2,10 +2,10 @@
 // Interlúdio em casa: folga, evento familiar (cena com escolhas), Modo
 // Inconsistência doméstico, contas, loja, consequências para a família.
 // =============================================================================
-import type { GameState, SceneDef, SceneNode, Choice, BillDef, ShopItem, InterludeDef, LinkDef, Ctx, EffCtx, DLine, MemberStatus, FamilyMember, FieldShift } from './types';
+import type { GameState, SceneDef, SceneNode, Choice, BillDef, ShopItem, InterludeDef, Ctx, EffCtx, Effect, DLine, MemberStatus, FamilyMember, FieldShift } from './types';
 import type { Content } from './content-api';
 import { makeCtx, makeEffCtx, VAR_LABEL } from './state';
-import { txt, resolveTokens, cluesIn } from './text';
+import { txt, resolveTokens } from './text';
 import { clamp } from './util';
 import { FieldSim, createFieldShift, FIELD_WEAR, FIELD_WEAR_DEATH, FIELD_SLEEP_DEBT } from './field';
 
@@ -328,65 +328,50 @@ export class HomeSim {
   }
 
   // ---------------------------------------------------------------------------
-  // Modo Inconsistência doméstico
+  // "Reparar" (1.1): objetos marcados na cena; um clique mostra o que se notou e libera escolhas
+  // (substitui o Modo Inconsistência doméstico: sem pares, sem TAB, sem custo de Laços).
+  // h.tried guarda os objetos já reparados; h.found guarda o que foi destravado (ids de `needLink`).
   // ---------------------------------------------------------------------------
-  inspectAvailable(): boolean {
-    return !!this.scene()?.inspect;
-  }
-
-  homeClues(): { id: string; text: string; source: 'fala' | 'objeto'; x?: number; y?: number; w?: number; h?: number; desc?: string }[] {
+  /** objetos que dá para reparar agora (os da cena, conforme `when`) */
+  noticeables(): { id: string; label: string; x: number; y: number; w: number; h: number; noticed: boolean }[] {
     const sc = this.scene();
-    const out: { id: string; text: string; source: 'fala' | 'objeto'; x?: number; y?: number; w?: number; h?: number; desc?: string }[] = [];
-    if (!sc) return out;
+    const h = this.st.home;
+    if (!sc?.inspect || !h || (h.step !== 'cena' && h.step !== 'pre')) return [];
     const c = this.ctx();
-    // falas já exibidas da cena (todas as do nó atual e anteriores visitados)
-    for (const node of Object.values(sc.nodes)) {
-      for (const l of node.lines) {
-        if (l.when && !l.when(c)) continue;
-        for (const cl of cluesIn(resolveTokens(txt(l.t, c), this.st.gender, this.st))) out.push({ id: cl.id, text: `${l.who}: “${cl.text}”`, source: 'fala' });
-      }
-    }
-    for (const o of sc.inspect?.objects ?? []) {
-      if (o.when && !o.when(c)) continue;
-      out.push({ id: o.id, text: resolveTokens(o.label, this.st.gender, this.st), source: 'objeto', x: o.x, y: o.y, w: o.w, h: o.h, desc: resolveTokens(txt(o.desc, c), this.st.gender, this.st) });
-    }
-    const seen = new Set<string>();
-    return out.filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true)));
+    return sc.inspect.objects
+      .filter((o) => !o.when || o.when(c))
+      .map((o) => ({ id: o.id, label: resolveTokens(o.label, this.st.gender, this.st), x: o.x, y: o.y, w: o.w, h: o.h, noticed: h.tried.includes(o.id) }));
   }
 
-  /** usar o modo sem nada escondido custa Laços */
-  markInspect(): string | undefined {
-    const h = this.st.home!;
-    if (h.inspected) return undefined;
-    h.inspected = true;
-    if (!this.scene()?.inspect) {
-      this.eff().add('lacos', -1, 'família se sentiu vigiada');
-      return resolveTokens(this.c.home.pointlessInspect(this.ctx()), this.st.gender, this.st);
-    }
-    return undefined;
-  }
-
-  link(a: string, b: string): { ok: boolean; insight?: string } {
+  /** repara num objeto: devolve o que se notou e, se destravou algo novo, a conclusão */
+  notice(objId: string): { desc: string; insight?: string; unlocked: string[] } | undefined {
     const sc = this.scene();
     const h = this.st.home!;
-    const key = [a, b].sort().join('×');
-    const links: LinkDef[] = sc?.inspect?.links ?? [];
-    const m = links.find((l) => [l.a, l.b].sort().join('×') === key);
-    if (!m) {
-      if (!h.tried.includes(key)) h.tried.push(key);
-      if (h.tried.length === 3) {
-        this.eff().add('lacos', -1, '"Para de me examinar."');
-        this.toast(this.c.home.pointlessInspect(this.ctx()), 'ruim');
+    const c = this.ctx();
+    const o = sc?.inspect?.objects.find((x) => x.id === objId && (!x.when || x.when(c)));
+    if (!sc?.inspect || !o) return undefined;
+    const desc = resolveTokens(txt(o.desc, c), this.st.gender, this.st);
+    if (!h.tried.includes(objId)) h.tried.push(objId);
+    const unlocked: string[] = [];
+    let insight: string | undefined;
+    const give = (keys: string[], onFind?: Effect) => {
+      let fresh = false;
+      for (const k of keys) {
+        if (h.found.includes(k)) continue;
+        h.found.push(k);
+        unlocked.push(k);
+        fresh = true;
       }
-      return { ok: false };
+      if (fresh && onFind) onFind(this.eff());
+      return fresh;
+    };
+    if (o.unlock) give(Array.isArray(o.unlock) ? o.unlock : [o.unlock], o.onFind);
+    for (const l of sc.inspect.links ?? []) {
+      if (l.a !== objId && l.b !== objId) continue;
+      const keys = [[l.a, l.b].sort().join('×'), ...(l.unlock ? (Array.isArray(l.unlock) ? l.unlock : [l.unlock]) : [])];
+      if (give(keys, l.onFind) && !insight && l.unlock) insight = resolveTokens(txt(l.insight, c), this.st.gender, this.st);
     }
-    if (!h.found.includes(key)) {
-      h.found.push(key);
-      // também registra pelo nome da pista de desbloqueio
-      if (m.unlock) for (const u of Array.isArray(m.unlock) ? m.unlock : [m.unlock]) if (!h.found.includes(u)) h.found.push(u);
-      if (m.onFind) m.onFind(this.eff());
-    }
-    return { ok: true, insight: resolveTokens(txt(m.insight, this.ctx()), this.st.gender, this.st) };
+    return { desc, insight, unlocked };
   }
 
   // ---------------------------------------------------------------------------

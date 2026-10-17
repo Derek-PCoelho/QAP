@@ -8,8 +8,8 @@ import { objectRect, objectsFor } from '../../art';
 /** a cena sobe 132 px enquanto o diálogo está aberto (ver .home.dlg-open em home.css) */
 const SCENE_SHIFT = 132;
 
-/** Diálogo da cena + Modo Inconsistência doméstico. */
-export function HomeDialogue({ inspect, toggleInspect }: { inspect: boolean; toggleInspect: () => void }) {
+/** Diálogo da cena + "reparar": objetos marcados na cena; um clique mostra o que se notou. */
+export function HomeDialogue() {
   const s = useStore();
   const g = s.game!;
   const home = g.home!;
@@ -18,10 +18,10 @@ export function HomeDialogue({ inspect, toggleInspect }: { inspect: boolean; tog
   const lines = home.visibleLines();
   const choices = home.choices();
   const [n, setN] = useState(1);
-  const [sel, setSel] = useState<{ id: string; text: string } | null>(null);
-  const [insight, setInsight] = useState<{ text: string; ok: boolean } | null>(null);
+  const [noticed, setNoticed] = useState<{ label: string; desc: string; insight?: string } | null>(null);
   const node = h.node;
   useEffect(() => setN(1), [node, h.sceneId]);
+  useEffect(() => setNoticed(null), [h.sceneId]);
   const shown = lines.slice(0, n);
   const all = n >= lines.length;
   const last = shown[shown.length - 1];
@@ -36,38 +36,35 @@ export function HomeDialogue({ inspect, toggleInspect }: { inspect: boolean; tog
     }
   }, [n, node]);
 
-  const pick = (id: string, text: string) => {
-    if (!inspect) return;
-    if (!sel) {
-      setSel({ id, text });
-      audio.sfx('pen');
-      return;
-    }
-    if (sel.id === id) return setSel(null);
-    const r = home.link(sel.id, id);
-    setSel(null);
-    setInsight(r.ok ? { text: r.insight ?? '', ok: true } : { text: 'Sem relação entre essas duas coisas.', ok: false });
-    audio.sfx(r.ok ? 'insight' : 'wrong');
+  const marks = home.noticeables();
+  const notice = (id: string, label: string) => {
+    const r = home.notice(id);
+    if (!r) return;
+    setNoticed({ label, desc: r.desc, insight: r.insight });
+    audio.sfx(r.unlocked.length ? 'insight' : 'paper');
     store.notify();
-    setTimeout(() => setInsight(null), 5000);
   };
-
-  const clues = inspect ? home.homeClues().filter((c) => c.source === 'objeto') : [];
 
   return (
     <>
-      {inspect &&
-        clues.map((c) => {
-          // se o cenário desenha o objeto, a área clicável é onde ele está desenhado
-          const bgNow = sc?.bg ?? 'cozinha';
-          const r = !objectsFor(bgNow).includes(c.id) && c.w ? { x: c.x!, y: c.y!, w: c.w!, h: c.h! } : objectRect(bgNow, c.id);
-          if (!r) return null;
-          return (
-            <button key={c.id} className={'hotspot' + (sel?.id === c.id ? ' sel' : '')} style={{ left: r.x * 4, top: r.y * 4 - SCENE_SHIFT, width: r.w * 4, height: r.h * 4 }} title={c.desc} onClick={() => pick(c.id, c.text)}>
-              <span>{c.text}</span>
-            </button>
-          );
-        })}
+      {marks.map((c) => {
+        // se o cenário desenha o objeto, a área clicável é onde ele está desenhado
+        const bgNow = sc?.bg ?? 'cozinha';
+        const r = !objectsFor(bgNow).includes(c.id) && c.w ? { x: c.x, y: c.y, w: c.w, h: c.h } : objectRect(bgNow, c.id);
+        if (!r) return null;
+        return (
+          <button
+            key={c.id}
+            className={'hotspot notice' + (c.noticed ? ' seen' : '')}
+            style={{ left: r.x * 4, top: r.y * 4 - SCENE_SHIFT, width: r.w * 4, height: r.h * 4 }}
+            title={c.noticed ? c.label : 'Reparar'}
+            aria-label={'Reparar: ' + c.label}
+            onClick={() => notice(c.id, c.label)}
+          >
+            <span>{c.label}</span>
+          </button>
+        );
+      })}
       <div className="dialogue">
         <div className="dlg-portrait">{pid ? <Portrait id={pid} mood={last?.mood} size={128} blend={blend} /> : <div className="portrait empty" />}</div>
         <div className="dlg-body">
@@ -75,19 +72,19 @@ export function HomeDialogue({ inspect, toggleInspect }: { inspect: boolean; tog
             {shown.map((l, i) => (
               <p key={i} className={l.who === 'NARRADOR' ? 'narr' : 'say'}>
                 {l.who !== 'NARRADOR' && <b>{speakerName(l.who, g.st.gender)}: </b>}
-                {parseMarkup(l.text).map((sg, k) =>
-                  sg.clue ? (
-                    <span key={k} className={'clue' + (inspect ? ' live' : '') + (sel?.id === sg.clue ? ' sel' : '')} onClick={() => pick(sg.clue!, sg.text)}>
-                      {sg.text}
-                    </span>
-                  ) : (
-                    <span key={k}>{sg.text}</span>
-                  ),
-                )}
+                {parseMarkup(l.text).map((sg, k) => (
+                  <span key={k}>{sg.text}</span>
+                ))}
               </p>
             ))}
           </div>
-          {insight && <div className={'dlg-insight ' + (insight.ok ? 'ok' : 'bad')}>{insight.text}</div>}
+          {noticed && (
+            <div className={'dlg-insight ' + (noticed.insight ? 'ok' : 'note')} role="status">
+              <b>{noticed.label}.</b> {noticed.desc}
+              {noticed.insight && <em> {noticed.insight}</em>}
+            </div>
+          )}
+          {marks.length > 0 && !noticed && marks.some((m) => !m.noticed) && <div className="dlg-hint">Tem coisas na cena que dá para reparar: clique nelas.</div>}
           <div className="dlg-actions">
             {!all && (
               <button className="px-btn small warm" autoFocus onClick={() => (setN(n + 1), audio.sfx('click'))}>
@@ -106,9 +103,6 @@ export function HomeDialogue({ inspect, toggleInspect }: { inspect: boolean; tog
                 Seguir
               </button>
             )}
-            <button className={'px-btn small ghost insp' + (inspect ? ' on' : '')} onClick={toggleInspect} title="Modo Inconsistência em casa (TAB). Usar à toa custa Laços.">
-              {inspect ? 'Parar de examinar' : 'Examinar'} <span className="kbd">TAB</span>
-            </button>
           </div>
         </div>
       </div>

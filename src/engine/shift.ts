@@ -15,7 +15,7 @@ import { resolveAddress, landmarkPos, destLandmark, addrText, type AddrResult } 
 import { route, addressTarget, type FloodMode } from './city/path';
 import { grade, colorFor, decisionLabel, NOTE_COST, WARNING_COST } from './grading';
 import { buildGeneratedCall } from './generator';
-import { videoBudget, videoEnabled, videoView, startVideo, videoLook, videoWide, endVideo, videoProofOnStamp, videoAutoLinks, type VideoView, type VideoStartResult } from './video';
+import { videoBudget, videoEnabled, videoView, startVideo, videoLook, videoWide, endVideo, videoProofOnStamp, type VideoView, type VideoStartResult } from './video';
 
 export const SHIFT_START = hm('07:00');
 export const SHIFT_END = hm('19:00');
@@ -39,7 +39,6 @@ export type ShiftEvent =
   | { type: 'money'; amount: number; reason: string }
   | { type: 'death'; callId: string; name: string }
   | { type: 'saved'; callId: string; name: string }
-  | { type: 'insight'; callId: string; ok: boolean }
   | { type: 'request'; id: string }
   | { type: 'modal'; id: string }
   | { type: 'guide'; callId: string; start: boolean }
@@ -56,13 +55,6 @@ export type ShiftEvent =
 export const TARM_QUESTIONS = ['oque', 'consciencia', 'respira', 'idade', 'referencia', 'callback'];
 export const REG_LABEL: Record<RegId, string> = { moura: 'Mesa 1', henrique: 'Mesa 2 · Henrique' };
 
-export interface LinkResult {
-  ok: boolean;
-  already?: boolean;
-  insight?: string;
-  unlocked?: string[];
-}
-
 export interface QuestionView {
   id: string;
   label: string;
@@ -70,13 +62,6 @@ export interface QuestionView {
   group: 'base' | 'protocolo' | 'ferramenta' | 'especifica' | 'confronto' | 'fala' | 'acalmar';
   asked: boolean;
   hint?: string;
-}
-
-export interface ClueRef {
-  id: string;
-  text: string;
-  source: 'transcricao' | 'manual' | 'quadro' | 'documento' | 'diario' | 'ficha' | 'mapa';
-  group?: string;
 }
 
 const RANK: Record<string, number> = { ORI: 0, USB: 1, USA: 2 };
@@ -202,7 +187,6 @@ export class ShiftSim {
       coffeeUntil: 0,
       photoUsed: false,
       diaryRead: false,
-      inspect: false,
       simoneAway: false,
       report: [],
       ended: false,
@@ -329,9 +313,6 @@ export class ShiftSim {
       lines: [],
       asked: [],
       unlocked: [],
-      found: [],
-      tried: [],
-      wrongLinks: 0,
       patience: 100,
       worsenIdx: 0,
       noteRight: true,
@@ -395,7 +376,6 @@ export class ShiftSim {
       const g = (sh.flags['guideScale'] as number) ?? 0.3;
       return g;
     }
-    if (sh.inspect) s *= this.st.vars.desgaste > 80 ? 0.7 : 0.5;
     return s;
   }
 
@@ -571,6 +551,7 @@ export class ShiftSim {
       call.noteRight = randOf(this.st) < acc;
       call.noteText = resolveTokens(call.noteRight ? txt(def.note, this.ctx()) : this.wrongNote(call, def), this.st.gender, this.st);
       call.noteUrgent = call.noteRight ? this.truthOf(call).sev === 'vermelho' : /grave|morrendo|urgente|pega/i.test(call.noteText);
+      this.tarmAddress(call, def);
     }
     if (!def.anchor && def.patience !== 0) {
       const pat = def.patience ?? 120;
@@ -580,6 +561,24 @@ export class ShiftSim {
     // chegou ligação: acaba o "adiantar"
     this.sh.fast = false;
     this.emit({ type: 'ring', callId: id });
+  }
+
+  /**
+   * A Simone (TARM) confere o endereço no cadastro antes de passar a ligação (1.1: não é mais
+   * tarefa do médico). Quando a nota dela está certa, o endereço que não existe vem anotado ("não
+   * confere") e um marco no endereço aparece ("no endereço: Igreja..."); quando a nota está
+   * errada (mesma taxa de erro do post-it), ela deixa passar um endereço ruim ou, às vezes, acusa
+   * um endereço bom.
+   */
+  private tarmAddress(call: CallRT, def: CallDef) {
+    const r = resolveAddress(def.addr);
+    const bad = r.kind === 'sem_rua' || r.kind === 'invalido' || r.kind === 'bairro';
+    let note: CallRT['addrNote'];
+    if (call.noteRight) note = bad ? 'nao_confere' : r.kind === 'marco' ? 'marco' : undefined;
+    else note = !bad && hashString(call.id + ':end') % 2 === 0 ? 'nao_confere' : undefined;
+    if (!note) return;
+    call.addrNote = note;
+    call.noteAddr = note === 'marco' && r.landmark ? `No endereço: ${r.landmark.name}.` : 'Endereço não confere no mapa.';
   }
 
   /** sem ligação, fila, orientação, aviso ou pedido: dá para adiantar o relógio */
@@ -694,7 +693,7 @@ export class ShiftSim {
   }
 
   sysLine(call: CallRT, text: string, kind: 'sistema' | 'insight' = 'sistema') {
-    call.lines.push({ id: this.nextLineId(call), who: kind === 'insight' ? 'INCONSISTÊNCIA' : 'SISTEMA', text: resolveTokens(text, this.st.gender, this.st), kind, t: this.sh.time });
+    call.lines.push({ id: this.nextLineId(call), who: kind === 'insight' ? 'VOCÊ REPARA' : 'SISTEMA', text: resolveTokens(text, this.st.gender, this.st), kind, t: this.sh.time });
     this.emit({ type: 'lines', callId: call.id });
   }
 
@@ -758,21 +757,45 @@ export class ShiftSim {
     if (this.tarm) return out;
     for (const x of def.extra ?? []) {
       if (x.when && !x.when(c)) continue;
-      if (x.locked && !call.unlocked.includes(x.id)) continue;
+      if (!this.isUnlocked(call, x)) continue;
       const asked = call.asked.includes(x.id);
-      if (asked && !x.repeat) {
-        out.push({ id: x.id, label: x.label, cost: this.questionCost(x.cost ?? 8), group: this.groupOf(x), asked: true });
-        continue;
-      }
       out.push({ id: x.id, label: x.label, cost: this.questionCost(x.cost ?? 8), group: this.groupOf(x), asked });
     }
-    // confrontos automáticos
-    for (const auto of ['confronto_quadro', 'confronto_endereco']) {
-      if (call.unlocked.includes(auto)) {
-        out.push({ id: auto, label: auto === 'confronto_quadro' ? '"Esse número já passou trote aqui."' : '"Esse endereço não existe."', cost: this.questionCost(6), group: 'confronto', asked: call.asked.includes(auto) });
-      }
+    // o número já está no quadro de trotes: dá para dizer isso a quem liga
+    if (this.onBoard(call)) {
+      out.push({ id: 'confronto_quadro', label: '"Esse número já passou trote aqui."', cost: this.questionCost(6), group: 'confronto', asked: call.asked.includes('confronto_quadro') });
     }
     return out;
+  }
+
+  /** o número desta ligação está no quadro de trotes */
+  onBoard(call: CallRT): boolean {
+    const nk = numKey(this.defOf(call).num);
+    return this.st.board.some((b) => b.kind === 'trote' && !!b.num && numKey(b.num) === nk);
+  }
+
+  /** pergunta trancada (`locked`) já liberada? (por `unlocks` de outra pergunta ou por um gatilho de `unlockedBy`) */
+  isUnlocked(call: CallRT, x: ExtraQ): boolean {
+    if (!x.locked || call.unlocked.includes(x.id)) return true;
+    for (const k of x.unlockedBy ?? []) {
+      if (this.triggerMet(call, k)) {
+        call.unlocked.push(x.id);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private triggerMet(call: CallRT, k: string): boolean {
+    if (k === 'quadro') return this.onBoard(call);
+    if (k === 'endereco') return !!call.addrNote;
+    if (k === 'video') return !!call.video;
+    if (k.startsWith('video:')) return !!call.video?.seen.includes(k.slice(6));
+    if (k.startsWith('doc:')) return this.st.docs.includes(k.slice(4));
+    if (k.startsWith('lido:')) return !!this.st.flags['doc_lido_' + k.slice(5)];
+    if (k.startsWith('flag:')) return !!this.st.flags[k.slice(5)];
+    if (k.startsWith('sflag:')) return !!this.sh.flags[k.slice(6)];
+    return call.asked.includes(k);
   }
 
   private groupOf(x: ExtraQ): QuestionView['group'] {
@@ -815,10 +838,10 @@ export class ShiftSim {
       this.advance(this.questionCost(base.cost));
       return true;
     }
-    if (qid === 'confronto_quadro' || qid === 'confronto_endereco') {
-      if (call.asked.includes(qid)) return false;
+    if (qid === 'confronto_quadro') {
+      if (call.asked.includes(qid) || !this.onBoard(call)) return false;
       call.asked.push(qid);
-      this.regLine(call, qid === 'confronto_quadro' ? 'Esse número já passou trote aqui na central.' : 'Esse endereço não existe. Qual é o endereço certo?');
+      this.regLine(call, 'Esse número já passou trote aqui na central.');
       const a = def.q?.[qid] ?? this.c.defaults(qid, def, c);
       this.pushLines(call, a, def);
       this.advance(this.questionCost(6));
@@ -827,7 +850,7 @@ export class ShiftSim {
     const x = (def.extra ?? []).find((e) => e.id === qid);
     if (!x) return false;
     if (x.when && !x.when(c)) return false;
-    if (x.locked && !call.unlocked.includes(x.id)) return false;
+    if (!this.isUnlocked(call, x)) return false;
     if (call.asked.includes(qid) && !x.repeat) return false;
     if (!call.asked.includes(qid)) call.asked.push(qid);
     this.regLine(call, txt(x.say ?? x.label, c));
@@ -849,20 +872,6 @@ export class ShiftSim {
   // ---------------------------------------------------------------------------
   // mapa
   // ---------------------------------------------------------------------------
-  lookup(): AddrResult | undefined {
-    const call = this.active();
-    if (!call) return;
-    const def = this.defOf(call);
-    const r = resolveAddress(def.addr);
-    const first = !call.mapLookup;
-    call.mapLookup = r.kind === 'ok' ? 'ok' : r.kind === 'invalido' ? 'invalido' : r.kind === 'sem_rua' ? 'sem_rua' : r.kind === 'bairro' ? 'bairro' : 'marco';
-    if (first) {
-      this.sysLine(call, `🗺 MAPA: {{${r.message}|mapa}}`);
-      this.advance(2);
-    }
-    return r;
-  }
-
   addrResult(call: CallRT): AddrResult {
     return resolveAddress(this.defOf(call).addr);
   }
@@ -895,121 +904,15 @@ export class ShiftSim {
     return Object.values(this.sh.units).filter((u) => (u.status === 'QRV' || u.status === 'RETORNO') && (!type || u.type === type));
   }
 
-  // ---------------------------------------------------------------------------
-  // Modo Inconsistência
-  // ---------------------------------------------------------------------------
-  toggleInspect(on?: boolean) {
-    this.sh.inspect = on ?? !this.sh.inspect;
-  }
-
-  clueCatalog(call?: CallRT): ClueRef[] {
-    const out: ClueRef[] = [];
-    const c = this.ctx();
-    if (call) {
-      const def = this.defOf(call);
-      out.push({ id: 'num', text: `Número: ${def.num}`, source: 'ficha' });
-      out.push({ id: 'end', text: `Endereço dito: ${addrText(def.addr)}`, source: 'ficha' });
-      for (const l of call.lines) for (const cl of cluesIn(l.text)) out.push({ id: cl.id, text: cl.text, source: cl.id === 'mapa' ? 'mapa' : 'transcricao' });
-    }
-    for (const pid of this.st.manual) {
-      const page = this.c.manual.find((p) => p.id === pid);
-      if (!page) continue;
-      for (const r of page.rules) out.push({ id: `manual:${r.id}`, text: `${page.code} · ${r.text}`, source: 'manual', group: page.title });
-    }
-    for (const b of this.st.board) out.push({ id: `quadro:${b.id}`, text: `${b.title}${b.count > 1 ? ` (${b.count}×)` : ''} — ${b.text}`, source: 'quadro' });
-    for (const d of this.st.docs) {
-      const doc = this.c.docs[d];
-      if (!doc) continue;
-      if (doc.until && this.st.day > doc.until) continue;
-      for (const cl of doc.clues) out.push({ id: cl.id, text: cl.text, source: 'documento', group: doc.title });
-    }
-    for (const e of this.st.diary) {
-      if (e.kind === 'nota' && !e.id.startsWith('d')) continue;
-      out.push({ id: `diario:${e.id}`, text: `D${e.day} · ${e.name ? e.name + ': ' : ''}${stripMarkup(e.text)}`, source: 'diario' });
-    }
-    void c;
-    // dedup
-    const seen = new Set<string>();
-    return out.filter((x) => (seen.has(x.id) ? false : (seen.add(x.id), true)));
-  }
-
-  private autoLinks(call: CallRT): LinkDef[] {
-    const def = this.defOf(call);
-    const links: LinkDef[] = [];
-    const nk = numKey(def.num);
-    const onBoard = this.st.board.find((b) => b.kind === 'trote' && b.num && numKey(b.num) === nk);
-    if (onBoard) {
-      links.push({ a: 'num', b: `quadro:${onBoard.id}`, insight: `O número ${def.num} consta no quadro de trotes (${onBoard.count}×).`, unlock: 'confronto_quadro' });
-    }
-    if (call.mapLookup && call.mapLookup !== 'ok' && call.mapLookup !== 'marco') {
-      links.push({ a: 'end', b: 'mapa', insight: 'O endereço informado não confere com o cadastro do mapa.', unlock: 'confronto_endereco' });
-    }
-    links.push(...videoAutoLinks(call));
-    return links;
-  }
-
-  link(a: string, b: string): LinkResult {
-    const call = this.active();
-    const def = call ? this.defOf(call) : undefined;
-    const key = [a, b].sort().join('×');
-    const c = this.ctx();
-    const all: LinkDef[] = [...(def?.links ?? []), ...(call ? this.autoLinks(call) : []), ...((this.day as DayDef & { links?: LinkDef[] }).links ?? [])];
-    const match = all.find((l) => [l.a, l.b].sort().join('×') === key);
-    const holder = call ?? this.globalHolder();
-    if (holder.found.includes(key)) return { ok: true, already: true };
-    if (!match) {
-      if (!holder.tried.includes(key)) holder.tried.push(key);
-      if (call) {
-        call.wrongLinks++;
-        // âncoras e quem está em crise não desligam por causa de pistas erradas: só perde paciência até um limite
-        const sticky = !!def?.anchor || call.status === 'guia';
-        call.patience = sticky ? Math.max(20, call.patience - 15) : call.patience - 15;
-        this.advance(5 + (this.st.vars.desgaste > 80 ? 2 : 0));
-        if (call.patience <= 0 && !sticky) this.callerHangsUp(call);
-        else if (call.patience < 35) this.pushLines(call, ['{dr}? Tá me ouvindo? Alô?!'], def!);
-      } else this.advance(3);
-      this.emit({ type: 'insight', callId: call?.id ?? '', ok: false });
-      return { ok: false };
-    }
-    holder.found.push(key);
-    const insight = resolveTokens(txt(match.insight, c), this.st.gender, this.st);
-    const unlocked = match.unlock ? (Array.isArray(match.unlock) ? match.unlock : [match.unlock]) : [];
-    if (call) {
-      for (const u of unlocked) if (!call.unlocked.includes(u)) call.unlocked.push(u);
-      this.sysLine(call, insight, 'insight');
-    } else {
-      this.toast(insight, 'info');
-    }
-    if (match.onFind) match.onFind(this.eff());
-    this.advance(2);
-    this.emit({ type: 'insight', callId: call?.id ?? '', ok: true });
-    return { ok: true, insight, unlocked };
-  }
-
-  /** inconsistências achadas sem ligação ativa (vínculos do dia) — guardadas em flags do turno */
-  private globalHolder(): { found: string[]; tried: string[] } {
-    const sh = this.sh;
-    const read = (k: string) => ((sh.flags[k] as string) || '').split('|').filter(Boolean);
-    const mk = (k: string) => {
-      const arr = read(k);
-      return new Proxy(arr, {
-        get(target, prop, recv) {
-          if (prop === 'push') {
-            return (...x: string[]) => {
-              const r = target.push(...x);
-              sh.flags[k] = target.join('|');
-              return r;
-            };
-          }
-          return Reflect.get(target, prop, recv);
-        },
-      });
-    };
-    return { found: mk('_gfound'), tried: mk('_gtried') };
-  }
-
-  globalFound(): string[] {
-    return ((this.sh.flags['_gfound'] as string) || '').split('|').filter(Boolean);
+  /** o jogador abriu um documento da mesa (quadro): grava `doc_lido_<id>` e roda o `onRead` na primeira vez */
+  readDoc(id: string): boolean {
+    const doc = this.c.docs[id];
+    if (!doc || !this.st.docs.includes(id)) return false;
+    const k = 'doc_lido_' + id;
+    if (this.st.flags[k]) return false;
+    this.st.flags[k] = true;
+    if (doc.onRead) doc.onRead(this.eff());
+    return true;
   }
 
   callerHangsUp(call: CallRT) {
@@ -1291,7 +1194,6 @@ export class ShiftSim {
     call.closed = this.sh.time;
     if (this.sh.activeId === call.id) {
       this.sh.activeId = undefined;
-      this.sh.inspect = false;
     }
   }
 
@@ -2451,7 +2353,6 @@ export class ShiftSim {
     call.tarm = { color, priority, to, at: sh.time, handle, realSec: call.realSec };
     call.status = 'regulacao';
     sh.activeId = undefined;
-    sh.inspect = false;
     T.passed++;
     T.handleSum += handle;
     if (priority) R.queue.unshift(call.id);

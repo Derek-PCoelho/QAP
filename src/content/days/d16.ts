@@ -580,6 +580,8 @@ export const DAY = day({
           id: 'esta_bem',
           label: '"A senhora está bem mesmo?"',
           locked: true,
+          // 1.1: ela esqueceu o nome da novela logo na abertura; conversar ou perguntar dela destrava
+          unlockedBy: ['conversar', 'consciencia', 'historico'],
           say: 'Dona Cida, a senhora está bem mesmo? A senhora esqueceu o nome da novela...',
           a: [
             '[silêncio]',
@@ -874,6 +876,8 @@ export const DAY = day({
           id: 'filho_peixoto',
           label: '"O seu filho é o Dr. Peixoto?"',
           locked: true,
+          // 1.1: "Osvaldo Peixoto... meu filho trabalha aí" + o recado do dia 5 (pai de 84, mora sozinho) na mesa
+          unlockedBy: ['doc:peixoto_pai', 'flag:peixoto_pai', 'seguranca', 'paciente'],
           say: 'Seu Osvaldo, o seu filho é o Dr. Peixoto, o coordenador aqui da central?',
           a: ['...É. O Carlinhos.', 'Não conta pra ele, não. {{Ele vive dizendo que o povo se acostumou mal com ambulância|povo_acostumou}}. Eu não quero ser o povo.'],
           unlocks: ['avisar_peixoto'],

@@ -900,6 +900,8 @@ export const DAY = day({
           label: '"Dr. Peixoto?"',
           kind: 'confronto',
           locked: true,
+          // 1.1: o retorno cai na coordenação; ou ele se entrega dizendo que "vê programa de médico"/"sozinho em casa"
+          unlockedBy: ['callback', 'profissao', 'paciente'],
           say: 'Dr. Peixoto?',
           a: (c: Ctx) =>
             c.key('osvaldo') === 'salvo'

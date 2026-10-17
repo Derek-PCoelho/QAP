@@ -108,7 +108,7 @@ function checkCall(where: string, def: CallDef, day: number, errs: string[]) {
     if (baseQ.has(x.id) || x.id === 'acalmar') errs.push(`${where}: extra "${x.id}" colide com pergunta base`);
     for (const u of x.unlocks ?? []) if (!extraIds.has(u)) errs.push(`${where}: unlocks "${u}" inexistente`);
     if (x.locked) {
-      const by = (def.links ?? []).some((l) => (Array.isArray(l.unlock) ? l.unlock : [l.unlock]).includes(x.id)) || extras.some((y) => y.unlocks?.includes(x.id));
+      const by = !!x.unlockedBy?.length || extras.some((y) => y.unlocks?.includes(x.id));
       if (!by) errs.push(`${where}: extra trancada "${x.id}" nunca é desbloqueada`);
     }
   }
@@ -334,7 +334,6 @@ function runVariant(t: TemplateDef, trId: string, day: number, seed: number, wro
   const def = sim.defOf(call);
   for (let round = 0; round < 3; round++) {
     for (const q of sim.questions(call)) if (!q.asked && sim.active()?.id === id) sim.ask(q.id);
-    for (const l of def.links ?? []) if (sim.active()?.id === id) sim.link(l.a, l.b);
   }
   if (sim.active()?.id !== id) {
     // desligou (ex.: trote com confronto) — tudo bem, mas não pode explodir

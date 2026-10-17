@@ -482,28 +482,6 @@
   animation: tremble 0.22s steps(2) infinite;
 }
 
-.clue.live {
-  background: rgba(242, 212, 92, 0.16);
-  box-shadow: 0 0 0 1px rgba(242, 212, 92, 0.5);
-  cursor: pointer;
-  color: #fff4c4;
-  animation: clue-pulse 1.4s steps(2) infinite;
-}
-.clue.live:hover {
-  background: rgba(242, 212, 92, 0.32);
-}
-.clue.sel {
-  background: rgba(224, 72, 61, 0.5) !important;
-  box-shadow: 0 0 0 2px var(--c-red) !important;
-  animation: none;
-  color: #fff;
-}
-@keyframes clue-pulse {
-  50% {
-    box-shadow: 0 0 0 1px rgba(242, 212, 92, 0.15);
-  }
-}
-
 /* ---------------------------------------------------------------- teclado de perguntas */
 .keypad {
   flex: 1;
@@ -962,11 +940,6 @@
 .look-res.bad {
   color: #a22a1f;
 }
-.ficha .clue.live {
-  background: rgba(242, 212, 92, 0.55);
-  color: #1d2f6b;
-  box-shadow: 0 0 0 1px #b18a10;
-}
 .f-group {
   border: 0;
   margin: 2px 0 0;
@@ -1153,10 +1126,6 @@
   background: rgba(242, 212, 92, 0.16);
   color: var(--c-postit);
 }
-.desk-item.inspect.on {
-  background: rgba(224, 72, 61, 0.3);
-  color: #ffd2cc;
-}
 .desk-item:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -1172,159 +1141,6 @@
   font-family: var(--f-screen);
   font-size: 17px;
   color: var(--c-soft);
-}
-
-/* ---------------------------------------------------------------- modo inconsistência */
-.desk.inspecting::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: rgba(70, 0, 0, 0.18);
-  box-shadow: inset 0 0 0 4px rgba(224, 72, 61, 0.55);
-  z-index: 30;
-}
-.inspect-hint {
-  position: absolute;
-  left: 50%;
-  top: 46px;
-  transform: translateX(-50%);
-  background: #5a1c16;
-  color: #ffe1dc;
-  font-size: 12px;
-  padding: 3px 10px;
-  z-index: 31;
-  white-space: nowrap;
-}
-.inspect-drawer {
-  position: absolute;
-  inset: 0;
-  background: rgba(16, 22, 19, 0.97);
-  box-shadow: 0 0 0 2px var(--c-red);
-  display: flex;
-  flex-direction: column;
-  z-index: 32;
-}
-.id-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 4px;
-}
-.id-tab {
-  border: 0;
-  background: var(--c-panel);
-  color: var(--c-pale);
-  padding: 4px 10px;
-  cursor: pointer;
-  font-size: 12px;
-}
-.id-tab small {
-  margin-left: 4px;
-  color: var(--c-mid);
-}
-.id-tab.on {
-  background: #6b221c;
-  color: #fff;
-}
-.id-list {
-  flex: 1;
-  padding: 6px 8px;
-  min-height: 0;
-}
-.id-empty {
-  color: var(--c-mid);
-  font-size: 13px;
-}
-.id-group h4 {
-  margin: 6px 0 4px;
-  font-size: 11px;
-  color: var(--c-soft);
-  font-weight: normal;
-}
-.clue-chip {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  margin-bottom: 4px;
-  background: #22302a;
-  color: #e9e4c9;
-  font-family: var(--f-screen);
-  font-size: 16px;
-  line-height: 1.1;
-  padding: 4px 8px;
-  cursor: pointer;
-  box-shadow: inset 3px 0 0 var(--c-postit);
-}
-.clue-chip:hover {
-  background: #2e4038;
-}
-.clue-chip.sel {
-  background: #6b221c;
-  box-shadow: inset 3px 0 0 var(--c-red);
-}
-.insight-banner {
-  position: absolute;
-  left: 50%;
-  bottom: 58px;
-  transform: translateX(-50%);
-  width: 700px;
-  background: var(--c-paper);
-  color: var(--c-ink);
-  padding: 8px 14px;
-  z-index: 45;
-  box-shadow:
-    0 0 0 3px var(--c-red),
-    4px 5px 0 rgba(0, 0, 0, 0.45);
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  animation: stamp-in 240ms steps(3) both;
-  font-size: 14px;
-}
-.insight-banner b {
-  color: var(--c-red);
-  text-transform: uppercase;
-  font-size: 12px;
-  letter-spacing: 1px;
-}
-.red-thread {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 44;
-}
-.red-thread path {
-  fill: none;
-  stroke-width: 3;
-  stroke-dasharray: 1400;
-  stroke-dashoffset: 1400;
-  animation: draw-thread 520ms steps(10) forwards;
-}
-.red-thread.ok path {
-  stroke: #e0483d;
-}
-.red-thread.bad path {
-  stroke: #9a9a8a;
-  animation:
-    draw-thread 360ms steps(8) forwards,
-    snap 400ms steps(3) 500ms forwards;
-}
-.red-thread circle {
-  fill: #f2d45c;
-  stroke: #3b2f0a;
-  stroke-width: 2;
-}
-@keyframes draw-thread {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-@keyframes snap {
-  to {
-    opacity: 0;
-    stroke-dasharray: 6 18;
-  }
 }
 
 /* ---------------------------------------------------------------- livros e quadro */
@@ -1469,6 +1285,24 @@
 }
 .pin-card.k-doc {
   background: #efe6cf;
+}
+.pin-card.desk-doc {
+  border: 0;
+  text-align: left;
+  font-family: inherit;
+  color: var(--c-ink);
+  cursor: pointer;
+  background: #fbf7ea;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 1px #c9b98f;
+}
+.pin-card.desk-doc:not(.read) b::after {
+  content: ' •';
+  color: #a22a1f;
+}
+.pin-card.desk-doc.open {
+  width: 360px;
+  transform: none !important;
+  z-index: 2;
 }
 .pin-card.k-postit {
   background: var(--c-postit);

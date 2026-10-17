@@ -16,11 +16,12 @@ export function Tutorial() {
   } else {
     const def = sh.defOf(call);
     if (call.asked.length === 0) tip = 'Pergunte. Cada pergunta custa minutos do relógio, mas é aí que estão as pistas.';
-    else if (def.id === 'd01_et' && !call.mapLookup) {
-      tip = 'Confere esse endereço no mapa: botão "Conferir no mapa", na ficha.';
+    else if (def.id === 'd01_et' && call.asked.length < 3) {
+      tip = 'Endereço é comigo: eu confiro no mapa e anoto no post-it. Esse aí não confere. Agora escuta o fundo da ligação e vê se a história fecha.';
       pos = 'right';
-    } else if (def.id === 'd01_et' && !S.inspect && call.found.length === 0) {
-      tip = 'Aperta TAB: Modo Inconsistência. Clique em duas pistas que não batem, tipo o endereço e o mapa, ou as risadas e o relato.';
+    } else if (def.id === 'd01_et') {
+      tip = 'Rua que não existe, risada no fundo, ET sangrando azul... Na ficha, marca Trote e carimba. O número vai pro quadro.';
+      pos = 'right';
     } else if (def.id === 'd01_parada' && call.asked.length >= 1) {
       tip = 'Não responde e respira esquisito é parada. USA na hora, e você fica na linha ensinando a massagem.';
       pos = 'right';

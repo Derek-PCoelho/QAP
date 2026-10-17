@@ -820,6 +820,9 @@ export const DAY = day({
           label: 'Reconhecer a voz dela, agora',
           kind: 'fala',
           locked: true,
+          // 1.1: perguntar da novela ou fazer o FAST; ou já vem pronto se você guardou os avisos dela
+          // (no dia 6 ela pediu "se eu ligar falando estranho, você vai saber"; no dia 17 ela se repetiu)
+          unlockedBy: ['novela', 'fast', 'flag:d6_cida_fast', 'flag:cida_sinal2'],
           cost: 2,
           say: 'Dona Cida, é {o} {dr}. Eu tô ouvindo a senhora diferente hoje. A ambulância já tá saindo. Fica comigo: sorri pra mim e me fala desde que horas.',
           a: [arr('Tá... bom... {meu} {filho}.'), '[ela respira devagar]', arr('Desde as seis... A boca... tá torta... acho. O braço... direito... não sobe.'), arr('Você... reconheceu... a minha voz.')],

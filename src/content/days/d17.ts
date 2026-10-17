@@ -529,9 +529,15 @@ export const DAY = day({
           label: '"A senhora já tinha me falado da água..."',
           kind: 'fala',
           locked: true,
+          // 1.1: ela repetiu a frase na abertura; aparece depois da primeira troca com ela
+          unlockedBy: ['oque', 'nivel', 'consciencia', 'conversar', 'seguranca'],
           say: 'Dona Cida, a senhora já tinha me falado da água. Tá tudo bem com a senhora?',
           a: ['Falei? [silêncio curto] ...Falei, né.', 'Desculpa, {meu} {filho}. É o nervoso. Quando eu fico nervosa eu fico boba.'],
-          onAsk: fx.set('cida_sinal2'),
+          onAsk: (e) => {
+            e.set('cida_sinal2');
+            // sábado ela esqueceu a novela; hoje repetiu a frase: dois sinais, um atrás do outro
+            if (e.flag('cida_sinal1')) e.set('cida_sinais_cruzados');
+          },
         },
         {
           id: 'conversar',

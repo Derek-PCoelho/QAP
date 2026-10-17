@@ -257,6 +257,17 @@ export const DAY = day({
       },
       extra: [
         {
+          // 1.1 (antes: vínculo do Modo Inconsistência): depois de saber das cinco horas, fazer a conta da janela
+          id: 'janela',
+          kind: 'fala',
+          label: 'Fazer a conta da janela',
+          locked: true,
+          unlockedBy: ['inicio'],
+          cost: 1,
+          say: 'Dona Neide, um segundo: deixa eu fazer a conta da hora aqui.',
+          a: (c) => [`[${janelaInsight(c)}]`],
+        },
+        {
           id: 'glicemia',
           label: 'É diabético? Usa insulina?',
           say: 'Ele é diabético? Toma insulina? Tem aparelho de glicemia aí?',

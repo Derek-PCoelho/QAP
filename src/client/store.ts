@@ -440,9 +440,6 @@ class Store {
       case 'money':
         if (e.amount > 0) audio.sfx('money');
         return;
-      case 'insight':
-        audio.sfx(e.ok ? 'insight' : 'wrong');
-        return;
       case 'death':
         audio.sfx('death');
         return;

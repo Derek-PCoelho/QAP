@@ -56,7 +56,7 @@ function tokensIn(s: string): string[] {
 const manualRuleIds = new Map<string, number>();
 for (const p of CONTENT.manual) for (const r of p.rules) manualRuleIds.set(r.id, p.day);
 const docClues = new Set<string>();
-for (const d of Object.values(CONTENT.docs)) for (const c of d.clues) docClues.add(c.id);
+for (const d of Object.values(CONTENT.docs)) for (const c of d.clues ?? []) docClues.add(c.id);
 const allCallIds = new Map<string, number>();
 for (const d of Object.values(CONTENT.days)) for (const c of d.calls) allCallIds.set(c.id, d.day);
 
@@ -112,6 +112,13 @@ function checkCall(d: DayDef, call: CallDef, errs: string[], warns: string[]) {
     for (const x of call.extra ?? []) {
       if (CONTENT.questions.some((q) => q.id === x.id)) errs.push(`${where}: extra "${x.id}" colide com pergunta base`);
       for (const u of x.unlocks ?? []) if (!extraIds.has(u)) errs.push(`${where}: unlocks "${u}" inexistente`);
+      // 1.1: sem Modo Inconsistência, toda pergunta trancada precisa de um gatilho jogável
+      for (const k of x.unlockedBy ?? []) {
+        const okK =
+          k === 'callback' || k === 'video' || k === 'quadro' || k === 'endereco' || /^(video|doc|lido|flag|sflag):./.test(k) || extraIds.has(k) || CONTENT.questions.some((q) => q.id === k);
+        if (!okK) errs.push(`${where}: unlockedBy "${k}" de "${x.id}" não é gatilho conhecido`);
+        if (k.startsWith('doc:') && !CONTENT.docs[k.slice(4)]) errs.push(`${where}: unlockedBy "${k}": documento inexistente`);
+      }
     }
     for (const m of truth.must ?? []) {
       const q = CONTENT.questions.find((x) => x.id === m);
@@ -163,7 +170,8 @@ function checkCall(d: DayDef, call: CallDef, errs: string[], warns: string[]) {
     for (const w of call.worsen ?? []) add(w.lines);
     for (const x of call.extra ?? []) {
       if (x.locked) {
-        const unlockedBy = (call.links ?? []).some((l) => (Array.isArray(l.unlock) ? l.unlock : [l.unlock]).includes(x.id)) || (call.extra ?? []).some((y) => y.unlocks?.includes(x.id));
+        // 1.1: os vínculos (links) não destravam mais nada
+        const unlockedBy = !!x.unlockedBy?.length || (call.extra ?? []).some((y) => y.unlocks?.includes(x.id));
         if (!unlockedBy) errs.push(`${where}: extra trancada "${x.id}" nunca é desbloqueada`);
       }
     }
@@ -190,8 +198,14 @@ function checkScene(where: string, sc: SceneDef, errs: string[]) {
     }
     for (const ch of n.choices ?? []) {
       if (ch.needLink) {
-        const ok = (sc.inspect?.links ?? []).some((l) => [l.a, l.b].sort().join('×') === ch.needLink || (Array.isArray(l.unlock) ? l.unlock : [l.unlock]).includes(ch.needLink));
-        if (!ok) errs.push(`${where}: ${sc.id}.${k} needLink "${ch.needLink}" não corresponde a nenhuma inconsistência`);
+        // "reparar" (1.1): algum objeto marcado da cena precisa destravar a escolha
+        const objs = new Set((sc.inspect?.objects ?? []).map((o) => o.id));
+        const asList = (u: string | string[] | undefined) => (u === undefined ? [] : Array.isArray(u) ? u : [u]);
+        const byObj = (sc.inspect?.objects ?? []).some((o) => asList(o.unlock).includes(ch.needLink!));
+        const byLink = (sc.inspect?.links ?? []).some(
+          (l) => (objs.has(l.a) || objs.has(l.b)) && ([l.a, l.b].sort().join('×') === ch.needLink || asList(l.unlock).includes(ch.needLink!)),
+        );
+        if (!byObj && !byLink) errs.push(`${where}: ${sc.id}.${k} needLink "${ch.needLink}" sem objeto para reparar que o destrave`);
       }
     }
   }

@@ -54,11 +54,12 @@ export function MapPanel() {
       const tp = addressTarget(d.addr);
       markers.push({ x: tp[0], y: tp[1], kind: 'alvo' });
     }
-    if (call && call.mapLookup) {
+    // a ligação aberta aparece no mapa como a Simone conferiu (1.1: conferir endereço é tarefa da TARM)
+    if (call) {
       const d = sh.defOf(call);
       const r = resolveAddress(d.addr);
       const tp = r.pos ?? addressTarget(d.addr);
-      markers.push({ x: tp[0], y: tp[1], kind: r.kind === 'ok' || r.kind === 'marco' ? 'chamada' : 'invalido', label: d.addr.rua });
+      markers.push({ x: tp[0], y: tp[1], kind: call.addrNote === 'nao_confere' ? 'invalido' : 'chamada', label: d.addr.rua });
     }
     drawCityMap(ctx, {
       tile,
@@ -69,7 +70,7 @@ export function MapPanel() {
       routes,
       markers,
       hoverTile: hoverRef.current ? [hoverRef.current.x, hoverRef.current.y] : undefined,
-      highlightStreet: call?.mapLookup ? sh.defOf(call).addr.rua : undefined,
+      highlightStreet: call ? sh.defOf(call).addr.rua : undefined,
     });
   };
 

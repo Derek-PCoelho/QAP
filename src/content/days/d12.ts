@@ -32,6 +32,8 @@ export const DOCS_EXTRA: Record<string, DeskDoc> = {
         ? 'FICHA · sábado, 18:20 · Yuri Santana, 15 · Dengue, 5º dia. NOTA DA TARM (Simone): "Mãe, filho de 15 com dengue. Sangrou o nariz e a gengiva. Tá tonto." Recebida na fila diurna; passada ao noturno às 19:00 sem atendimento. Conduta do noturno (Dr. Henrique Lacerda), 19:40: "orientado hidratação oral e UBS". Retorno às 03:50: rebaixado. USB enviada 04:05. Óbito às 04:10. — PARECER DO REGULADOR DO DIA: "O paciente relatou sangramento na triagem inicial?" [ ] Sim  [ ] Não'
         : 'FICHA · domingo, 02:10 · Rosa Teixeira, 68 · Dengue, 5º dia. NOTA DA TARM (Cleide, noturno): "Senhora, dengue 5º dia, gengiva sangrando, tonta." Conduta (Dr. Henrique Lacerda): "orientado hidratação oral e UBS". Retorno às 05:30: desmaio. USB enviada. Óbito na UPA às 06:40. — PARECER DO REGULADOR DO DIA: "O paciente relatou sangramento na triagem inicial?" [ ] Sim  [ ] Não',
     clues: [{ id: 'doc:ficha_sindicancia', text: 'Ficha da sindicância: a nota da triagem registra sangramento' }],
+    // 1.1: ler a ficha (no quadro, ou na hora do interfone) é o que conta
+    onRead: fx.set('viu_ficha_sindicancia'),
   },
 };
 
@@ -338,14 +340,6 @@ export const DAY = day({
           },
         },
   }),
-  links: [
-    {
-      a: 'doc:ficha_sindicancia',
-      b: 'manual:dengue_alarme',
-      insight: 'A nota da triagem registra sangramento de mucosa e tontura: sinais de alarme da dengue (Manual p.11). "Orientar soro e UBS" não se sustenta. E o campo do parecer pergunta exatamente isso.',
-      onFind: fx.set('viu_ficha_sindicancia'),
-    },
-  ],
   timeline: [
     { at: '07:02', kind: 'radio', who: 'USA 01 · BENÉ', text: 'Central, USA 01 em QRV. Domingo, {bene}. Domingo é dia de gente sozinha. Fica de olho.' },
     {
@@ -386,6 +380,21 @@ export const DAY = day({
       who: 'DR. PEIXOTO',
       text: '{Dr}, a Saúde+ abriu sindicância contra o Henrique. Óbito por dengue. Preciso do seu parecer técnico sobre a triagem até o fim do turno. A cópia da ficha tá na sua mesa. É burocracia. Assina e pronto.',
       run: (c) => c.doc('ficha_sindicancia'),
+      options: [
+        {
+          id: 'ler',
+          label: 'Ler a ficha agora, com calma',
+          cost: 3,
+          effect: (c) => {
+            c.set('viu_ficha_sindicancia');
+            c.set('doc_lido_ficha_sindicancia');
+            c.toast('Na nota da triagem, com a letra redonda da Simone: sangramento de mucosa e tontura. Sinal de alarme da dengue (Manual p.11).');
+          },
+          reply: 'Lê, lê. Mas é burocracia, {dr}. Até o fim do turno.',
+        },
+        { id: 'depois', label: 'Depois eu vejo, doutor.' },
+      ],
+      defaultOption: 'depois',
     },
     { at: '18:30', kind: 'simone', who: 'SIMONE', text: 'O Henrique chegou, {dr}. Meia hora adiantado. Tá no corredor, de casaco. Disse que espera {m:o senhor|a senhora}.' },
   ],
@@ -794,6 +803,8 @@ export const DAY = day({
         {
           id: 'usou',
           locked: true,
+          // 1.1: o amigo pede pra contar ("fala o que a gente usou") quando você fala com o paciente
+          unlockedBy: ['paciente'],
           label: '"Ele usou alguma droga?"',
           say: 'Eu não sou polícia. Pra ajudar, eu preciso saber: ele usou alguma droga?',
           a: ['[silêncio]', '{{...Cocaína. A noite toda. Ele cheirou de novo agora de manhã.|cocaina}}', 'Não chama a polícia, pelo amor de Deus.'],

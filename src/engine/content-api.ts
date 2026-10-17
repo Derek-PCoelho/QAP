@@ -114,15 +114,16 @@ export interface HomeContent {
   /** cena de bico genérica */
   genericBico: (c: Ctx) => SceneDef;
   /** frase de inspeção à toa */
-  pointlessInspect: (c: Ctx) => string;
 }
 
 export interface DeskDoc {
   id: string;
   title: string;
   text: Txt;
-  /** pistas que o documento oferece no Modo Inconsistência */
-  clues: { id: string; text: string }[];
+  /** @deprecated pistas do antigo Modo Inconsistência (ignoradas) */
+  clues?: { id: string; text: string }[];
+  /** efeito na primeira vez que o documento é lido no quadro (grava também a flag `doc_lido_<id>`) */
+  onRead?: import('./types').Effect;
   /** dias em que está na mesa (padrão: sempre depois de recebido) */
   until?: number;
 }

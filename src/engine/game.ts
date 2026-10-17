@@ -45,7 +45,8 @@ export class SceneRunner {
     const c = this.ctx();
     return (n?.choices ?? [])
       .map((ch, idx) => ({ ch, idx }))
-      .filter(({ ch }) => !ch.when || ch.when(c))
+      // cenas da central não têm "reparar": escolha que depende dele não aparece aqui
+      .filter(({ ch }) => (!ch.when || ch.when(c)) && !ch.needLink)
       .map(({ ch, idx }) => ({
         idx,
         label: resolveTokens(txt(ch.label, c), this.g().gender, this.g()),
@@ -56,6 +57,9 @@ export class SceneRunner {
     const n = this.sc.nodes[this.node];
     const ch = n?.choices?.[idx];
     if (!ch) return;
+    // a interface já esconde/desabilita, mas o motor confere também (when, needLink, dinheiro, café)
+    const vis = this.choices().find((x) => x.idx === idx);
+    if (!vis || vis.disabled) return;
     this.log.push(txt(ch.label, this.ctx()));
     ch.effect?.(this.eff());
     if (ch.next && this.sc.nodes[ch.next]) this.goto(ch.next);

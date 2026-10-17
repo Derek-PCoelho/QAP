@@ -7,8 +7,6 @@ import { audio } from '../../audio';
 import { useDeskSel } from './deskSel';
 import { resolveTokens } from '../../../engine/text';
 
-type PickFn = (id: string, text: string, el: HTMLElement | null) => void;
-
 const COLORS: { id: Color; label: string }[] = [
   { id: 'vermelho', label: 'Vermelho' },
   { id: 'amarelo', label: 'Amarelo' },
@@ -34,7 +32,7 @@ const REFS: { id: Referral; label: string }[] = [
   { id: 'CASA', label: 'Ficar em casa' },
 ];
 
-export function Ficha({ onPick, sel }: { onPick: PickFn; sel?: string }) {
+export function Ficha() {
   const s = useStore();
   const g = s.game!;
   const sh = g.shift!;
@@ -77,7 +75,6 @@ export function Ficha({ onPick, sel }: { onPick: PickFn; sel?: string }) {
 
   const def = sh.defOf(call);
   const decided = !!call.decision;
-  const inspect = sh.sh.inspect;
   const day = g.st.day;
   const needDest = day >= 9 && (res === 'USA' || res === 'USB');
   const free = res === 'USA' || res === 'USB' ? sh.availableUnits(res).map((u) => ({ u, eta: sh.etaFor(u.id, call) })).sort((a, b) => a.eta - b.eta) : [];
@@ -87,21 +84,8 @@ export function Ficha({ onPick, sel }: { onPick: PickFn; sel?: string }) {
   const ready = isTrote
     ? !decided && call.status === 'ativa'
     : !!color && !!res && (!needDest || !!dest) && (res !== 'USA' && res !== 'USB' ? true : !!unit) && (res !== 'ORI' || !!ref) && !decided && call.status === 'ativa';
-  const lookup = call.mapLookup ? resolveAddress(def.addr) : null;
   // a idade é dado da TARM: aparece desde o começo
   const age = sh.tarmAge(call);
-
-  const clue = (id: string, text: string) => (
-    <span
-      className={'clue' + (inspect ? ' live' : '') + (sel === id ? ' sel' : '')}
-      onClick={(e) => {
-        if (!inspect) return;
-        onPick(id, text, e.currentTarget);
-      }}
-    >
-      {text}
-    </span>
-  );
 
   const doStamp = () => {
     if (!ready || !res) return;
@@ -134,7 +118,7 @@ export function Ficha({ onPick, sel }: { onPick: PickFn; sel?: string }) {
             <label>Hora</label>
             <span className="hand">{fmtTime(call.arrived)}</span>
             <label>Tel.</label>
-            <span className="hand">{clue('num', def.num)}</span>
+            <span className="hand">{def.num}</span>
           </div>
           <div className="f-row">
             <label>Solicitante</label>
@@ -145,27 +129,18 @@ export function Ficha({ onPick, sel }: { onPick: PickFn; sel?: string }) {
             <span className="hand">
               {def.patient.name}
               {', '}
-              {age.clue ? clue(age.clue, age.quoted ? `“${age.text}”` : age.text) : age.quoted ? `“${age.text}”` : age.text}
+              {age.quoted ? `“${age.text}”` : age.text}
             </span>
           </div>
           <div className="f-row addr">
             <label>Endereço</label>
-            <span className="hand">{clue('end', addrText(def.addr))}</span>
+            <span className="hand">{addrText(def.addr)}</span>
           </div>
-          <div className="f-row look">
-            <button
-              className="px-btn small ghost ink"
-              disabled={!!call.mapLookup || decided}
-              onClick={() => {
-                sh.lookup();
-                audio.sfx('page');
-                store.notify();
-              }}
-            >
-              {call.mapLookup ? 'Endereço conferido' : 'Conferir no mapa (2′)'}
-            </button>
-            {lookup && <span className={'look-res ' + (lookup.kind === 'ok' || lookup.kind === 'marco' ? 'ok' : 'bad')}>{lookup.message}</span>}
-          </div>
+          {call.noteAddr && (
+            <div className="f-row look">
+              <span className={'look-res ' + (call.addrNote === 'nao_confere' ? 'bad' : 'ok')}>TARM: {call.noteAddr}</span>
+            </div>
+          )}
 
           {!isTrote && (
           <fieldset className="f-group">

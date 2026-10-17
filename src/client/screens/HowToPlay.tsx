@@ -29,9 +29,8 @@ const STEPS: Sec[] = [
     t: 'Ouvir e perguntar',
     p: [
       'A transcrição mostra o que quem liga diz. As primeiras palavras costumam ser as mais verdadeiras.',
-      'Nome, idade e endereço já vêm da TARM, na ficha. As perguntas embaixo da transcrição são as do regulador: cada uma custa minutos do relógio, e o paciente piora enquanto isso. Pergunte o que muda a sua decisão.',
-      'Desconfie do que não fecha: endereço que não existe no mapa, número que já está no quadro de trotes, história que muda no meio.',
-      'Modo Inconsistência (TAB): clique em duas pistas que se contradizem (ou se confirmam). Vale a transcrição, a ficha, o quadro, o manual e o diário. O tempo corre mais devagar; pista errada custa paciência e minutos.',
+      'Nome, idade e endereço já vêm da TARM, na ficha: a Simone confere o endereço no mapa e anota no post-it quando ele não confere (ela também erra). Embaixo da transcrição ficam as perguntas do regulador: cinco fixas (pulso, respiração, cor da pele, acordado, o que aconteceu) e quatro caixas (Clínico, GO, Trauma e Outros) que acrescentam as perguntas daquele tipo de caso. Cada pergunta custa minutos do relógio, e o paciente piora enquanto isso. Pergunte o que muda a sua decisão.',
+      'Desconfie do que não fecha: barulho de fundo que não combina, história que muda no meio, número que já está no quadro de trotes, retorno que cai em caixa postal. A pergunta certa abre a pergunta seguinte (o confronto aparece quando há motivo).',
     ],
   },
   {
@@ -230,7 +229,7 @@ const ABORDAGENS: Sec[] = [
     t: 'Trote',
     li: [
       'Sinais: risadas ao fundo, história de filme, endereço que não existe, horário que não fecha, número no quadro, hesitação em dado simples.',
-      'Ferramentas: "Conferir no mapa" (2 min), "Confirmar o endereço", "Ligar de volta" (30 min; caixa postal ou número inexistente reforçam), vídeo (trotista recusa, enrola ou desliga; trote filmado vale prova) e o Modo Inconsistência, que libera o confronto ("Esse número já passou trote aqui").',
+      'Ferramentas: o post-it da Simone (ela confere o endereço), "Ligar de volta" (30 min; caixa postal ou número inexistente reforçam), vídeo (trotista recusa, enrola ou desliga; trote filmado vale prova) e o quadro: se o número já está lá, aparece a fala "Esse número já passou trote aqui".',
       'Número no quadro não prova trote: gente de verdade também liga de número marcado. Tratar emergência como trote é a falha mais grave da regulação.',
       'Para encerrar: Recurso "Trote" e carimbar.',
     ],
@@ -304,7 +303,7 @@ const DETALHES: Sec[] = [
   {
     t: 'Laços (0 a 10)',
     li: [
-      'A família. Sobem com folga em família, falas carinhosas e quando você percebe o que ninguém diz (Modo Inconsistência em casa).',
+      'A família. Sobem com folga em família, falas carinhosas e quando você percebe o que ninguém diz (reparar nas coisas da casa).',
       'Caem com ausência, contas que faltam (gás, comida) e escolhas frias.',
       '2 ou menos: o seu cônjuge vai embora. 7 ou mais: uma das condições do final bom.',
     ],
@@ -345,7 +344,7 @@ const DETALHES: Sec[] = [
     t: 'Casa: contas, loja e diário',
     li: [
       'Aluguel: se não pagar, acumula; três atrasos são despejo. Comida: sem pagar, a família passa fome; duas vezes seguidas, alguém adoece. Energia: na segunda vez, corte (e a insulina estraga). Gás: comida fria e Laços caem. Remédios da Dona Zélia: ela piora; duas vezes seguidas, internação. Transporte: descontado sozinho.',
-      'Modo Inconsistência em casa (TAB): repare em objetos e falas para perceber o que a família não conta. Sem nada para achar, custa Laços −1.',
+      'Reparar, em casa: o que dá para reparar fica marcado na cena com um brilho. Um clique mostra o que você notou e pode abrir uma conversa nova. Não custa nada.',
       'Antes de dormir: compras, o diário e o Ozzy.',
       'Diário (D): os nomes de quem você atendeu e o que aconteceu depois. "Reler os nomes" com Desgaste alto: mais vivos que mortos alivia; mais mortos pesa.',
     ],
@@ -460,7 +459,6 @@ const SIGLAS: { g: string; items: [string, string][] }[] = [
 const KEYS: [string, string][] = [
   ['Clique no cartão da fila', 'Atender a ligação'],
   ['Botões de pergunta', 'Perguntar (cada pergunta custa minutos)'],
-  ['TAB', 'Modo Inconsistência (ligar duas pistas)'],
   ['M', 'Manual de Regulação'],
   ['Q', 'Quadro de cortiça (trotes, documentos, post-its)'],
   ['D', 'Diário (quem você atendeu e o que aconteceu depois)'],

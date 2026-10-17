@@ -320,7 +320,7 @@ export const TROTE_OPORTUNISTA = tpl({
         },
         extra: [
           ex('sente', 'O que está sentindo?', `O que ${p.ele} está sentindo?`, `{{Não sei, só sei que tá mal|nao_sabe}}. Manda logo, que ${p.ele} merece um susto.`),
-          ex('confronto', '"Quer dar um susto no vizinho?"', `${p.cg('O senhor', 'A senhora')} está usando a ambulância pra dar um susto no vizinho?`, ['[silêncio]', 'Vocês nunca vêm mesmo! [desliga]'], { kind: 'confronto', locked: true }),
+          ex('confronto', '"Quer dar um susto no vizinho?"', `${p.cg('O senhor', 'A senhora')} está usando a ambulância pra dar um susto no vizinho?`, ['[silêncio]', 'Vocês nunca vêm mesmo! [desliga]'], { kind: 'confronto', locked: true, unlockedBy: ['sente', 'paciente', 'callback'] }),
         ],
         callback: ['[Atende a mesma pessoa, irritada]', '{{"Já falei! Vão mandar ou não vão?"|retorno_irritado}}'],
         links: [

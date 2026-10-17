@@ -453,6 +453,8 @@ export const DAY = day({
           kind: 'confronto',
           label: '"A senhora é jornalista?"',
           locked: true,
+          // 1.1: o retorno cai na caixa postal da Gazeta, ou ela se enrola explicando por que quer saber do tempo
+          unlockedBy: ['callback', 'por_que_tempo', 'dorpeito'],
           say: 'A senhora não está com dor nenhuma, está? A senhora é jornalista?',
           a: ['[silêncio longo]', '...Tá bom. Você é {m:bom|boa}. Carla Nunes, da Gazeta. Desculpa, {dr}.', 'Eu precisava saber quanto tempo vocês levam de verdade. Meu irmão esperou quarenta minutos, uma vez. Não vou mais ocupar a sua linha.'],
           onAsk: fx.set('carla_teste_percebido'),

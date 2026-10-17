@@ -19,7 +19,7 @@ export interface BotProfile {
   coffee: number;
   /** bico quando o saldo cair abaixo disto */
   bicoBelow: number;
-  /** usa o modo inconsistência */
+  /** usa o mapa/vídeo e repara nos objetos da casa */
   inspects: boolean;
   /** qualidade média nos minijogos */
   guideQuality: number;
@@ -224,9 +224,6 @@ function decide(sh: Game['shift'] & {}, call: CallRT, p: BotProfile, rng: Rng, d
     const q = qs.splice(rng.int(0, qs.length - 1), 1)[0];
     sh.ask(q.id);
   }
-  if (p.inspects) {
-    sh.lookup();
-  }
   if (!sh.active() || sh.active()!.id !== call.id) return; // desligou
   if (def.special === 'mci' && def.mci) {
     const triage: Record<string, Color | 'preto'> = {};
@@ -326,11 +323,10 @@ function playHome(g: Game, p: BotProfile, rng: Rng, stop?: (g: Game) => boolean)
       const ch = h.choices();
       if (ch.length) {
         const ok = ch.filter((x) => !x.disabled);
-        // conecta inconsistências quando há
-        if (p.inspects && h.inspectAvailable()) {
-          const sc = h.scene();
-          for (const l of sc?.inspect?.links ?? []) h.link(l.a, l.b);
-        }
+        // repara nos objetos marcados da cena (libera as escolhas que dependem deles)
+        if (p.inspects) for (const o of h.noticeables()) if (!o.noticed) h.notice(o.id);
+        const ch2 = h.choices();
+        if (ch2.length !== ch.length) continue;
         const n = h.node();
         const withLink = ok.find((x) => !!n?.choices?.[x.idx]?.needLink);
         const pick = withLink ? withLink.idx : ok.length ? pickChoice(g.st, ok.map((x) => ({ idx: x.idx, choice: n?.choices?.[x.idx] })), p, rng, h.scene()?.nodes) : ch[0].idx;

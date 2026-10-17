@@ -215,6 +215,7 @@ export function startVideo(sim: ShiftSim): VideoStartResult {
   };
   sim.sysLine(call, `📹 Videochamada conectada · sinal ${signal}${signal !== 'bom' ? ' (a imagem trava)' : ''}.`);
   pushVideoLines(sim, call, vd.first);
+  videoNotes(sim, call);
   sim.emit({ type: 'lines', callId: call.id });
   return 'conectou';
 }
@@ -236,6 +237,7 @@ export function videoLook(sim: ShiftSim, spotId: string): boolean {
   if (spot.scene) v.scene = { ...v.scene, ...spot.scene };
   for (const u of spot.unlocks ?? []) if (!call.unlocked.includes(u)) call.unlocked.push(u);
   if (spot.onSee) spot.onSee(sim.eff());
+  videoNotes(sim, call);
   const cost = spotCost(spot.cost, v.signal);
   sim.advance(cost);
   v.minutes += cost;
@@ -267,7 +269,7 @@ export function videoProofOnStamp(sim: ShiftSim, call: CallRT, truth: TruthDef):
   return true;
 }
 
-/** pistas do vídeo × manual: inconsistências/confirmações automáticas */
+/** o que se repara no vídeo, quando a regra do manual já foi recebida (antes: pares do Modo Inconsistência) */
 const VIDEO_LINKS: { clue: string; rule: string; insight: string }[] = [
   { clue: 'video_trote', rule: 'trote_sinais', insight: 'Ninguém ferido e gente rindo atrás da câmera: trote. A gravação vale prova (p.3-V).' },
   { clue: 'video_trote', rule: 'video_trote', insight: 'Trote filmado: carimbe TROTE e a gravação segue para a PM.' },
@@ -291,12 +293,21 @@ const VIDEO_LINKS: { clue: string; rule: string; insight: string }[] = [
   { clue: 'video_choque', rule: 'dengue_grave', insight: 'Pele acinzentada e suada: sinais de choque.' },
 ];
 
-export function videoAutoLinks(call: CallRT): import('./types').LinkDef[] {
-  if (!call.video) return [];
+/** depois de cada imagem nova: mostra uma vez o que se repara (pista do vídeo × regra do manual já recebida) */
+export function videoNotes(sim: ShiftSim, call: CallRT) {
+  if (!call.video) return;
   const present = new Set<string>();
   for (const l of call.lines) {
     if (l.kind !== 'video') continue;
     for (const m of l.text.matchAll(/\{\{[^|}]*\|([^}]+)\}\}/g)) present.add(m[1]);
   }
-  return VIDEO_LINKS.filter((x) => present.has(x.clue)).map((x) => ({ a: x.clue, b: `manual:${x.rule}`, kind: 'confirma' as const, insight: x.insight }));
+  const rules = new Set<string>();
+  for (const pid of sim.st.manual) for (const r of sim.c.manual.find((p) => p.id === pid)?.rules ?? []) rules.add(r.id);
+  for (const x of VIDEO_LINKS) {
+    if (!present.has(x.clue) || !rules.has(x.rule)) continue;
+    const key = 'vnota:' + x.clue;
+    if (call.unlocked.includes(key)) continue;
+    call.unlocked.push(key);
+    sim.sysLine(call, x.insight, 'insight');
+  }
 }
