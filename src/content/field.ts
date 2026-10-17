@@ -715,7 +715,7 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
       ],
       before: [{ who: 'BENÉ', text: 'Rodoviária velha. De noite lá só fica o vento e quem não tem pra onde ir.' }],
       epilogue: [
-        { who: 'DR. CASTRO', text: 'Na base, o Dr. Castro desce: "Gostei. A 01 da noite é sua." Você pergunta da aposta do pastel de 2019. Ele finge que não ouviu. Isso ele faz bem.' },
+        { who: 'NARRADOR', text: 'Na base, o Dr. Castro desce: "Gostei. A 01 da noite é sua." Você pergunta da aposta do pastel de 2019. Ele finge que não ouviu. Isso ele faz bem.' },
         { who: 'NARRADOR', text: 'O Bené prende o papel da passagem no quebra-sol, ao lado de um santinho de São Benedito: "32 min". Ninguém pergunta por quê.' },
       ],
     },
@@ -1135,9 +1135,9 @@ export const FIELD_STORY_CASES: FieldCaseX[] = [
         { who: 'NARRADOR', text: 'Uma da manhã. O Seu Anselmo sobe para a UTI do Regional com pulso e o caderno no peito, embaixo do lençol. Na última página, com a sua letra, porque ele pediu com os olhos: "01 · 4 min." A flor de floricultura ficou com o Bené, para pôr no poste quando ele puder.', when: (s) => !!s.flag('noite_anselmo_vivo') },
         { who: 'NARRADOR', text: 'Uma da manhã. Vocês fizeram tudo, e não voltou. O Bené guarda o caderno no porta-luvas da 01; na última página, com a letra dele: "01 · 4 min. Não deu. Mas ninguém ficou sozinho." Depois amarra a flor de floricultura no poste, do lado da cruz.', when: (s) => !!s.flag('noite_anselmo_morreu') },
         { who: 'NARRADOR', text: 'O rapaz que fez a massagem era o motoboy da outra noite, o da cruz. "Ele segurou a minha cabeça", diz. "Agora eu sei contar até trinta."', when: (s) => !!s.flag('noite_motoboy_vivo') },
-        { who: 'DR. CASTRO', text: 'Na volta, o Castro pede para passar pela Santos Dumont. A Lurdinha abre a porta de aço pela metade. Três pastéis de palmito e um embrulhado "pra Simone". "2019 tá pago", ele diz. "A aposta acaba hoje." Ninguém pergunta qual era a aposta. O Bené come de pé e não fala nada por um pastel inteiro.' },
-        { who: 'BENÉ', text: 'Na volta, o Bené diz: "Um dia eu te conto uma coisa, {dr}. Não hoje."', when: (s) => !beneContou(s) },
-        { who: 'BENÉ', text: 'Na volta, o Bené diz: "Dessa vez eu cheguei, {dr}. Quatro minutos. Anota aí também, que eu quero ver escrito."', when: beneContou },
+        { who: 'NARRADOR', text: 'Na volta, o Castro pede para passar pela Santos Dumont. A Lurdinha abre a porta de aço pela metade. Três pastéis de palmito e um embrulhado "pra Simone". "2019 tá pago", ele diz. "A aposta acaba hoje." Ninguém pergunta qual era a aposta. O Bené come de pé e não fala nada por um pastel inteiro.' },
+        { who: 'NARRADOR', text: 'Na volta, o Bené diz: "Um dia eu te conto uma coisa, {dr}. Não hoje."', when: (s) => !beneContou(s) },
+        { who: 'NARRADOR', text: 'Na volta, o Bené diz: "Dessa vez eu cheguei, {dr}. Quatro minutos. Anota aí também, que eu quero ver escrito."', when: beneContou },
         { who: 'NARRADOR', text: 'Às 0h50 a central chama: "Zero um... ele tá vivo?" É o Henrique. É a primeira vez que você ouve ele perguntar de um paciente depois.', when: (s) => !afastado(s) && !!s.flag('noite_anselmo_vivo') },
       ],
       flags: {
