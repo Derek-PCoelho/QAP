@@ -8,6 +8,49 @@
 // =============================================================================
 import type { SceneBg, MemberStatus } from '../../engine/types';
 import { Pix, presentPix, hash2, bayerOn, gradedCopy } from './pix';
+import {
+  SCENE_W,
+  SCENE_H,
+  type Rect,
+  type SceneCast,
+  type Layer,
+  type Has,
+  type ObjDef,
+  type Placement,
+  type BgDef,
+  clampX,
+  plaster,
+  tileGrid,
+  planks,
+  vignette,
+  WALL_Y,
+  FEET_BACK,
+  FEET_FRONT,
+  perspFloor,
+  skirting,
+  wallContact,
+  bulbCone,
+  roomDark,
+  pendantLamp,
+  bareBulb,
+  nightPane,
+  windowFrame,
+  chairBack,
+  frontChair,
+  o,
+  type HouseExit,
+  type TimeOfDay,
+  setTod,
+  hasFlag,
+  genderOf,
+  liamLevel,
+  dayRoomLight,
+  dawnRoomLight,
+  drawExit,
+} from './sceneKit';
+import { QUARTO_CASAL, QUINTAL, BANHEIRO } from './houseRooms';
+import { COZINHA_EXTRA, SALA_EXTRA, QUARTO_EXTRA, PORTA_EXTRA, newFridge } from './houseObjects';
+import { liamDrawing, type LiamSubject } from './liamArt';
 import { HOME, CENTRAL, mix, shade, homeGrader, quantize } from './palette';
 import { drawText, textWidth } from './font';
 import { figurePix, figureHeight, type CastId, type Pose } from './figures';
@@ -54,10 +97,18 @@ import {
   cardBox,
 } from './props';
 
-export const SCENE_W = 320;
-export const SCENE_H = 180;
+export { SCENE_W, SCENE_H };
+export type { Rect, SceneCast, HouseExit, TimeOfDay };
 
-export const SCENE_BGS: SceneBg[] = ['cozinha', 'sala', 'quarto', 'porta', 'escola', 'central', 'rua', 'hospital', 'calcada', 'escritorio', 'igreja', 'mesa', 'preto'];
+/** cômodos novos da casa explorável (ainda fora do SceneBg do motor) */
+export type HouseRoomBg = 'quarto_casal' | 'quintal' | 'banheiro';
+/** todo cenário que a arte sabe desenhar: os do motor e os cômodos novos */
+export type ArtSceneBg = SceneBg | HouseRoomBg;
+
+export const SCENE_BGS: ArtSceneBg[] = ['cozinha', 'sala', 'quarto', 'porta', 'escola', 'central', 'rua', 'hospital', 'calcada', 'escritorio', 'igreja', 'mesa', 'preto', 'quarto_casal', 'quintal', 'banheiro'];
+
+/** os cômodos da casa (casa explorável), na ordem de quem entra pelo portão */
+export const HOUSE_ROOMS: ArtSceneBg[] = ['porta', 'sala', 'cozinha', 'quintal', 'quarto', 'quarto_casal', 'banheiro'];
 
 /** ids de objetos de cena suportados */
 export const SCENE_OBJECTS = [
@@ -93,24 +144,9 @@ export const SCENE_OBJECTS = [
 ] as const;
 export type SceneObjectId = (typeof SCENE_OBJECTS)[number];
 
-export interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface SceneCast {
-  /** LUCIA ou ALEX: o cônjuge (quem chama passa ALEX quando a protagonista é mulher) */
-  id: 'LUCIA' | 'ALEX' | 'DAVI' | 'ZELIA' | 'EU_M' | 'EU_F';
-  pose: 'em_pe' | 'sentado' | 'deitado';
-  /** centro horizontal na grade 320×180 */
-  x: number;
-  status?: MemberStatus;
-}
 
 export interface SceneOpts {
-  bg: SceneBg;
+  bg: ArtSceneBg;
   /** Desgaste/100: 0 = casa quente, 1 = fluorescente */
   blend: number;
   objects: string[];
@@ -128,357 +164,26 @@ export interface SceneOpts {
   ozzyPath?: [number, number][];
   /** ms */
   time: number;
+  /** gênero do protagonista: a foto da família e o retrato do casamento mostram a Lúcia ou o Alex (padrão 'M') */
+  gender?: 'M' | 'F';
+  /** hora do dia: 'noite' (padrão), 'dia' (janela clara, lâmpada apagada) ou 'madrugada' (casa no escuro, o modo Bico) */
+  tod?: TimeOfDay;
+  /** setas das saídas para os outros cômodos (casa explorável); string = id do cômodo de destino em destaque (hover) */
+  exits?: boolean | string;
+  /** aulas de desenho do Liam já feitas: os desenhos da casa saem em giz (0), traço firme (1–2) ou grafite e aquarela (3+) */
+  liamArt?: number;
+  /** assunto do desenho preso na geladeira (objeto `desenho_geladeira`); padrão: a ambulância */
+  fridgeDrawing?: LiamSubject;
+  /** o Pirata (o cachorro da tia de Rio Claro) junto com o Ozzy: na pose dada; 'dormindo' dorme encostado nele */
+  pirata?: DogPose | false;
+  /** o Ozzy com o chapéu de festa de papel (aniversário do Liam), furioso */
+  ozzyHat?: boolean;
 }
 
-type Layer = 'back' | 'front';
-type Has = Set<string>;
-
-interface ObjDef {
-  r: Rect;
-  layer: Layer;
-  draw?: (p: Pix, r: Rect, has: Has) => void;
-  anim?: (p: Pix, r: Rect, t: number, has: Has) => void;
-}
-
-interface Placement {
-  x: number;
-  bottom: number;
-  layer: 'back' | 'top';
-  chair?: boolean;
-  blanket?: string;
-  /** lugar marcado (cadeira, poltrona, cama) que esta pessoa ocupa */
-  seat?: string;
-}
-
-interface BgDef {
-  warm: boolean;
-  back: (p: Pix, has: Has) => void;
-  front?: (p: Pix, has: Has) => void;
-  /** luz/vinheta estáticas depois dos objetos (front = camada da frente, só pixels opacos) */
-  light?: (p: Pix, front: boolean) => void;
-  anim?: (p: Pix, has: Has, t: number, blend: number) => void;
-  place: (c: SceneCast, has: Has) => Placement | null;
-  /** lugares vazios (cadeiras sem ninguém), desenhados por quadro antes do elenco da frente */
-  seats?: (p: Pix, has: Has, occupied: Set<string>) => void;
-  /** marcação de palco da família: x de cada um neste cômodo (ver familyMarks) */
-  marks?: Partial<Record<SceneCast['id'], number>>;
-  /** onde o Ozzy pode ficar (centro x, linha das patas y), em ordem de preferência */
-  ozzy?: { x: number; y: number; flip?: boolean; layer?: Placement['layer'] }[];
-  /** onde o Ozzy dorme depois da brincadeira */
-  ozzySleep?: { x: number; y: number };
-  objects: Record<string, ObjDef>;
-}
-
-const clampX = (x: number, a = 10, b = 310) => Math.max(a, Math.min(b, Math.round(x)));
 
 // -----------------------------------------------------------------------------
 // Utilitários de cenário
 // -----------------------------------------------------------------------------
-function plaster(p: Pix, x: number, y: number, w: number, h: number, base: string, spot: string, seed: number, dens = 0.05): void {
-  p.rect(x, y, w, h, base);
-  for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (hash2(xx, yy, seed) < dens) p.px(xx, yy, spot);
-}
-
-function tileGrid(p: Pix, x: number, y: number, w: number, h: number, base: string, grout: string, tw: number, th: number, stagger = false): void {
-  p.rect(x, y, w, h, base);
-  for (let yy = y; yy < y + h; yy += th) p.hl(x, x + w - 1, yy, grout);
-  for (let row = 0; row * th < h; row++) {
-    const off = stagger && row % 2 ? Math.floor(tw / 2) : 0;
-    for (let xx = x + off; xx < x + w; xx += tw) p.vl(xx, y + row * th, Math.min(y + h - 1, y + row * th + th - 1), grout);
-  }
-}
-
-/** piso com rejunte em perspectiva leve (linhas mais espaçadas perto da câmera) */
-function floorTiles(p: Pix, y0: number, y1: number, base: string, grout: string, shine: string, seed: number): void {
-  p.rect(0, y0, 320, y1 - y0, base);
-  let y = y0;
-  let step = 7;
-  let row = 0;
-  while (y < y1) {
-    p.hl(0, 319, y, grout);
-    const tw = Math.round(step * 2.2);
-    const off = row % 2 ? Math.floor(tw / 2) : 0;
-    for (let x = off; x < 320; x += tw) p.vl(x, y, Math.min(y1 - 1, y + step - 1), grout);
-    y += step;
-    step = Math.min(16, step + 1.3);
-    row++;
-  }
-  for (let yy = y0; yy < y1; yy++) for (let xx = 0; xx < 320; xx++) if (hash2(xx, yy, seed) < 0.025) p.px(xx, yy, shine);
-}
-
-function planks(p: Pix, x: number, y: number, w: number, h: number, base: string, line: string, ph: number, seed: number): void {
-  p.rect(x, y, w, h, base);
-  for (let yy = y; yy < y + h; yy += ph) {
-    p.hl(x, x + w - 1, yy, line);
-    const off = Math.floor(hash2(yy, 1, seed) * 40);
-    for (let xx = x + off; xx < x + w; xx += 44) p.vl(xx, yy, Math.min(y + h - 1, yy + ph - 1), line);
-  }
-  for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (hash2(xx, yy, seed + 1) < 0.03) p.px(xx, yy, shade(base, 0.12));
-}
-
-/** escurece cantos em faixas pontilhadas */
-function vignette(p: Pix, col: string, strength: number, opaqueOnly = false, cx = 160, cy = 96): void {
-  for (let y = 0; y < SCENE_H; y++)
-    for (let x = 0; x < SCENE_W; x++) {
-      if (opaqueOnly && !(p.get(x, y) >>> 24)) continue;
-      const dx = (x - cx) / 180;
-      const dy = (y - cy) / 115;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d < 0.72) continue;
-      let a = Math.min(1, (d - 0.72) / 0.55) * strength;
-      const q = a * 3;
-      const fl = Math.floor(q);
-      a = (fl + (bayerOn(x, y, q - fl) ? 1 : 0)) / 3;
-      if (a > 0) p.pxa(x, y, col, Math.min(0.85, a));
-    }
-}
-
-/** moldura de "casa de bonecas": paredes cortadas */
-function roomFrame(p: Pix, col: string): void {
-  p.rect(0, 174, 320, 6, col);
-  p.hl(0, 319, 174, shade(col, 0.25));
-}
-
-function nightWindow(p: Pix, x: number, y: number, w: number, h: number, frame: string, has: Has, opts: { clothes?: boolean; curtain?: string; moon?: boolean } = {}): void {
-  // céu noturno
-  p.vgrad(x, y, w, h, ['#141c34', '#1e2a46', '#2a3654'], 0.7);
-  for (let i = 0; i < 7; i++) p.px(x + 2 + Math.floor(hash2(i, x, 3) * (w - 4)), y + 2 + Math.floor(hash2(i, y, 4) * (h / 2)), '#c8d4f0');
-  if (opts.moon) {
-    p.disc(x + w - 9, y + 7, 3, '#e8ecd8');
-    p.disc(x + w - 8, y + 6, 2, '#1e2a46');
-  }
-  // vizinhança: muro e janela acesa
-  p.rect(x, y + h - 9, w, 9, '#18202c');
-  p.rect(x + 4, y + h - 13, 14, 5, '#202838');
-  p.rect(x + 7, y + h - 12, 3, 2, '#e8b860');
-  p.rect(x + w - 16, y + h - 15, 12, 7, '#1c2434');
-  p.px(x + w - 12, y + h - 12, '#9fb8d0');
-  if (opts.clothes !== false) {
-    // varal
-    p.line(x, y + 9, x + w - 1, y + 7, '#5a6070');
-    if (has.has('roupa_varal')) interviewClothes(p, x + Math.floor(w / 2) - 15, y + 8);
-    else {
-      p.rect(x + 6, y + 9, 6, 5, '#c8b8a0');
-      p.rect(x + w - 14, y + 8, 5, 6, '#8a9ab8');
-    }
-  }
-  // moldura e cruzeta
-  p.frame(x - 2, y - 2, w + 4, h + 4, shade(frame, -0.25));
-  p.frame(x - 1, y - 1, w + 2, h + 2, frame);
-  p.vl(x + Math.floor(w / 2), y, y + h - 1, frame);
-  p.hl(x, x + w - 1, y + Math.floor(h / 2), frame);
-  // reflexo
-  p.line(x + 3, y + h - 4, x + 8, y + h - 9, '#3a4868');
-  // peitoril
-  p.rect(x - 3, y + h + 1, w + 6, 2, shade(frame, 0.15));
-  if (opts.curtain) {
-    const c = opts.curtain;
-    for (let yy = y - 2; yy < y + 7; yy++)
-      for (let xx = x - 2; xx < x + w + 2; xx++) {
-        if (yy === y + 6 && (xx & 3) === 0) continue;
-        p.px(xx, yy, ((xx >> 1) + (yy >> 1)) % 2 ? c : shade(c, 0.3));
-      }
-  }
-}
-
-function door(p: Pix, x: number, y: number, w: number, h: number, ajar: boolean): void {
-  const wood = HOME.wood2;
-  const dk = HOME.wood;
-  p.rect(x - 2, y - 2, w + 4, h + 2, dk);
-  p.hl(x - 2, x + w + 1, y - 2, HOME.tan);
-  p.rect(x, y, w, h, wood);
-  // almofadas
-  p.frame(x + 3, y + 4, w - 6, Math.floor(h / 2) - 6, dk);
-  p.frame(x + 3, y + Math.floor(h / 2) + 1, w - 6, Math.floor(h / 2) - 5, dk);
-  p.hl(x + 4, x + w - 4, y + 5, HOME.tan);
-  p.px(x + 4, y + Math.floor(h / 2) - 1, '#d8b448');
-  p.rect(x + 3, y + Math.floor(h / 2) - 1, 2, 2, '#d8b448');
-  if (ajar) {
-    p.rect(x + w - 3, y, 3, h, '#1a120c');
-    p.vl(x + w - 4, y, y + h - 1, shade(wood, 0.2));
-  }
-}
-
-function bulbLight(p: Pix, x: number, y: number, front: boolean, floorY = 132): void {
-  p.glow(x, y, 175, HOME.lampLight, 0.24, 5, 1, front);
-  p.glow(x, floorY, 150, HOME.lampLight, 0.15, 4, 0.42, front);
-  p.glow(x, y, 26, '#fff4d0', 0.35, 3, 1, front);
-}
-
-// -----------------------------------------------------------------------------
-// Casa: composição comum dos cômodos
-// Com o diálogo aberto a tela de casa sobe a cena 33 linhas e a caixa de texto
-// cobre da linha ~160 para baixo; o cabeçalho (retratos da família) cobre o
-// canto de cima à esquerda até a linha ~54. Por isso tudo o que importa fica
-// na faixa 40..156: a parede com o que conta a história do cômodo, o rodapé
-// em WALL_Y e as marcas de chão do elenco entre 118 e 150.
-// -----------------------------------------------------------------------------
-/** linha do rodapé: onde a parede encontra o piso */
-const WALL_Y = 100;
-/** marcas de chão (pés) do elenco: fundo (encostado na mobília), meio e frente */
-const FEET_BACK = 121;
-const FEET_FRONT = 149;
-
-/** piso em perspectiva de um ponto: rejuntes horizontais que se abrem e linhas que fogem para (vx, vy) */
-function perspFloor(p: Pix, y0: number, y1: number, base: string, joint: string, o: { vx?: number; vy?: number; step?: number; first?: number; grow?: number; alt?: string; speck?: string; seed?: number } = {}): void {
-  const vx = o.vx ?? 160;
-  const vy = o.vy ?? y0 - 70;
-  const step = o.step ?? 26;
-  p.rect(0, y0, 320, y1 - y0, base);
-  // fileiras (mais espaçadas perto da câmera)
-  const rows: number[] = [y0];
-  let s = o.first ?? 5;
-  for (let y = y0; y < y1; ) {
-    y += Math.max(2, Math.round(s));
-    rows.push(Math.min(y1, y));
-    s *= o.grow ?? 1.32;
-  }
-  // xadrez sutil (cerâmica) antes dos rejuntes
-  if (o.alt) {
-    for (let r = 0; r + 1 < rows.length; r++)
-      for (let y = rows[r]; y < rows[r + 1]; y++) {
-        const k = (y - vy) / (y0 - vy);
-        for (let x = 0; x < 320; x++) {
-          const col = Math.floor((vx + (x - vx) / k - (vx - step * 20)) / step);
-          if ((col + r) & 1) p.px(x, y, o.alt);
-        }
-      }
-  }
-  for (const y of rows) p.hl(0, 319, y, joint);
-  for (let k = -24; k <= 24; k++) {
-    const xb = vx + k * step;
-    const xAt = (y: number) => vx + ((xb - vx) * (y - vy)) / (y0 - vy);
-    p.line(xAt(y0), y0, xAt(y1), y1, joint);
-  }
-  if (o.speck) for (let y = y0; y < y1; y++) for (let x = 0; x < 320; x++) if (hash2(x, y, o.seed ?? 5) < 0.02) p.px(x, y, o.speck);
-}
-
-/** rodapé de madeira em WALL_Y */
-function skirting(p: Pix, y = WALL_Y): void {
-  p.rect(0, y - 4, 320, 4, HOME.wood);
-  p.hl(0, 319, y - 4, HOME.tan);
-  p.hl(0, 319, y - 1, HOME.bg2);
-}
-
-/** sombra de contato da mobília encostada na parede (faixa escura no piso) */
-function wallContact(p: Pix, x: number, w: number, y = WALL_Y): void {
-  p.recta(x - 1, y, w + 2, 1, '#120a06', 0.45);
-  p.recta(x, y + 1, w, 1, '#120a06', 0.25);
-}
-
-/**
- * Luz da lâmpada pendurada: um cone pontilhado descendo da lâmpada até a poça
- * de luz no chão (o foco da cena) e um halo amplo. Nas camadas da frente só
- * ilumina pixels opacos.
- */
-function bulbCone(p: Pix, x: number, y: number, poolY: number, poolRX: number, front: boolean): void {
-  p.glow(x, y, 190, HOME.lampLight, 0.2, 5, 1, front);
-  // cone: trapézio da lâmpada até a poça, mais fraco nas bordas
-  for (let yy = y + 3; yy < poolY; yy++) {
-    const t = (yy - y) / (poolY - y);
-    const hw = 3 + t * (poolRX - 3);
-    for (let xx = Math.floor(x - hw); xx <= Math.ceil(x + hw); xx++) {
-      if (front && !(p.get(xx, yy) >>> 24)) continue;
-      const edge = Math.abs(xx - x) / hw;
-      if (edge > 1) continue;
-      const a = 0.11 * (1 - edge * edge) * (1 - t * 0.35);
-      if (bayerOn(xx, yy, 0.75)) p.pxa(xx, yy, HOME.lampLight, a);
-    }
-  }
-  p.glow(x, poolY, poolRX + 26, HOME.lampLight, 0.2, 4, 0.36, front);
-  p.glow(x, y + 2, 20, '#fff4d0', 0.45, 3, 1, front);
-}
-
-/**
- * Escuridão em volta da fonte de luz: cada pixel escurece com a distância
- * elíptica até (cx, cy), em faixas pontilhadas (nada de degradê contínuo).
- * Deixa o foco da cena claro e os cantos no escuro.
- */
-function roomDark(p: Pix, cx: number, cy: number, rx: number, ry: number, col: string, strength: number, front: boolean, start = 0.42, bands = 3, floorY = -1, fry = ry * 0.6): void {
-  // faixas chapadas; o pontilhado fica só numa franja estreita entre uma faixa e a outra
-  const lo = 0.36;
-  const hi = 0.64;
-  for (let y = 0; y < SCENE_H; y++)
-    for (let x = 0; x < SCENE_W; x++) {
-      if (front && !(p.get(x, y) >>> 24)) continue;
-      const dx = (x - cx) / rx;
-      // no piso (abaixo de floorY) a poça de luz é uma elipse achatada pela perspectiva
-      const dy = floorY >= 0 && y >= floorY ? (y - floorY) / fry + (floorY - cy) / ry : (y - cy) / ry;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d <= start) continue;
-      const k = Math.min(1, (d - start) / (1.25 - start)) * bands;
-      const fl = Math.floor(k);
-      const f = k - fl;
-      const q = fl + (f >= hi ? 1 : f <= lo ? 0 : bayerOn(x, y, (f - lo) / (hi - lo)) ? 1 : 0);
-      if (q > 0) p.pxa(x, y, col, (Math.min(q, bands) / bands) * strength);
-    }
-}
-
-/** luminária pendente de esmalte (cúpula verde por fora, branca por dentro) com a lâmpada acesa embaixo */
-function pendantLamp(p: Pix, x: number, y: number, top = 0): void {
-  p.vl(x, top, y - 2, '#1e1610');
-  p.rect(x - 1, y - 2, 3, 2, '#2e2622');
-  p.poly(
-    [
-      [x - 2, y],
-      [x + 3, y],
-      [x + 7, y + 5],
-      [x - 6, y + 5],
-    ],
-    '#3f6a5a',
-  );
-  p.hl(x - 1, x + 1, y, '#5f8a7a');
-  p.line(x - 2, y + 1, x - 5, y + 4, '#5f8a7a');
-  p.hl(x - 6, x + 7, y + 5, '#e8e4d0');
-  p.rect(x - 2, y + 6, 5, 2, '#ffe8b0');
-  p.px(x - 1, y + 6, '#ffffff');
-}
-
-/** lâmpada nua pendurada no fio, com soquete de baquelite */
-function bareBulb(p: Pix, x: number, y: number): void {
-  p.vl(x, 0, y - 3, '#1e1610');
-  p.rect(x - 1, y - 3, 3, 3, '#2e2622');
-  p.px(x - 1, y - 3, '#4a403a');
-  p.rect(x - 2, y, 5, 4, '#ffe8b0');
-  p.rect(x - 1, y + 4, 3, 1, '#ffe8b0');
-  p.px(x - 1, y + 1, '#ffffff');
-  p.px(x, y + 1, '#fffbe8');
-  p.px(x + 2, y + 2, '#f2c46b');
-}
-
-/** janela noturna com caixilho de madeira (céu, estrelas, muro do vizinho); o miolo pode ser trocado */
-function nightPane(p: Pix, x: number, y: number, w: number, h: number, has: Has, o: { moon?: boolean; clothes?: boolean; seed?: number } = {}): void {
-  p.vgrad(x, y, w, h, ['#121a30', '#1c2844', '#2a3654'], 0.7);
-  for (let i = 0; i < Math.floor(w / 4); i++) p.px(x + 1 + Math.floor(hash2(i, x, o.seed ?? 3) * (w - 2)), y + 1 + Math.floor(hash2(i, y, (o.seed ?? 3) + 1) * (h * 0.5)), '#c8d4f0');
-  if (o.moon) {
-    p.disc(x + w - 7, y + 5, 3, '#eef0dc');
-    p.disc(x + w - 6, y + 4, 2, '#1c2844');
-  }
-  // muro e casa do vizinho com a janela acesa
-  p.rect(x, y + h - 6, w, 6, '#161e2a');
-  p.rect(x + 2, y + h - 11, 13, 5, '#1d2636');
-  p.rect(x + 5, y + h - 10, 3, 2, '#e8b860');
-  if (o.clothes) {
-    // varal da área de serviço
-    p.line(x, y + 5, x + w - 1, y + 4, '#6a7080');
-    if (has.has('roupa_varal')) interviewClothes(p, x + Math.floor(w / 2) - 15, y + 5);
-    else {
-      p.rect(x + 4, y + 6, 6, 5, '#c8b8a0');
-      p.rect(x + w - 11, y + 5, 5, 6, '#8a9ab8');
-    }
-  }
-}
-
-/** caixilho da janela (moldura, cruzeta, peitoril) por cima do miolo */
-function windowFrame(p: Pix, x: number, y: number, w: number, h: number, col: string = HOME.wood2): void {
-  p.frame(x - 2, y - 2, w + 4, h + 4, shade(col, -0.3));
-  p.frame(x - 1, y - 1, w + 2, h + 2, col);
-  p.vl(x + Math.floor(w / 2), y, y + h - 1, col);
-  p.hl(x, x + w - 1, y + Math.floor(h / 2), col);
-  p.line(x + 2, y + h - 3, x + 6, y + h - 7, '#46567a');
-  p.rect(x - 4, y + h + 1, w + 8, 2, shade(col, 0.18));
-  p.hl(x - 4, x + w + 3, y + h + 3, shade(col, -0.35));
-}
 
 // -----------------------------------------------------------------------------
 // COZINHA
@@ -529,8 +234,9 @@ function cozinhaBack(p: Pix, has: Has): void {
   laundryBasket(p, 38, 108, has.has('meia_mancha'));
 
   // geladeira antiga
-  const quebrada = has.has('geladeira_quebrada') && !has.has('geladeira_ok');
-  fridge(p, 52, 62, quebrada ? 'quebrada' : 'ok', has.has('desenhos') && !quebrada);
+  const quebrada = has.has('geladeira_quebrada') && !has.has('geladeira_ok') && !has.has('geladeira_nova');
+  if (has.has('geladeira_nova')) newFridge(p, 51, 60);
+  else fridge(p, 52, 62, quebrada ? 'quebrada' : 'ok', has.has('desenhos') && !quebrada);
   if (quebrada && has.has('desenhos')) {
     // com a porta aberta, os desenhos ficam presos na parede ao lado
     kidDrawing(p, 40, 84, 9, 9, 'ambulancia', 3);
@@ -664,7 +370,7 @@ function cozinhaBack(p: Pix, has: Has): void {
   p.px(223, 49, '#2a2a2a');
   for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) p.px(216 + c * 3, 56 + r * 3, '#8a948f');
   p.ring(222, 59, 2, '#d94436');
-  familyPhoto(p, 231, 54, 14, 11);
+  familyPhoto(p, 231, 54, 14, 11, genderOf(has));
   // aparador (mesa de costura quando há máquina)
   const ax = 212;
   p.rect(ax, 84, 34, 3, HOME.wood2);
@@ -718,47 +424,6 @@ function cozinhaBack(p: Pix, has: Has): void {
   bareBulb(p, 160, 58);
   // cadeiras de trás da mesa (encostos aparecem acima do tampo)
   for (const x of [139, 167]) chairBack(p, x, 99);
-}
-
-/** encosto de cadeira de madeira visto de frente (14 de largura), topo em y */
-function chairBack(p: Pix, x: number, y: number): void {
-  p.vl(x, y, y + 16, HOME.wood);
-  p.vl(x + 13, y, y + 16, HOME.wood);
-  p.rect(x, y, 14, 3, HOME.wood2);
-  p.hl(x, x + 13, y, HOME.tan);
-  p.hl(x + 1, x + 12, y + 6, HOME.wood2);
-  p.hl(x + 1, x + 12, y + 7, HOME.wood);
-}
-
-/**
- * Cadeira de madeira vista de frente, vazia (18 de largura), centrada em cx com
- * os pés em floorY: encosto com duas travessas, assento na altura do colo de
- * quem senta (o mesmo desenho da cadeira dos sprites sentados).
- */
-function frontChair(p: Pix, cx: number, floorY: number): void {
-  const x = cx - 9;
-  const top = floorY - 16;
-  const seat = floorY - 6;
-  floorShadow(p, cx, floorY + 1, 10, 1.6, 0.32);
-  // pernas de trás e montantes do encosto
-  p.vl(x + 1, top, floorY, HOME.wood);
-  p.vl(x + 16, top, floorY, HOME.wood);
-  p.px(x + 1, top, HOME.tan);
-  p.px(x + 16, top, HOME.tan);
-  // travessas do encosto
-  p.rect(x + 2, top + 1, 14, 3, HOME.wood2);
-  p.hl(x + 2, x + 15, top + 1, HOME.tan);
-  p.hl(x + 2, x + 15, top + 3, HOME.wood);
-  p.hl(x + 2, x + 15, top + 6, HOME.wood2);
-  p.hl(x + 2, x + 15, top + 7, HOME.wood);
-  // assento e pernas da frente
-  p.rect(x, seat, 18, 2, HOME.wood2);
-  p.hl(x, x + 17, seat, HOME.tan);
-  p.hl(x, x + 17, seat + 2, HOME.bg2);
-  p.vl(x + 2, seat + 2, floorY, HOME.wood);
-  p.vl(x + 15, seat + 2, floorY, HOME.wood);
-  p.px(x + 2, floorY, HOME.bg2);
-  p.px(x + 15, floorY, HOME.bg2);
 }
 
 /** cesto de roupa suja de vime (14×10), base em bottomY; com a meia manchada por cima */
@@ -871,8 +536,8 @@ function cozinhaSeats(p: Pix, has: Has, occ: Set<string>): void {
 }
 
 function cozinhaAnim(p: Pix, has: Has, t: number): void {
-  // vapor da panela
-  if (!has.has('mesa_vazia')) {
+  // vapor da panela (de madrugada o fogão está apagado)
+  if (!has.has('mesa_vazia') && hasFlag(has, 'tod') !== 'madrugada') {
     for (let i = 0; i < 3; i++) {
       const ph = ((t / 900 + i / 3) % 1 + 1) % 1;
       const yy = 71 - Math.floor(ph * 14);
@@ -1128,6 +793,8 @@ function salaSeats(p: Pix, has: Has, occ: Set<string>): void {
 }
 
 function salaAnim(p: Pix, has: Has, t: number): void {
+  // de madrugada e de dia a TV fica desligada
+  if (hasFlag(has, 'tod') && hasFlag(has, 'tod') !== 'noite') return;
   // TV: novela piscando
   const k = Math.floor(t / 260);
   const cols = ['#6a8ab8', '#8aa8c8', '#7a98b0', '#a8b8c8', '#5a7aa8'];
@@ -1182,10 +849,19 @@ function quartoBack(p: Pix, has: Has): void {
   p.ellipse(176, 132, 22, 4.4, '#7a9f6a');
 
   // desenhos de ambulância por cima da cama (sempre)
-  kidDrawing(p, 26, 56, 14, 12, 'ambulancia', 1);
-  kidDrawing(p, 44, 61, 12, 11, 'familia', 2);
-  kidDrawing(p, 60, 55, 14, 12, 'ambulancia', 3);
-  kidDrawing(p, 78, 62, 11, 10, 'sol', 4);
+  const lvl = liamLevel(has);
+  if (lvl === 0) {
+    kidDrawing(p, 26, 56, 14, 12, 'ambulancia', 1);
+    kidDrawing(p, 44, 61, 12, 11, 'familia', 2);
+    kidDrawing(p, 60, 55, 14, 12, 'ambulancia', 3);
+    kidDrawing(p, 78, 62, 11, 10, 'sol', 4);
+  } else {
+    // com as aulas, os desenhos novos tomam o lugar dos de giz (o último é sempre a ambulância)
+    liamDrawing(p, 26, 56, 14, 12, 'ambulancia', lvl, 1);
+    liamDrawing(p, 44, 61, 12, 11, 'familia', lvl, 2);
+    liamDrawing(p, 60, 55, 14, 12, lvl === 2 ? 'central' : 'onibus', lvl, 3);
+    liamDrawing(p, 78, 62, 11, 10, 'casa', lvl, 4);
+  }
 
   // cama: cabeceira, colchão visto de cima e de lado, pé da cama
   const { x0, x1, top, floor } = BED;
@@ -2446,7 +2122,7 @@ function mesaBack(p: Pix, has: Has): void {
   manualBinder(s, 132, 52, 22, 30);
   // foto da família — o único calor da mesa
   s.glow(125, 41, 12, '#ffe2a3', 0.22, 3);
-  familyPhoto(s, 118, 36, 14, 11);
+  familyPhoto(s, 118, 36, 14, 11, genderOf(has));
   // caneca de café
   s.rect(102, 50, 8, 8, '#e6efd9');
   s.hl(102, 109, 50, '#ffffff');
@@ -2490,7 +2166,6 @@ function mesaLight(p: Pix, front: boolean): void {
 // -----------------------------------------------------------------------------
 // Objetos por cenário
 // -----------------------------------------------------------------------------
-const o = (x: number, y: number, w: number, h: number, layer: Layer, draw?: ObjDef['draw'], anim?: ObjDef['anim']): ObjDef => ({ r: { x, y, w, h }, layer, draw, anim });
 
 const DRAW = {
   cracha: (p: Pix, r: Rect) => badge(p, r.x, r.y),
@@ -2558,7 +2233,7 @@ function leakStain(x: number, floorY: number, topY = 2) {
 const COZ_CAKE = { x: 149, y: 106, w: 22, h: 11 };
 const SALA_CAKE = { x: 149, y: 113, w: 22, h: 11 };
 
-const OBJECTS: Partial<Record<SceneBg, Record<string, ObjDef>>> = {
+const OBJECTS: Partial<Record<ArtSceneBg, Record<string, ObjDef>>> = {
   cozinha: {
     roupa_varal: o(98, 46, 30, 21, 'back'),
     prato_seco: o(131, 68, 9, 14, 'back'),
@@ -2689,28 +2364,54 @@ const OBJECTS: Partial<Record<SceneBg, Record<string, ObjDef>>> = {
   },
 };
 
+// objetos da casa explorável (casa.md): os dos cômodos novos e os de cada dia nos antigos
+OBJECTS.cozinha = { ...OBJECTS.cozinha, ...COZINHA_EXTRA };
+OBJECTS.sala = { ...OBJECTS.sala, ...SALA_EXTRA };
+OBJECTS.quarto = { ...OBJECTS.quarto, ...QUARTO_EXTRA };
+OBJECTS.porta = { ...OBJECTS.porta, ...PORTA_EXTRA };
+OBJECTS.quarto_casal = QUARTO_CASAL.objects;
+OBJECTS.quintal = QUINTAL.objects;
+OBJECTS.banheiro = BANHEIRO.objects;
+
+/** ids dos objetos novos da casa explorável (além de SCENE_OBJECTS), em todos os cômodos */
+export const HOUSE_OBJECTS: string[] = [
+  ...new Set([...Object.keys(COZINHA_EXTRA), ...Object.keys(SALA_EXTRA), ...Object.keys(QUARTO_EXTRA), ...Object.keys(PORTA_EXTRA), ...Object.keys(QUARTO_CASAL.objects), ...Object.keys(QUINTAL.objects), ...Object.keys(BANHEIRO.objects)]),
+].filter((id) => !(SCENE_OBJECTS as readonly string[]).includes(id));
+
 /** retângulo padrão de cada objeto (posição na cozinha, ou no primeiro cenário onde aparece) */
 export const OBJECT_RECTS: Record<string, Rect> = (() => {
   const out: Record<string, Rect> = {};
-  for (const bg of ['cozinha', 'sala', 'quarto', 'porta', 'calcada', 'mesa'] as SceneBg[]) {
+  for (const bg of ['cozinha', 'sala', 'quarto', 'porta', 'calcada', 'mesa', 'quarto_casal', 'quintal', 'banheiro'] as ArtSceneBg[]) {
     const objs = OBJECTS[bg];
     if (!objs) continue;
     for (const [id, d] of Object.entries(objs)) if (!out[id] && d.r.w > 0) out[id] = { ...d.r };
   }
   for (const id of SCENE_OBJECTS) if (!out[id]) out[id] = { x: 140, y: 100, w: 40, h: 30 };
+  for (const id of HOUSE_OBJECTS) if (!out[id]) out[id] = { x: 140, y: 100, w: 40, h: 30 };
   return out;
 })();
 
 /** retângulo clicável (modo inspeção) do objeto no cenário, em coordenadas 320×180 */
-export function objectRect(bg: SceneBg, id: string): Rect {
+export function objectRect(bg: ArtSceneBg, id: string): Rect {
   const d = OBJECTS[bg]?.[id];
   if (d && d.r.w > 0) return { ...d.r };
   return { ...(OBJECT_RECTS[id] ?? { x: 140, y: 100, w: 40, h: 30 }) };
 }
 
 /** objetos que o cenário sabe desenhar */
-export function objectsFor(bg: SceneBg): string[] {
+export function objectsFor(bg: ArtSceneBg): string[] {
   return Object.keys(OBJECTS[bg] ?? {});
+}
+
+/** saídas do cômodo para os outros (portas e beiras do piso), com o retângulo clicável */
+export function houseExits(bg: ArtSceneBg): HouseExit[] {
+  return (BGS[bg]?.exits ?? []).map((e) => ({ ...e, r: { ...e.r } }));
+}
+
+/** a saída sob o ponto (x, y) da cena 320×180, ou null */
+export function exitAt(bg: ArtSceneBg, x: number, y: number): HouseExit | null {
+  for (const e of houseExits(bg)) if (x >= e.r.x && x < e.r.x + e.r.w && y >= e.r.y && y < e.r.y + e.r.h) return e;
+  return null;
 }
 
 // -----------------------------------------------------------------------------
@@ -2718,7 +2419,17 @@ export function objectsFor(bg: SceneBg): string[] {
 // -----------------------------------------------------------------------------
 const noPlace = (): Placement | null => null;
 
-const BGS: Record<SceneBg, BgDef> = {
+// saídas dos cômodos antigos: a planta da casa (portão → sala → cozinha → quintal → corredor lateral → portão;
+// da sala, o corredor dos quartos e do banheiro)
+const SALA_EXITS: HouseExit[] = [
+  { to: 'porta', label: 'Portão', r: { x: 9, y: 52, w: 28, h: 48 }, arrow: 'U' },
+  { to: 'cozinha', label: 'Cozinha', r: { x: 0, y: 108, w: 16, h: 36 }, arrow: 'L' },
+  { to: 'quarto', label: 'Quarto do Liam', r: { x: 304, y: 102, w: 16, h: 15 }, arrow: 'R' },
+  { to: 'quarto_casal', label: 'Quarto do casal', r: { x: 304, y: 118, w: 16, h: 15 }, arrow: 'R' },
+  { to: 'banheiro', label: 'Banheiro', r: { x: 304, y: 134, w: 16, h: 15 }, arrow: 'R' },
+];
+
+const BGS: Record<ArtSceneBg, BgDef> = {
   cozinha: {
     warm: true,
     back: cozinhaBack,
@@ -2736,6 +2447,11 @@ const BGS: Record<SceneBg, BgDef> = {
     ],
     ozzySleep: { x: 112, y: 108 },
     objects: OBJECTS.cozinha ?? {},
+    windows: [{ x: 98, y: 46, w: 30, h: 21 }],
+    exits: [
+      { to: 'quintal', label: 'Quintal', r: { x: 9, y: 54, w: 28, h: 46 }, arrow: 'U' },
+      { to: 'sala', label: 'Sala', r: { x: 304, y: 108, w: 16, h: 36 }, arrow: 'R' },
+    ],
   },
   sala: {
     warm: true,
@@ -2754,6 +2470,8 @@ const BGS: Record<SceneBg, BgDef> = {
     ],
     ozzySleep: { x: 192, y: 111 },
     objects: OBJECTS.sala ?? {},
+    windows: [{ x: 140, y: 40, w: 40, h: 26 }],
+    exits: SALA_EXITS,
   },
   quarto: {
     warm: true,
@@ -2768,6 +2486,8 @@ const BGS: Record<SceneBg, BgDef> = {
     ],
     ozzySleep: { x: 180, y: 134 },
     objects: OBJECTS.quarto ?? {},
+    windows: [{ x: 140, y: 46, w: 36, h: 26 }],
+    exits: [{ to: 'sala', label: 'Sala', r: { x: 0, y: 112, w: 16, h: 34 }, arrow: 'L' }],
   },
   porta: {
     warm: true,
@@ -2783,6 +2503,10 @@ const BGS: Record<SceneBg, BgDef> = {
       { x: 76, y: 135 },
     ],
     objects: OBJECTS.porta ?? {},
+    exits: [
+      { to: 'sala', label: 'Sala', r: { x: DOOR.x - 3, y: DOOR.top, w: DOOR.w + 6, h: PORCH_Y - DOOR.top }, arrow: 'U' },
+      { to: 'quintal', label: 'Quintal', r: { x: 0, y: 118, w: 16, h: 20 }, arrow: 'L' },
+    ],
   },
   calcada: {
     warm: true,
@@ -2821,6 +2545,9 @@ const BGS: Record<SceneBg, BgDef> = {
   igreja: { warm: true, back: igrejaBack, front: igrejaFront, light: igrejaLight, anim: igrejaAnim, place: igrejaPlace, objects: OBJECTS.igreja ?? {} },
   mesa: { warm: false, back: mesaBack, light: mesaLight, anim: mesaAnim, place: noPlace, objects: OBJECTS.mesa ?? {} },
   preto: { warm: false, back: (p) => p.clear('#050505'), place: noPlace, objects: {} },
+  quarto_casal: QUARTO_CASAL,
+  quintal: QUINTAL,
+  banheiro: BANHEIRO,
 };
 
 // -----------------------------------------------------------------------------
@@ -2835,32 +2562,53 @@ interface Layers {
 
 const layerCache = new Map<string, Layers>();
 
-function buildLayers(bg: SceneBg, q: number, objs: string[]): Layers {
+/** cômodos da casa (onde a hora do dia muda janela, lâmpada e luz) */
+const TOD_ROOMS = new Set<ArtSceneBg>(['cozinha', 'sala', 'quarto', 'porta', 'quarto_casal', 'quintal', 'banheiro']);
+
+function lightFor(def: BgDef, t: TimeOfDay): ((p: Pix, front: boolean) => void) | undefined {
+  if (t === 'dia') return def.lightDia ?? ((p, f) => dayRoomLight(p, f, def.windows ?? []));
+  if (t === 'madrugada') return def.lightMadrugada ?? ((p, f) => dawnRoomLight(p, f, def.windows ?? []));
+  return def.light;
+}
+
+function buildLayers(bg: ArtSceneBg, q: number, objs: string[], flags: string[], t: TimeOfDay): Layers {
   const def = BGS[bg] ?? BGS.preto;
-  const has: Has = new Set(objs);
+  const has: Has = new Set([...objs, ...flags]);
   const map = def.warm && q > 0 ? homeGrader(q) : null;
+  setTod(t);
+  // de madrugada a luz (o luar) vai por cima do quadro inteiro, com o Ozzy e as cadeiras: ver renderSceneInto
+  const light = t === 'madrugada' ? undefined : lightFor(def, t);
   const back = new Pix(SCENE_W, SCENE_H).setMap(map);
   back.clear('#000000');
   def.back(back, has);
   for (const [id, d] of Object.entries(def.objects)) if (has.has(id) && d.layer === 'back' && d.draw) d.draw(back, d.r, has);
-  def.light?.(back, false);
+  light?.(back, false);
   const front = new Pix(SCENE_W, SCENE_H).setMap(map);
   def.front?.(front, has);
   for (const [id, d] of Object.entries(def.objects)) if (has.has(id) && d.layer === 'front' && d.draw) d.draw(front, d.r, has);
-  def.light?.(front, true);
+  light?.(front, true);
+  setTod('noite');
   return { back, front, map, q };
 }
 
-function layersFor(bg: SceneBg, blend: number, objects: string[]): Layers {
+/** marcas da cena (gênero, hora do dia, aulas de desenho…) que chegam aos desenhos pelo `has` */
+function sceneFlags(o: SceneOpts, bg: ArtSceneBg): { flags: string[]; tod: TimeOfDay } {
+  const t: TimeOfDay = TOD_ROOMS.has(bg) ? o.tod ?? 'noite' : 'noite';
+  const flags = [`@g:${o.gender === 'F' ? 'F' : 'M'}`, `@tod:${t}`, `@liam:${Math.max(0, Math.min(3, Math.floor(o.liamArt ?? 0)))}`];
+  if (o.fridgeDrawing) flags.push(`@geladeira:${o.fridgeDrawing}`);
+  return { flags, tod: t };
+}
+
+function layersFor(bg: ArtSceneBg, blend: number, objects: string[], flags: string[], t: TimeOfDay): Layers {
   const def = BGS[bg] ?? BGS.preto;
   const q = def.warm ? quantize(blend, 20) : 0;
   const objs = [...new Set(objects)].filter((id) => def.objects[id]).sort();
-  const key = `${bg}|${q}|${objs.join(',')}`;
+  const key = `${bg}|${q}|${t}|${flags.join(',')}|${objs.join(',')}`;
   let l = layerCache.get(key);
   if (!l) {
-    l = buildLayers(bg, q, objs);
+    l = buildLayers(bg, q, objs, flags, t);
     layerCache.set(key, l);
-    if (layerCache.size > 24) layerCache.delete(layerCache.keys().next().value as string);
+    if (layerCache.size > 48) layerCache.delete(layerCache.keys().next().value as string);
   }
   return l;
 }
@@ -2876,7 +2624,7 @@ const PHASE: Record<string, number> = { LUCIA: 0.1, ALEX: 0.1, DAVI: 0.55, ZELIA
  * Devolve o x de cada id (na ordem recebida); quem não tem marca neste cômodo
  * entra numa fila entre 70 e 250.
  */
-export function familyMarks(bg: SceneBg, ids: SceneCast['id'][]): number[] {
+export function familyMarks(bg: ArtSceneBg, ids: SceneCast['id'][]): number[] {
   const marks = BGS[bg]?.marks ?? {};
   let free = 0;
   return ids.map((id) => {
@@ -2914,10 +2662,11 @@ let workKey = '';
 
 /** desenha a cena no Pix de trabalho `work` (reutilizado a cada quadro) */
 function renderSceneInto(o: SceneOpts): Pix {
-  const bg: SceneBg = BGS[o.bg] ? o.bg : 'preto';
+  const bg: ArtSceneBg = BGS[o.bg] ? o.bg : 'preto';
   const def = BGS[bg];
-  const L = layersFor(bg, o.blend, o.objects ?? []);
-  const has: Has = new Set(o.objects ?? []);
+  const { flags, tod: tday } = sceneFlags(o, bg);
+  const L = layersFor(bg, o.blend, o.objects ?? [], flags, tday);
+  const has: Has = new Set([...(o.objects ?? []), ...flags]);
   const t = o.time;
   const mk = `${bg}|${L.q}`;
   if (mk !== workKey) {
@@ -2937,12 +2686,24 @@ function renderSceneInto(o: SceneOpts): Pix {
   if (o.ozzyPlay != null && playPath) {
     const f = ozzyPlayAt(o.ozzyPlay, playPath);
     const layer: Placement['layer'] = bg === 'cozinha' && (f.phase === 'deitando' || f.phase === 'dormindo') ? 'back' : 'top';
-    placed.push({ bottom: f.y, layer, draw: () => drawDog(work, f.x, f.y, f.pose, f.t, { map: L.map, mapKey: 'q' + L.q, flip: f.flip, zzz: true }) });
+    placed.push({ bottom: f.y, layer, draw: () => drawDog(work, f.x, f.y, f.pose, f.t, { map: L.map, mapKey: 'q' + L.q, flip: f.flip, zzz: true, hat: o.ozzyHat }) });
   } else if (pose && def.ozzy?.length) {
     // o primeiro lugar livre (sem ninguém do elenco em cima); dormindo, o cantinho dele
     const free = def.ozzy.find((s) => cast.every(({ c, pl }) => Math.abs(pl.x - s.x) > 17 || s.y < pl.bottom - castHeight(c) - 2 || s.y - 13 > pl.bottom + 1)) ?? def.ozzy[0];
     const at = pose === 'dormindo' && def.ozzySleep ? { ...def.ozzySleep, layer: 'back' as const, flip: false } : { x: free.x, y: free.y, layer: free.layer ?? 'back', flip: !!free.flip };
-    placed.push({ bottom: at.y, layer: at.layer, draw: () => drawDog(work, at.x, at.y, pose, t, { map: L.map, mapKey: 'q' + L.q, flip: at.flip }) });
+    placed.push({ bottom: at.y, layer: at.layer, draw: () => drawDog(work, at.x, at.y, pose, t, { map: L.map, mapKey: 'q' + L.q, flip: at.flip, hat: o.ozzyHat }) });
+  }
+  // o Pirata: dormindo, encostado no Ozzy (os dois no tapete); acordado, no próximo lugar livre
+  const pir = o.pirata;
+  if (pir && def.ozzy?.length) {
+    const sleepTogether = pir === 'dormindo' && def.ozzySleep && (pose === 'dormindo' || (o.ozzyPlay != null && ozzyPlayAt(o.ozzyPlay, playPath ?? []).done));
+    const spot = sleepTogether
+      ? { x: def.ozzySleep!.x - 15, y: def.ozzySleep!.y + 1, layer: 'back' as const, flip: true }
+      : (() => {
+          const s = def.ozzy![Math.min(1, def.ozzy!.length - 1)];
+          return { x: s.x, y: s.y, layer: s.layer ?? ('back' as const), flip: !s.flip };
+        })();
+    placed.push({ bottom: spot.y, layer: spot.layer, draw: () => drawDog(work, spot.x, spot.y, pir, t + 700, { map: L.map, mapKey: 'q' + L.q, flip: spot.flip, breed: 'pirata', zzz: pir === 'dormindo' }) });
   }
   placed.sort((a, b) => a.bottom - b.bottom);
   for (const m of placed) if (m.layer === 'back') m.draw();
@@ -2950,8 +2711,17 @@ function renderSceneInto(o: SceneOpts): Pix {
   for (const [id, d] of Object.entries(def.objects)) if (has.has(id) && d.layer === 'front' && d.anim) d.anim(work, d.r, t, has);
   def.seats?.(work, has, occupied);
   for (const m of placed) if (m.layer === 'top') m.draw();
+  // madrugada: o luar apaga a cor de tudo, inclusive de quem dorme no chão
+  if (tday === 'madrugada') lightFor(def, 'madrugada')?.(work, false);
   // ícones de status (sem gradação: informação precisa continuar legível)
   for (const ic of icons) work.blit(statusIconPix(ic.s), ic.x, ic.y);
+  // setas das saídas (interface: sem gradação)
+  if (o.exits && def.exits?.length) {
+    const m = work.map;
+    work.setMap(null);
+    for (const e of def.exits) drawExit(work, e, t, o.exits === e.to);
+    work.setMap(m);
+  }
   // fluorescente: com muito desgaste a luz de casa tremula
   if (def.warm && o.blend > 0.45) {
     const k = Math.floor(t / 125);
