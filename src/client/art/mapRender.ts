@@ -983,8 +983,8 @@ function drawLiveLandmarks(p: Pix, T: number, t: number): void {
 
 const work = new Map<string, Pix>();
 
-/** Renderiza o mapa num Pix (puro, sem DOM). */
-export function renderCityMap(o: CityMapOpts): Pix {
+/** desenha no Pix de trabalho (reutilizado a cada quadro, um por tamanho) */
+function renderMapInto(o: CityMapOpts): Pix {
   const T = Math.max(2, Math.floor(o.tile));
   const b = base(T, o.showLabels !== false, !!o.flood);
   const key = `${b.w}x${b.h}`;
@@ -1008,13 +1008,17 @@ export function renderCityMap(o: CityMapOpts): Pix {
   return p;
 }
 
+/** Renderiza o mapa num Pix NOVO (puro, sem DOM; pode ser guardado). */
+export function renderCityMap(o: CityMapOpts): Pix {
+  return renderMapInto(o).copy();
+}
+
 /**
  * Desenha o mapa no contexto 2D, em (0,0), em pixels nativos
  * (MAP_W·tile × MAP_H·tile). Amplie com CSS image-rendering: pixelated.
  */
 export function drawCityMap(ctx: CanvasRenderingContext2D, o: CityMapOpts): void {
-  const p = renderCityMap(o);
-  presentPix(ctx, p, 0, 0, 1, 'map');
+  presentPix(ctx, renderMapInto(o), 0, 0, 1, 'map');
 }
 
 /** cor de status de viatura (para chips da UI) */
