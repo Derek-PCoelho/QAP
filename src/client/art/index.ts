@@ -15,6 +15,8 @@ export * from './mapRender';
 export * from './figures';
 /** Ozzy, o lulu da família (corpo inteiro, poses animadas) */
 export * from './dog';
+/** adesivos do Ozzy para o quadro de cortiça */
+export * from './stickers';
 export * from './scenes';
 export * from './newsPhotos';
 export * from './endingArt';
