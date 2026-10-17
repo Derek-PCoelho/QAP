@@ -68,7 +68,8 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
   const semResposta = () => SEM_RESPOSTA.test(ownText(def, 'consciencia', c)) || SEM_RESPOSTA_DX.test(t.dx);
   switch (q) {
     case 'oque':
-      if (prank) return pick(['Já falei! Manda logo a ambulância!', 'Acidente, {m:moço|moça}, acidente feio! [risadinha]']);
+      // trote (1.1): sem risada no padrão — a risada ao fundo fica só nos poucos trotes óbvios, à mão
+      if (prank) return pick(['Já falei! Manda logo a ambulância!', 'Acidente, {m:moço|moça}, acidente feio! Manda com a sirene!']);
       return pick(['É isso que eu tô falando, {dr}...', 'Já expliquei, {dr}, é isso aí que eu falei.']);
     case 'idade':
       if (prank) return pick(['Ah... uns... trinta? Quarenta?', 'Sei lá, velho.']);
@@ -98,7 +99,7 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
       if (p.age && p.age > 60) return 'Pressão alta, eu acho. Toma remédio, mas não sei o nome.';
       return 'Que eu saiba, nada grave, {dr}. Mas não sei de tudo.';
     case 'paciente':
-      if (prank) return ['[sussurros e risadas]', 'Ele não pode falar, tá... morto! Quer dizer, desmaiado!'];
+      if (prank) return ['[cochichos; alguém tapa o telefone]', 'Não dá, não pode falar agora. Tá... desmaiado.'];
       if (self) return 'Sou eu mesmo, {dr}. Pode falar comigo.';
       if (grave) return `Não dá, {dr}, ${ele} não consegue falar agora.`;
       return `${Ele} tá aqui do lado, mas tá muito nervos${o} pra falar.`;
@@ -114,7 +115,7 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
       if (semResposta()) return `Não sei, ${dr}. ${Ele} não responde, não dá pra perguntar.`;
       return grave ? `${Ele} não sabe explicar direito, ${dr}.` : 'Não, dor no peito não.';
     case 'fast':
-      if (prank) return `${Ele} sorriu! Quer dizer... [risadas]`;
+      if (prank) return `${Ele} sorriu! Levantou os braços. Quer dizer... não levantou. Um só.`;
       // o padrão não pode mandar quem não responde (ou não respira) sorrir e levantar os braços
       if (OBSTRUCAO_TOTAL.test(t.dx)) return `Não dá, ${dr}! ${Ele} não consegue nem respirar, quanto mais falar!`;
       if (semResposta()) return `Não dá, ${dr}. ${Ele} não responde, não tem como pedir isso.`;
@@ -193,27 +194,27 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
       }
     }
     case 'gravada':
-      if (prank) return pick(['[silêncio de dois segundos]', '...Grava, ué. [risadinha nervosa]']);
+      if (prank) return pick(['[silêncio de dois segundos]', '...Grava, ué. [desliga]']);
       if (grave || t.sev === 'amarelo') return pick(['Grava o que quiser, mas manda alguém, pelo amor de Deus!', 'Pode gravar! Só manda a ambulância!']);
       return pick(['...Tá. Tá bom. Não precisa disso.', 'Ah, é? [pausa] Tá. Eu só tô explicando, {dr}.']);
     case 'nao_perfil':
-      if (prank) return ['Como não é perfil?! [risadas]', '[desliga]'];
+      if (prank) return ['Como não é perfil?! Ah, deixa pra lá.', '[desliga]'];
       if (grave) return pick([`Como não é perfil?! ${Ele} tá muito mal, ${dr}!`, `Não é perfil? Vocês tão loucos? ${Ele} vai morrer!`]);
       if (t.sev === 'amarelo') return `Mas ${ele} tá com muita dor, ${dr}... não dá pra mandar nada?`;
       return pick(['Mas eu não tenho carro, {dr}...', 'Então vocês servem pra quê? [bufa]', 'E a UPA vai me atender? Tá lotada.']);
     case 'meios_proprios':
-      if (prank) return ['Meios próprios? Hahaha!', '[desliga]'];
+      if (prank) return ['Meios próprios? ...Tá. Tá bom.', '[desliga]'];
       if (grave) return pick([`Por meios próprios?! Eu não consigo carregar ${ele}, ${dr}!`, `Como assim, levar? ${Ele} não tá nem acordando direito!`]);
       return pick(['Tá... eu vejo um Uber. Ou chamo o vizinho.', 'Tá bom, {dr}. A gente leva de carro.', 'Uma hora de fila na UPA... tá. Tá bom.']);
     case 'encerrar':
-      if (prank) return ['[risadas]', '[desliga]'];
+      if (prank) return ['[silêncio]', '[desliga]'];
       if (grave) return ['O quê?! Não desliga! Não—', '[a linha cai]'];
       return pick([['[resmunga alguma coisa]', '[desliga]'], ['Vocês não servem pra nada!', '[desliga]']]);
     case 'confronto_quadro':
-      if (prank) return ['[risadas]', '[desliga]'];
+      if (prank) return ['[um segundo de silêncio; alguém cochicha "sujou"]', '[desliga]'];
       return kid ? 'Não é trote! Juro, {m:moço|moça}!' : 'Que trote, {dr}?! É sério! Pelo amor de Deus!';
     case 'confronto_endereco':
-      if (prank) return ['É... é que... [risadas abafadas]', '[desliga]'];
+      if (prank) return ['É... é que... [cochicho]', '[desliga]'];
       return `Desculpa, desculpa, é o nervoso! É ${def.addr.rua}, ${def.addr.n}, ${def.addr.bairro}!`;
     default:
       return kid ? 'Não sei, {m:moço|moça}...' : 'Não sei dizer, {dr}.';

@@ -9,6 +9,7 @@ import type {
 } from './types';
 import type { Content } from './content-api';
 import { callBox, extraBox, noteBoxFor, simoneBox } from './categories';
+import { hasBleep } from './bleep';
 import { makeCtx, makeEffCtx, randOf, simoneAccuracy, VAR_LABEL, recordIncome } from './state';
 import { hm, fmtTime, clamp, Rng, hashString } from './util';
 import { normLines, txt, cluesIn, resolveTokens, stripMarkup, beneForm } from './text';
@@ -283,13 +284,26 @@ export class ShiftSim {
     if (this.day.almoco && this.st.mode === 'campanha') this.schedule(hm(this.day.almocoAt ?? '13:00'), 'notice', 'almoco');
   }
 
+  /** grupos de modelo (`TemplateDef.once`) já sorteados neste plantão: um folgado por plantão */
+  private onceUsed = new Set<string>();
+
   private pickVariant(def: CallDef, idx: number, force = false) {
     const tags = def.pool!.split(',').map((t) => t.trim());
-    const pool = this.c.bank.filter((t) => t.tags.some((x) => tags.includes(x)) && (t.minDay ?? 1) <= this.st.day);
+    const day = this.st.day;
+    const pool = this.c.bank.filter(
+      (t) =>
+        t.tags.some((x) => tags.includes(x)) &&
+        (t.minDay ?? 1) <= day &&
+        // 1.1: dias proibidos (campanha) e "um por plantão" (folgados)
+        !(this.st.mode === 'campanha' && t.notDays?.includes(day)) &&
+        !(t.once && this.onceUsed.has(t.once)),
+    );
     if (!pool.length) return null;
     const rng = new Rng(hashString(`${this.st.seed}:${this.st.day}:${def.id}:${idx}`));
     if (!force && rng.chance(0.35)) return null; // às vezes mantém a ligação de referência
-    const tpl = rng.pick(pool);
+    // com peso em algum modelo (folgados), sorteio ponderado; sem peso, o sorteio de sempre
+    const tpl = pool.some((t) => t.weight !== undefined) ? rng.weighted(pool, (t) => t.weight ?? 1) : rng.pick(pool);
+    if (tpl.once) this.onceUsed.add(tpl.once);
     const truths = tpl.truths.filter((t) => (t.minDay ?? 1) <= this.st.day);
     if (!truths.length) return null;
     const tr = rng.weighted(truths, (t) => t.weight ?? 1);
@@ -926,6 +940,9 @@ export class ShiftSim {
     const id = this.c.questions.find((q) => q.act === act)?.id ?? act;
     const t = this.truthOf(call);
     const urgent = t.sev === 'vermelho' || t.sev === 'amarelo';
+    // conflito (1.1, "encerro por motivo de conflitos"): quem liga xingou (#%!#@$ na fala) ou
+    // insistiu depois de duas negativas ("não é perfil" e "meios próprios" já ditos)
+    const conflictBefore = this.conflict(call);
     const a = def.q?.[id];
     this.pushLines(call, a !== undefined ? a : this.c.defaults(id, def, c), def);
     if (act === 'gravada') call.patience = clamp(call.patience + (urgent ? -10 : 10), 0, 100);
@@ -934,11 +951,32 @@ export class ShiftSim {
     this.advance(this.questionCost(cost));
     if (act === 'encerra' && !call.decision && this.active()?.id === call.id) {
       const meios = call.unlocked.includes('meios');
-      const ref: Referral = meios ? (t.ref?.find((r) => r !== 'CASA') ?? 'UPA') : 'CASA';
+      // com meios próprios: o encaminhamento da verdade (UPA/UBS; "casa" quando é só transporte); sem: ficar em casa
+      const ref: Referral = meios ? (t.ref?.find((r) => r !== 'CASA') ?? (t.ref?.includes('CASA') ? 'CASA' : 'UPA')) : 'CASA';
       const r = this.stamp({ color: t.sev === 'azul' ? 'azul' : 'verde', resource: 'ORI', support: [], referral: ref });
-      if (r.ok) this.sysLine(call, '☎ Você encerrou a ligação. Registrado como orientação' + (meios ? ' (meios próprios).' : '.'));
+      if (r.ok) {
+        this.sysLine(call, '☎ Você encerrou a ligação. Registrado como orientação' + (meios ? ' (meios próprios).' : '.'));
+        const e = this.eff();
+        if (t.sev !== 'trote' && !conflictBefore) {
+          // sem briga, "encerro por motivo de conflitos" é desligar na cara de quem pediu ajuda
+          e.add('humanidade', -1, 'desligou na cara sem ter havido conflito');
+        } else if (conflictBefore && this.hadBleep(call) && call.verdict && (call.verdict.kind === 'correto' || call.verdict.kind === 'defensavel')) {
+          // o xingamento criativo vira piada da central: alívio cômico
+          e.add('desgaste', -2, 'a central inteira riu do xingamento');
+        }
+      }
     }
     return true;
+  }
+
+  /** quem liga xingou nesta ligação (o palavrão censurado, #%!#@$, numa fala) */
+  hadBleep(call: CallRT): boolean {
+    return call.lines.some((l) => l.kind === 'caller' && hasBleep(l.text));
+  }
+
+  /** houve conflito: xingamento, ou o regulador já disse "não é perfil" e "meios próprios" */
+  conflict(call: CallRT): boolean {
+    return this.hadBleep(call) || (call.asked.includes('nao_perfil') && call.asked.includes('meios_proprios')) || call.unlocked.includes('conflito');
   }
 
   private defaultCallback(call: CallRT, def: CallDef): LineIn[] {

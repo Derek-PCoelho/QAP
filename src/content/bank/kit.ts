@@ -14,7 +14,7 @@
 // =============================================================================
 import type { TemplateDef, TemplateParams } from '../../engine/content-api';
 import type {
-  AddrIn, AmbientId, AnswerIn, CallDef, CallerType, DiaryDef, ExtraQ, Gender, GuideRef, LineIn, LinkDef,
+  AddrIn, AmbientId, AnswerIn, BoxId, CallDef, CallerType, DiaryDef, ExtraQ, Gender, GuideRef, LineIn, LinkDef,
   PatientIn, RadioTexts, TruthDef, VideoHint, VoiceId, WorsenDef,
 } from '../../engine/types';
 import { resolveAddress } from '../../engine/city/map';
@@ -326,7 +326,7 @@ export function prankCallback(p: P): { id: string; lines: LineIn[]; insight: str
   return p.pick([
     { id: 'retorno_inexistente', lines: ['[{{"O número chamado não existe ou está fora de serviço."|retorno_inexistente}}]'], insight: 'Ligar de volta: número inexistente. Chip descartável?' },
     { id: 'retorno_caixa', lines: ['[{{Chama, chama... cai na caixa postal. De novo. Caixa postal.|retorno_caixa}}]'], insight: 'Ligar de volta: ninguém atende, só caixa postal.' },
-    { id: 'retorno_desliga', lines: ['[{{Atendem. Risada. Desligam na sua cara.|retorno_desliga}}]'], insight: 'Ligar de volta: atenderam rindo e desligaram.' },
+    { id: 'retorno_desliga', lines: ['[{{Atendem. Um segundo de silêncio. Desligam na sua cara.|retorno_desliga}}]'], insight: 'Ligar de volta: atenderam calados e desligaram.' },
   ]);
 }
 
@@ -364,6 +364,10 @@ export interface Spec {
   noFollowup?: boolean;
   /** cena da videochamada (por cima da `cena` do modelo) */
   cena?: VideoHint;
+  /** caixa do chamado / cor do post-it da Simone (1.1); sem ela, `callBox` deduz pelo diagnóstico */
+  cat?: BoxId;
+  /** gancho ao encerrar (flags, conquistas) */
+  onResolve?: CallDef['onResolve'];
 }
 
 export interface TruthIn {
@@ -377,6 +381,12 @@ export interface TplIn {
   id: string;
   tags: string[];
   minDay?: number;
+  /** peso do modelo no sorteio (padrão 1) */
+  weight?: number;
+  /** dias da campanha em que nunca é sorteado */
+  notDays?: number[];
+  /** no máximo um modelo deste grupo por plantão */
+  once?: string;
   age?: [number, number];
   sex?: Gender | 'any';
   rel?: string[];
@@ -421,6 +431,8 @@ function assemble(t: TplIn, tr: TruthIn, tp: TemplateParams): Built {
   if (s.diary) out.diary = s.diary;
   if (s.patience !== undefined) out.patience = s.patience;
   if (s.noFollowup) out.noFollowup = true;
+  if (s.cat) out.cat = s.cat;
+  if (s.onResolve) out.onResolve = s.onResolve;
   const cena = { ...(typeof t.cena === 'function' ? t.cena(p) : t.cena), ...s.cena };
   if (Object.keys(cena).length) out.cena = cena;
   return out;
@@ -432,6 +444,9 @@ export function tpl(t: TplIn): TemplateDef {
     id: t.id,
     tags: t.tags,
     minDay: t.minDay,
+    ...(t.weight !== undefined ? { weight: t.weight } : {}),
+    ...(t.notDays ? { notDays: t.notDays } : {}),
+    ...(t.once ? { once: t.once } : {}),
     age: t.age,
     sex: t.sex,
     rel: t.rel,

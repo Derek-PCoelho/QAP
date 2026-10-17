@@ -19,7 +19,8 @@ export function infiniteDay(c: Content, st: GameState): DayDef {
   const gap = span / n;
   const pool = c.bank.filter((b) => (b.minDay ?? 1) <= 20);
   for (let i = 0; i < n && pool.length; i++) {
-    const tpl = rng.pick(pool);
+    // com peso em algum modelo (folgados, raros), sorteio ponderado
+    const tpl = pool.some((t) => t.weight !== undefined) ? rng.weighted(pool, (t) => t.weight ?? 1) : rng.pick(pool);
     const truths = tpl.truths.filter((x) => (x.minDay ?? 1) <= 20);
     const tr = rng.weighted(truths, (x) => x.weight ?? 1);
     const at = fmtTime(Math.round(t));

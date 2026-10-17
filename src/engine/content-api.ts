@@ -68,6 +68,12 @@ export interface TemplateDef {
   id: string;
   tags: string[];
   minDay?: number;
+  /** peso do modelo no sorteio da etiqueta (padrão 1; ex.: os folgados entram raros no "leve") */
+  weight?: number;
+  /** dias da campanha em que o modelo nunca é sorteado (ex.: folgados fora dos dias pesados) */
+  notDays?: number[];
+  /** no máximo um modelo deste grupo por plantão (ex.: 'folgado') */
+  once?: string;
   /** faixa etária do paciente e sexo preferido */
   age?: [number, number];
   sex?: Gender | 'any';
