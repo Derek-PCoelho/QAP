@@ -10,3 +10,4 @@ desktop/out-final/
 executaveis/
 dist/
 *.tsbuildinfo
+.claude/worktrees/
