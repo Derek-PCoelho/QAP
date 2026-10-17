@@ -80,7 +80,7 @@ export function HomeDialogue() {
           </div>
           {noticed && (
             <div className={'dlg-insight ' + (noticed.insight ? 'ok' : 'note')} role="status">
-              <b>{noticed.label}.</b> {noticed.desc}
+              {noticed.desc}
               {noticed.insight && <em> {noticed.insight}</em>}
             </div>
           )}

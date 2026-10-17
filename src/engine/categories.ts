@@ -25,7 +25,8 @@ export function callBox(def: CallDef, t?: TruthDef): BoxId {
 }
 
 const EXTRA_GO = /gravid|gestac|contrac|bolsa|bebe (mexe|esta mexendo)|mexe\b.*bebe|semanas|parto|menstru|pre-?natal|placenta|cordao|nasceu/;
-const EXTRA_TRAUMA = /queda|caiu|bateu|altura|capacete|fratur|osso|corte|sangr|ferid|arma|faca|tiro|atropel|cinto|\bcarro\b|\bmoto\b|pernas?\b.*mex|mexe as pernas|coluna|torniquete|apert|pano|pressao no|hemorrag|machuc|cabeca|pescoco|deformid|torto|queimad|mordeu|choque/;
+// só palavras fortes de trauma (pergunta de clínica com "cabeça" ou "sangue" fica na caixa do chamado)
+const EXTRA_TRAUMA = /queda|caiu|bateu a cabeca|altura|capacete|fratur|\bosso\b|arma\b|faca|tiro|atropel|cinto|mexe as pernas|coluna|torniquete|deformid|queimad|mordeu/;
 
 /**
  * Caixa de uma pergunta específica: `cat` do conteúdo; confronto e "acalmar" não vão para caixa

@@ -276,6 +276,7 @@ function Keypad({ call }: { call: CallRT }) {
         {shownBoxQ.map((q) => btn(q, ` inbox box-${q.b}`))}
         {!tarm && open.length === 0 && <p className="kp-tip">Abra uma caixa para mais perguntas.</p>}
       </div>
+      {fixed.length + loose.length + shownBoxQ.length > 10 && <span className="kp-more">▼ role: mais perguntas</span>}
       <div className="kp-actions">
         {tools.map((q) => (
           <button key={q.id} className={'px-btn tiny ghost tool' + (q.asked && q.group !== 'acalmar' ? ' asked' : '')} disabled={busy || (q.asked && q.group !== 'acalmar')} title={(q.hint ?? '') + ` (${q.cost} min)`} onClick={() => ask(q.id)}>
