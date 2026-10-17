@@ -143,7 +143,13 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
       if (def.type === 'testemunha') return `Não vi ${ele} engolir nada, ${dr}.`;
       return 'Engolir? Não, não engoliu nada.';
     case 'pulso': {
-      if (prank) return pick(['Pulso? Tem! Tem muito! [risadinha]', 'Tá batendo, tá batendo... acho. [risadas abafadas]']);
+      // trote (1.1: menos risada): a resposta se enrola e se contradiz; teste da coordenação fala bonito;
+      // linha acidental (criança, bolso) não responde
+      if (prank) {
+        if (t.prankKind === 'acidental') return '[silêncio; um barulho de plástico]';
+        if (t.prankKind === 'teste') return 'Taquicárdico. Uns cento e dez, eu diria.';
+        return pick(['Tem... não. Tem! Tá batendo forte. Quer dizer, fraquinho.', 'Pulso? Ah... deve ter, né. Manda logo.']);
+      }
       if (def.type === 'testemunha' && !grave) return `Não sei medir, ${dr}... mas tá batendo, sim.`;
       const contou = [openText(def, c), ownText(def, 'respira', c), ownText(def, 'consciencia', c), ownText(def, 'oque', c)].join(' ');
       if (SEM_PULSO_DX.test(t.dx) || (semResposta() && NAO_RESPIRA.test(contou))) return pick([`Não tô achando, ${dr}! Não tô sentindo nada no pescoço!`, `Eu ponho o dedo e... não sinto nada, ${dr}. Nada.`]);
@@ -153,16 +159,31 @@ export function defaultAnswer(q: string, def: CallDef, c: Ctx): string | string[
       return pick(['Tem, sim. Batendo normal, eu acho.', `Tá batendo, ${dr}. Normal.`]);
     }
     case 'pele': {
-      if (prank) return pick(['Cor de gente, ué! [risadas]', 'Tá... verde! Não, normal. [risadinha]']);
-      const skin = skinOf(def, t);
+      if (prank) {
+        if (t.prankKind === 'acidental') return '[silêncio]';
+        if (t.prankKind === 'teste') return 'Pálido. Sudoreico. O quadro completo, como se diz.';
+        return pick(['Normal... quer dizer, branco! Tá branco. Bem branco.', 'Cor? Sei lá, cor de gente. Manda a ambulância.']);
+      }
+      // o que a ligação já contou manda (cinza, boca roxa, suando): o padrão não contradiz
+      const contou = [openText(def, c), ...Object.keys(def.q ?? {}).map((k) => ownText(def, k, c))].join(' ');
+      const suando = /suando|suor|molhad|encharcad/i.test(contou);
       const ped = p.age != null && p.age < 12;
+      let skin = skinOf(def, t);
+      // "tá cinza" da pessoa, não do céu ("Hoje tá cinza") nem do prédio
+      if (/(?<!hoje |c[ée]u )(t[áa]|est[áa]|fic(ou|ando)|virou) (todo |toda |meio )?cinza|acinzentad/i.test(contou)) skin = 'cinza';
+      else if (
+        /(boca|l[áa]bio|beiço|unha|ponta dos dedos)s?[^.!?]{0,25}\brox|(fic(ou|ando)|t[áa]|est[áa]|virou) (todo |toda |meio )?rox/i.test(contou) &&
+        !/(pintinh|mancha|olho|hematoma|punho|bra[çc]o|perna|joelho|pé)[^.!?]{0,15}\brox/i.test(contou)
+      )
+        skin = 'cianose';
       switch (skin) {
         case 'cinza':
-          return `Tá cinza, ${dr}. Uma cor feia, de cera.`;
+          return `Tá cinza, ${dr}. Uma cor feia, de cera.` + (suando ? ' E molhad' + o + ' de suor.' : '');
         case 'cianose':
+          if (/anafila|alerg/i.test(t.dx)) return `A boca tá roxa, ${dr}! E o corpo cheio de vergão vermelho!`;
           return ped ? `A boquinha tá roxa, ${dr}! As unhas também!` : `A boca tá roxa, ${dr}. E as pontas dos dedos.`;
         case 'palido':
-          return grave ? `Branc${o} que nem papel, ${dr}. E suando frio.` : `Tá meio pálid${o}, ${dr}.`;
+          return grave ? `Branc${o} que nem papel, ${dr}.` + (suando ? ' E suando frio.' : '') : `Tá meio pálid${o}, ${dr}.`;
         case 'vermelho':
           return /anafila|alerg|urtic/i.test(t.dx) ? `Tá vermelh${o}, ${dr}. Cheio de vergão, empolad${o}.` : `Tá vermelh${o}, ${dr}. Quente.`;
         case 'amarelado':
