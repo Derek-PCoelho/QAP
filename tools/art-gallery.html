@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QAP — galeria de arte</title>
+    <style>
+      :root {
+        --bg0: #0d1311;
+        --bg1: #16201c;
+        --panel: #26352f;
+        --line: #3d5248;
+        --soft: #8fa89a;
+        --pale: #c4d4c0;
+        --light: #e6efd9;
+        --amber: #e8a33d;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg0);
+        color: var(--pale);
+        font-family: 'VT323', monospace;
+        font-size: 20px;
+      }
+      header {
+        padding: 18px 24px 8px;
+      }
+      h1 {
+        font-family: 'Jacquard 24', 'VT323', monospace;
+        font-weight: 400;
+        font-size: 48px;
+        margin: 0;
+        color: var(--light);
+        letter-spacing: 1px;
+      }
+      h2 {
+        font-family: 'Pixelify Sans', 'VT323', monospace;
+        font-weight: 500;
+        font-size: 22px;
+        color: var(--amber);
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+      section {
+        margin: 12px 24px 28px;
+        padding: 14px 16px 18px;
+        background: var(--bg1);
+        border: 2px solid var(--line);
+        width: max-content;
+        max-width: none;
+      }
+      .px {
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+      .grid {
+        display: grid;
+        gap: 8px;
+        align-items: start;
+      }
+      .cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        font-size: 16px;
+        color: var(--soft);
+      }
+      .rowlabel {
+        font-size: 18px;
+        color: var(--light);
+        align-self: center;
+        width: 170px;
+        line-height: 1;
+      }
+      .rowlabel small {
+        display: block;
+        color: var(--soft);
+        font-size: 15px;
+      }
+      canvas {
+        display: block;
+      }
+      .flex {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .cap {
+        font-size: 16px;
+        color: var(--soft);
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>QAP — galeria de arte</h1>
+      <div class="cap">Pixel art gerada em código · 320×180 ×4 · src/client/art</div>
+    </header>
+    <main id="app"></main>
+    <script type="module" src="/src/client/art/gallery.ts"></script>
+    <script type="module" src="/src/client/art/videoGallery.ts"></script>
+  </body>
+</html>

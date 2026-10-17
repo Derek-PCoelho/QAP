@@ -1,0 +1,47 @@
+{
+  "name": "qap-emergency-dispatch",
+  "version": "1.0.4",
+  "private": true,
+  "description": "QAP — Emergency Dispatch: simulador de regulação médica de urgência em pixel art.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:client": "vite",
+    "dev:server": "node --watch dist/server/server.mjs",
+    "build": "npm run build:client && npm run build:standalone && npm run build:server && npm run build:artifact",
+    "build:client": "vite build",
+    "build:standalone": "vite build --config vite.standalone.config.ts && node scripts/copy-standalone.mjs",
+    "build:server": "esbuild server/server.ts --bundle --platform=node --format=esm --target=node18 --outfile=dist/server/server.mjs --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\"",
+    "start": "node dist/server/server.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "validate": "vitest run tests/content.test.ts",
+    "simulate": "vite-node scripts/simulate.ts",
+    "build:artifact": "node scripts/artifact-page.mjs",
+    "build:desktop": "npm run build:standalone && node desktop/build.mjs",
+    "medical": "vite-node scripts/medical-review.ts"
+  },
+  "dependencies": {
+    "@fontsource/jacquard-24": "5.3.0",
+    "@fontsource/pixelify-sans": "5.3.0",
+    "@fontsource/vt323": "5.3.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@electron/fuses": "2.1.3",
+    "@electron/packager": "20.3.0",
+    "@types/node": "22.20.5",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "esbuild": "0.25.12",
+    "typescript": "5.9.3",
+    "vite": "6.4.4",
+    "vite-plugin-singlefile": "2.3.3",
+    "vitest": "4.1.12"
+  }
+}

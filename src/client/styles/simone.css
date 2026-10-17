@@ -1,0 +1,230 @@
+/* =============================================================================
+   Campanha 2: "Simone" (mesa da TARM, mesas de regulação, noite)
+   ============================================================================= */
+.tarm-desk .col-right.tarm-right {
+  gap: 8px;
+}
+.triage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background-color: var(--c-paper);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 21px, rgba(90, 120, 170, 0.18) 21px 22px);
+  box-shadow:
+    0 0 0 2px #0a0f0d,
+    3px 4px 0 2px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.triage .f-title .tma {
+  font-family: var(--f-screen);
+  font-size: 17px;
+  font-weight: normal;
+  color: #2d5a2a;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.triage .f-title .tma.bad {
+  color: #a22a1f;
+}
+.tri-colors .opt {
+  flex: 1 1 70px;
+  padding: 5px 6px;
+  font-size: 13px;
+}
+.prio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin: 2px 0;
+}
+.prio input {
+  accent-color: #a22a1f;
+  width: 16px;
+  height: 16px;
+}
+.prio .postit {
+  margin: 0;
+  font-size: 12px;
+  max-height: none;
+  padding: 3px 8px;
+  opacity: 0.55;
+}
+.prio.on .postit {
+  opacity: 1;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+}
+.prio small {
+  color: #6b634f;
+  font-size: 11px;
+}
+.reg-pass-row {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+.reg-pass {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px 9px;
+  font-size: 13px;
+}
+.reg-pass small {
+  font-family: var(--f-screen);
+  font-size: 15px;
+  opacity: 0.85;
+}
+.tri-foot {
+  margin: 0;
+  font-size: 10px;
+  color: #6b634f;
+}
+.postit-fly {
+  position: absolute;
+  right: 18px;
+  top: 64px;
+  background: var(--c-postit);
+  color: #3b3416;
+  padding: 6px 10px;
+  font-family: var(--f-screen);
+  font-size: 18px;
+  transform: rotate(4deg);
+  animation: postit-fly 900ms steps(6) forwards;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+@keyframes postit-fly {
+  0% {
+    transform: translate(0, 0) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(60px, 260px) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+/* mesas de regulação */
+.reg-desks {
+  flex: 0 0 268px; /* 2 retratos de 64 px + registro */
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.reg-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 4px;
+  background: var(--c-bg2);
+  box-shadow: inset 3px 0 0 var(--c-green);
+}
+.reg-row.busy {
+  box-shadow: inset 3px 0 0 var(--c-amber);
+}
+.reg-row.away {
+  opacity: 0.5;
+  box-shadow: inset 3px 0 0 #555;
+}
+.reg-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+.reg-info b {
+  font-size: 13px;
+}
+.reg-info span {
+  font-size: 12px;
+  color: var(--c-pale);
+}
+.reg-info small {
+  font-size: 10.5px;
+  color: var(--c-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reg-log {
+  flex: 1;
+  min-height: 0;
+  padding: 4px 6px;
+  font-size: 15px;
+  line-height: 1.1;
+}
+.reg-log p {
+  margin: 0 0 2px;
+}
+.reg-log .t {
+  color: var(--c-phosphor-dim);
+}
+.reg-log .out {
+  color: var(--c-red);
+}
+
+/* barra superior */
+.tarm-top .tb-samu {
+  color: var(--c-postit);
+}
+.tb-pressure {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--c-soft);
+}
+.tb-pressure .pbar {
+  display: flex;
+  gap: 2px;
+}
+.tb-pressure .pbar i {
+  width: 7px;
+  height: 14px;
+  background: var(--c-bg2);
+  box-shadow: inset 0 0 0 1px var(--c-line);
+}
+.tb-pressure .pbar i.on {
+  background: var(--c-amber);
+}
+.tb-pressure .pbar i.on.mid {
+  background: #e07a3d;
+}
+.tb-pressure .pbar i.on.hi {
+  background: var(--c-red);
+}
+.tb-pressure .money {
+  font-family: var(--f-screen);
+  font-size: 20px;
+  color: var(--c-postit);
+}
+
+/* tela de início */
+.simone-new .pick-card.static {
+  cursor: default;
+}
+.simone-new .pick-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+  justify-content: center;
+}
+.simone-new .pick-col .px-btn.on {
+  box-shadow: inset 0 0 0 2px var(--c-postit);
+  color: var(--c-postit);
+}
+.px-btn.locked {
+  opacity: 0.55;
+}
+.simone-night .fam-m {
+  box-shadow: inset 3px 0 0 var(--c-postit);
+}

@@ -1,0 +1,12 @@
+node_modules/
+data/
+*.log
+.DS_Store
+desktop/.stage/
+desktop/out/
+desktop/release/
+desktop/release-final/
+desktop/out-final/
+executaveis/
+dist/
+*.tsbuildinfo

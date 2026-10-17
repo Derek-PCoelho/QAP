@@ -1,0 +1,519 @@
+/* =============================================================================
+   Casa — cena 320×180 ×4, diálogo, folga, contas, loja
+   ============================================================================= */
+.home {
+  position: absolute;
+  inset: 0;
+  background: var(--h-bg0);
+  color: #f6e7cf;
+}
+.home-art {
+  position: absolute;
+  inset: 0;
+  transition: transform 420ms steps(6);
+}
+/* com o diálogo aberto, a cena sobe para a família não ficar atrás da caixa de texto */
+.home.dlg-open .home-art {
+  transform: translateY(-132px);
+}
+.home-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  background: linear-gradient(to bottom, rgba(20, 13, 8, 0.85), rgba(20, 13, 8, 0));
+  z-index: 5;
+}
+.fam {
+  display: flex;
+  gap: 10px;
+}
+.fam-m {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: rgba(36, 23, 14, 0.8);
+  padding: 4px 8px 4px 4px;
+  box-shadow: inset 3px 0 0 var(--h-lamp);
+}
+.fam-m b {
+  display: block;
+  font-size: 13px;
+}
+.fam-m span {
+  font-size: 11.5px;
+  color: #e5cfa8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.fam-m.s-fome,
+.fam-m.s-frio,
+.fam-m.s-triste {
+  box-shadow: inset 3px 0 0 var(--c-amber);
+}
+.fam-m.s-doente,
+.fam-m.s-critico,
+.fam-m.s-internado {
+  box-shadow: inset 3px 0 0 var(--c-red);
+}
+.fam-m.s-ausente,
+.fam-m.s-morto {
+  opacity: 0.55;
+  box-shadow: inset 3px 0 0 #555;
+}
+.home-money {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+.home-money span {
+  font-size: 11px;
+  color: #d9be92;
+}
+.home-money b {
+  font-family: var(--f-screen);
+  font-size: 30px;
+  color: var(--h-lamplight);
+}
+.home-money b.neg,
+.ledger .neg {
+  color: #ff8a7a;
+}
+.home-money small {
+  color: #ffb39d;
+  font-size: 11px;
+}
+.home-day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+  color: #e5cfa8;
+}
+.home-day small {
+  color: #ffb39d;
+}
+
+/* ---------------------------------------------------------------- diálogo */
+.dialogue {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 14px;
+  height: 200px;
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  background: rgba(30, 19, 11, 0.94);
+  box-shadow:
+    inset 0 0 0 2px #6b4423,
+    4px 5px 0 rgba(0, 0, 0, 0.5);
+  z-index: 6;
+}
+.dlg-portrait {
+  flex: 0 0 128px;
+  align-self: center;
+}
+.dlg-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dlg-lines {
+  flex: 1;
+  min-height: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.dlg-lines p {
+  margin: 0 0 6px;
+}
+.dlg-lines p.narr {
+  color: #d9be92;
+  font-style: italic;
+}
+.dlg-lines b {
+  color: var(--h-lamp);
+  font-weight: 600;
+}
+.dlg-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 6px;
+}
+.dlg-actions .insp {
+  margin-left: auto;
+  --fg: #e5cfa8;
+  box-shadow: inset 0 0 0 2px #6b4423;
+}
+.dlg-actions .insp.on {
+  --b: #6b221c;
+  --fg: #ffe1dc;
+}
+.px-btn.aff {
+  box-shadow:
+    inset -2px -3px 0 rgba(0, 0, 0, 0.35),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 2px #0a0f0d,
+    0 0 0 3px rgba(242, 196, 107, 0.35);
+}
+.dlg-insight {
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.dlg-insight.ok {
+  background: #efe6cf;
+  color: #3a1410;
+  box-shadow: inset 4px 0 0 var(--c-red);
+}
+.dlg-insight.bad {
+  background: rgba(0, 0, 0, 0.3);
+  color: #c8b08a;
+}
+.home .clue.live {
+  background: rgba(242, 196, 107, 0.25);
+  box-shadow: 0 0 0 1px rgba(242, 196, 107, 0.7);
+  cursor: pointer;
+}
+.home .clue.sel {
+  background: rgba(224, 72, 61, 0.55) !important;
+}
+.home.inspecting::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 4px rgba(224, 72, 61, 0.5);
+  background: rgba(60, 0, 0, 0.12);
+  z-index: 4;
+}
+.hotspot {
+  position: absolute;
+  z-index: 5;
+  border: 0;
+  background: rgba(242, 196, 107, 0.12);
+  box-shadow: 0 0 0 2px rgba(242, 196, 107, 0.8);
+  cursor: pointer;
+  animation: clue-pulse 1.4s steps(2) infinite;
+}
+.hotspot span {
+  position: absolute;
+  left: 0;
+  top: -18px;
+  white-space: nowrap;
+  font-size: 11px;
+  background: rgba(20, 13, 8, 0.9);
+  color: var(--h-lamplight);
+  padding: 1px 5px;
+}
+.hotspot.sel {
+  box-shadow: 0 0 0 3px var(--c-red);
+  background: rgba(224, 72, 61, 0.25);
+  animation: none;
+}
+
+/* ---------------------------------------------------------------- folga */
+.timeoff {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  width: 1000px;
+  background: rgba(30, 19, 11, 0.94);
+  padding: 18px 22px;
+  box-shadow:
+    inset 0 0 0 2px #6b4423,
+    4px 5px 0 rgba(0, 0, 0, 0.5);
+  z-index: 6;
+}
+.teaser {
+  margin: 0 0 8px;
+  color: var(--h-lamplight);
+  font-size: 17px;
+  font-style: italic;
+}
+.timeoff h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: #e5cfa8;
+  font-weight: 600;
+}
+.to-cards {
+  display: flex;
+  gap: 12px;
+}
+.to-card {
+  flex: 1;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  padding: 12px 14px;
+  background: #4a3020;
+  color: #f6e7cf;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow:
+    inset -2px -3px 0 rgba(0, 0, 0, 0.35),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 2px #140d08;
+}
+.to-card:hover:not(:disabled) {
+  background: #5a3a26;
+}
+.to-card.warm {
+  background: #6b4423;
+}
+.to-card.warm:hover {
+  background: #80542d;
+}
+.to-card.cold {
+  background: #2f4139;
+}
+.to-card.cold:hover:not(:disabled) {
+  background: #3d5248;
+}
+.to-card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.to-card b {
+  font-size: 17px;
+}
+.to-card span {
+  font-size: 13px;
+  color: #e5cfa8;
+  line-height: 1.35;
+}
+.to-card small {
+  font-family: var(--f-screen);
+  font-size: 18px;
+  color: var(--h-lamp);
+}
+
+/* ---------------------------------------------------------------- contas e loja */
+.ledger,
+.shop {
+  position: absolute;
+  right: 40px;
+  top: 76px;
+  width: 520px;
+  max-height: 610px;
+  padding: 16px 20px;
+  background: #efe6cf;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 25px, rgba(90, 120, 170, 0.2) 25px 26px);
+  color: var(--c-ink);
+  box-shadow: 5px 6px 0 rgba(0, 0, 0, 0.5);
+  transform: rotate(0.6deg);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+}
+.ledger h2,
+.shop h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+.led-sub {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #4a4436;
+}
+.led-list,
+.shop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.led-list li {
+  padding: 4px 0;
+  border-bottom: 1px dashed #c9bb93;
+}
+.led-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 15px;
+}
+.led-list input {
+  accent-color: #1d2f6b;
+  width: 16px;
+  height: 16px;
+}
+.led-list .lbl {
+  flex: 1;
+}
+.led-list .amt {
+  font-family: var(--f-screen);
+  font-size: 20px;
+  color: #1d2f6b;
+}
+.led-list small {
+  display: block;
+  margin-left: 24px;
+  font-size: 11.5px;
+  color: #6b634f;
+}
+.led-list li.k-evento .lbl {
+  font-weight: 600;
+}
+.led-list li.k-divida .lbl {
+  color: #a22a1f;
+  font-weight: 600;
+}
+.led-list li.auto {
+  opacity: 0.75;
+}
+.led-err {
+  color: #a22a1f;
+  font-size: 13px;
+}
+/* calculadora das contas: saldo, contas marcadas e o que fica, atualizados a cada clique */
+.led-calc {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin: 2px 0 8px;
+}
+.led-calc > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 6px;
+  border: 2px solid #c9bb93;
+  background: #fbf5e1;
+}
+.led-calc span {
+  font-size: 11.5px;
+  color: #6b634f;
+}
+.led-calc b {
+  font-family: var(--f-screen);
+  font-size: 24px;
+  color: #1d2f6b;
+  line-height: 1.05;
+}
+.led-calc .minus b {
+  color: #7a3b1d;
+}
+.led-calc .res {
+  border-color: #1d2f6b;
+}
+.led-calc .res.neg {
+  border-color: #a22a1f;
+}
+.led-calc .res.neg b {
+  color: #a22a1f;
+}
+.led-calc .pop {
+  animation: led-pop 0.28s ease-out;
+}
+@keyframes led-pop {
+  from {
+    transform: scale(1.25);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.led-list li.off .lbl,
+.led-list li.off .amt {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.led-list .lbl em {
+  font-style: normal;
+  font-size: 11px;
+  color: #6b634f;
+}
+.led-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #6b634f;
+}
+.led-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.shop-list li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed #c9bb93;
+}
+.shop-list li > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.shop-list small {
+  font-size: 12px;
+  color: #5d5444;
+}
+.home-toasts {
+  position: absolute;
+  left: 40px;
+  top: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 7;
+  max-width: 420px;
+  pointer-events: none;
+}
+
+/* botões fantasma sobre papel: tinta escura */
+.paper .px-btn.ghost {
+  --fg: var(--c-ink);
+  --bh: rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 0 0 2px #8c836f;
+}
+
+/* aviso de desgaste alto no plantão extra */
+.to-card small.to-warn {
+  margin-top: 6px;
+  color: var(--c-red);
+}
+
+/* Ozzy, o lulu laranja (antes de dormir) */
+.ozzy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(232, 140, 50, 0.16);
+  box-shadow: inset 3px 0 0 #e08a32;
+}
+.ozzy-row b {
+  display: block;
+  font-size: 14px;
+}
+.ozzy-row small {
+  font-size: 12px;
+  color: #5d5444;
+}
+.ozzy-msg {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-style: italic;
+  color: #6b3d12;
+}

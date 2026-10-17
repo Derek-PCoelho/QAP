@@ -1,0 +1,23 @@
+QAP — Emergency Dispatch
+{{TIPO}} {{VERSAO}} ({{DATA}}) · {{PLATAFORMA}}
+
+{{COMO_ABRIR}}
+
+TELA CHEIA
+O jogo abre em tela cheia. F11 ou Alt+Enter alterna entre tela cheia e janela{{MAC_TECLA}}.
+A mesma opção está em Opções, no menu principal.
+
+SAVES
+Saves, opções e conquistas ficam em arquivos nesta pasta:
+  Windows:  %APPDATA%\QAP - Emergency Dispatch\saves
+  Mac:      ~/Library/Application Support/QAP - Emergency Dispatch/saves
+  Linux:    ~/.config/QAP - Emergency Dispatch/saves
+Em Opções há um botão que abre essa pasta. Copiar a pasta para outro computador leva o progresso junto.
+
+COMO JOGAR
+No menu principal, "Como jogar" explica o plantão passo a passo, as siglas e os controles.
+A história principal está em "Nova campanha" (20 plantões).{{SIMONE}}
+
+ACHOU UM PROBLEMA?
+Anote o dia, o que você estava fazendo e o que aconteceu; se der, tire uma foto da tela.
+Mande junto o arquivo erros.log, que fica na pasta dos saves (Opções → Abrir pasta).

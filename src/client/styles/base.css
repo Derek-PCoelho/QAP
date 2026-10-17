@@ -1,0 +1,287 @@
+/* =============================================================================
+   QAP — Emergency Dispatch — base visual (pixel art 2D, paleta fria da central / quente de casa)
+   ============================================================================= */
+:root {
+  /* central (fluorescente) */
+  --c-bg0: #0d1311;
+  --c-bg1: #16201c;
+  --c-bg2: #1f2c27;
+  --c-panel: #26352f;
+  --c-panel2: #2f4139;
+  --c-line: #3d5248;
+  --c-mid: #5f7a6c;
+  --c-soft: #8fa89a;
+  --c-pale: #c4d4c0;
+  --c-light: #e6efd9;
+  --c-red: #e0483d;
+  --c-amber: #e8a33d;
+  --c-green: #7fd17a;
+  --c-blue: #5aa7d6;
+  --c-samu: #f07a2a;
+  --c-postit: #f2d45c;
+  --c-paper: #efe6cf;
+  --c-paper2: #e3d7b9;
+  --c-ink: #1b1a17;
+  --c-desk: #3a4a43;
+  --c-desk2: #33423b;
+  --c-phosphor: #b8e6a8;
+  --c-phosphor-dim: #6f9a63;
+  --c-screen: #0f1a14;
+  /* triagem */
+  --t-vermelho: #d94436;
+  --t-amarelo: #e8b931;
+  --t-verde: #4fae5b;
+  --t-azul: #4a8fd0;
+  /* casa (incandescente) */
+  --h-bg0: #140d08;
+  --h-bg1: #24170e;
+  --h-bg2: #3a2516;
+  --h-wood: #5a3a22;
+  --h-wood2: #7a5030;
+  --h-tan: #a8763f;
+  --h-lamp: #f2c46b;
+  --h-lamplight: #ffe2a3;
+  --h-wall: #c99a5e;
+  /* tipografia */
+  --f-ui: 'Pixelify Sans', ui-monospace, monospace;
+  --f-screen: 'VT323', ui-monospace, monospace;
+  --f-mast: 'Jacquard 24', 'Pixelify Sans', serif;
+  --stage-w: 1280px;
+  --stage-h: 720px;
+}
+
+* {
+  box-sizing: border-box;
+  /* a Pixelify Sans desenha as ligaduras "fi"/"fl" como um glifo estranho */
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'clig' 0;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: #070a09;
+  color: var(--c-light);
+  font-family: var(--f-ui);
+  font-size: 14px;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+button {
+  font-family: var(--f-ui);
+}
+
+img,
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ---------------------------------------------------------------- palco */
+.stage-wrap {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #070a09;
+}
+.stage {
+  position: relative;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  transform-origin: center center;
+  overflow: hidden;
+  background: var(--c-bg0);
+}
+
+/* ---------------------------------------------------------------- botões pixel */
+.px-btn {
+  --b: var(--c-panel2);
+  --bh: var(--c-line);
+  --fg: var(--c-light);
+  position: relative;
+  border: 0;
+  padding: 6px 12px 8px;
+  background: var(--b);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.1;
+  cursor: pointer;
+  box-shadow:
+    inset -2px -3px 0 rgba(0, 0, 0, 0.35),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 2px #0a0f0d;
+  transition: transform 60ms;
+}
+.px-btn:hover:not(:disabled) {
+  background: var(--bh);
+}
+.px-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    inset 2px 2px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 2px #0a0f0d;
+}
+.px-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.px-btn:focus-visible {
+  outline: 2px solid var(--c-postit);
+  outline-offset: 2px;
+}
+.px-btn.primary {
+  --b: #3f6b4c;
+  --bh: #4c8059;
+}
+.px-btn.danger {
+  --b: #7a2d27;
+  --bh: #923a33;
+}
+.px-btn.warm {
+  --b: #6b4423;
+  --bh: #80542d;
+  --fg: #ffe9c4;
+}
+.px-btn.ghost {
+  --b: transparent;
+  --bh: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 2px var(--c-line);
+}
+.px-btn.small {
+  padding: 3px 8px 5px;
+  font-size: 12px;
+}
+
+/* ---------------------------------------------------------------- painéis */
+.bezel {
+  background: var(--c-panel);
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.07),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 2px #0a0f0d,
+    3px 4px 0 2px rgba(0, 0, 0, 0.35);
+}
+.screen {
+  background: var(--c-screen);
+  color: var(--c-phosphor);
+  font-family: var(--f-screen);
+  box-shadow:
+    inset 0 0 0 2px #050907,
+    inset 0 0 24px rgba(0, 0, 0, 0.7);
+  position: relative;
+}
+.screen::after {
+  /* linhas de varredura discretas */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+.paper {
+  background: var(--c-paper);
+  color: var(--c-ink);
+}
+
+.scroll-y {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-mid) transparent;
+}
+.scroll-y::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--c-mid);
+}
+
+/* ---------------------------------------------------------------- toasts */
+.toasts {
+  position: absolute;
+  right: 12px;
+  bottom: 70px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 80;
+  max-width: 380px;
+}
+.toast {
+  font-family: var(--f-screen);
+  font-size: 19px;
+  padding: 3px 10px;
+  background: rgba(10, 15, 13, 0.92);
+  border-left: 4px solid var(--c-soft);
+  color: var(--c-light);
+  /* 10 s na tela: com rádio, fila e ligação ao mesmo tempo, 4 s não dava para ler */
+  animation: toast-in 240ms steps(4) both, toast-out 400ms steps(4) 10s forwards;
+}
+.toast.bom {
+  border-color: var(--c-green);
+}
+.toast.ruim {
+  border-color: var(--c-red);
+}
+.toast.dinheiro {
+  border-color: var(--c-postit);
+}
+@keyframes toast-in {
+  from {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+/* tremor de texto (Desgaste > 60) */
+.tremble {
+  animation: tremble 0.18s steps(2) infinite;
+}
+@keyframes tremble {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(0.6px, -0.5px);
+  }
+  100% {
+    transform: translate(-0.5px, 0.4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tremble,
+  .toast {
+    animation: none !important;
+  }
+}
+
+.kbd {
+  display: inline-block;
+  font-family: var(--f-screen);
+  font-size: 15px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-bottom-width: 2px;
+  line-height: 1.1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

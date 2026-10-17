@@ -1,0 +1,218 @@
+// Finais, game overs, epílogos por fio, créditos e conquistas.
+import type { Ctx } from '../engine/types';
+import type { EndingTexts, AchievementDef } from '../engine/content-api';
+
+const henriqueVoice = (c: Ctx) => {
+  if (c.flag('henrique_morreu')) return 'uma voz nova, cansada';
+  if (c.flag('encobriu_henrique') || c.flag('omitiu_henrique')) return 'uma voz arrastada que você conhece bem';
+  return 'a voz cansada de um regulador novo';
+};
+
+export const ENDINGS: EndingTexts = {
+  ruim: (c) => [
+    'LINHA OCUPADA',
+    c.flag('lucia_foi_embora') ? '{Oconj} levou o Liam numa terça de manhã. Deixou a chave em cima da geladeira.' : '',
+    c.flag('zelia_morreu') ? 'O lugar da Dona Zélia na mesa ficou vazio. Ninguém tem coragem de tirar a cadeira.' : '',
+    c.v('integridade') <= 2 ? 'Seu nome saiu na matéria. O conselho abriu processo. O contrato não foi renovado.' : '',
+    'Seis meses depois, você mora {sozinho} num quarto alugado e trabalha em outra central, em outra cidade.',
+    'Uma noite, sentindo uma dor no peito, você liga para a emergência.',
+    `Toque. Toque. Atende ${henriqueVoice(c)}.`,
+    '— Regulação, boa noite. O que aconteceu?',
+    'O tom de quem já ouviu essa pergunta mil vezes.',
+    'A tela fica preta antes de você saber se ele vai acreditar em você.',
+  ].filter(Boolean),
+  normal: (c) => [
+    'A GENTE SOBREVIVEU',
+    'O contrato foi renovado. Nada mudou na central: mesma frota, mesmo Peixoto, mesmas metas.',
+    'Em casa, as contas continuam apertadas. Mas todo mundo está vivo.',
+    c.flag('maquina') ? 'A máquina de costura não para à noite. {Oconj} cantarola baixinho.' : '{Oconj} procura costura em todas as lojas do Centro.',
+    'Na cozinha, {c:ela|ele} diz:',
+    '— A gente sobreviveu, né?',
+    'Você não sabe se isso é um elogio ou um diagnóstico.',
+    'Seu crachá fica pendurado no prego atrás da porta. Pronto para o próximo plantão.',
+  ],
+  bom: (c) => [
+    '{m:O MÉDICO|A MÉDICA} DO TELEFONE',
+    'A matéria da Carla virou investigação. A Saúde+ Gestão perdeu o contrato.',
+    'A central ganhou duas viaturas e um terceiro regulador por turno.',
+    'O ateliê {doconj} tem fila de clientes. Dona Zélia controla o açúcar e implica com tudo.',
+    c.key('antonio') === 'salvo' ? 'Numa tarde de domingo, alguém bate na porta: é o Seu Antônio, do dia 3, com a esposa e um bolo. Descobriu seu nome pela equipe.' : '',
+    c.key('cida') === 'salvo' ? 'Chega uma carta de letra tremida: "Voltei a assistir a novela, meu filho. Obrigada pela voz."'.replace('meu filho', c.g === 'M' ? 'meu filho' : 'minha filha') : '',
+    'Na última cena, o Liam mostra um desenho novo.',
+    `É ${c.g === 'M' ? 'o pai sentado' : 'a mãe sentada'} à mesa, com um telefone. Em volta, um monte de casinhas com as luzes acesas.`,
+    `Título: "${c.g === 'M' ? 'Meu pai salva' : 'Minha mãe salva'} as pessoas pelo telefone."`,
+  ].filter(Boolean),
+  secreto: (c) => [
+    'A CADEIRA',
+    'Você assinou o Plano de Otimização. A USA 03 saiu de circulação no mês seguinte.',
+    'A família está estável. Confortável, até. A Dona Zélia ganhou uma geladeira nova e não reclamou de nada por uma semana.',
+    'Sua sala tem ar-condicionado. Você olha o painel de metas por dentro. O índice está em 94.',
+    'Lá embaixo, na central, um telefone toca.',
+    'Você não ouve mais.',
+    `O desenho novo do Liam mostra ${c.g === 'M' ? 'o pai' : 'a mãe'} atrás de uma mesa grande. Sem telefone.`,
+  ],
+  chairOffer: () => [
+    'Uma semana depois da matéria, o Peixoto não aparece mais na central.',
+    'A diretoria da Saúde+ Gestão te chama para uma reunião numa sala com ar-condicionado e uma garrafa de água com gás.',
+    '— A coordenação é sua, {dr}. Salário três vezes maior. Só precisamos da sua assinatura no Plano de Otimização.',
+    'Na página 4: "retirada da USA 03 de circulação, com remanejamento de equipes".',
+  ],
+  gameover: {
+    exonerado: (c) => [
+      c.g === 'M' ? 'EXONERADO' : 'EXONERADA',
+      // no Regulador Real o limite é de duas
+      c.s.difficulty === 'real' ? 'Duas advertências no mesmo plantão.' : 'Três advertências no mesmo plantão.',
+      'O Peixoto não levanta a voz. Só desliza o papel sobre a mesa.',
+      'Você esvazia a gaveta: o manual, uma caneta da farmácia, o diário.',
+      'A Simone tira o seu post-it do quadro sem dizer nada.',
+    ],
+    despejo: () => [
+      'DESPEJO',
+      'Três aluguéis atrasados. O Seu Nogueira veio com dois homens e um caminhão.',
+      'Os móveis na calçada. O fogão de quatro bocas. A máquina de costura, se havia.',
+      'O Liam segura o desenho da ambulância contra o peito para não amassar.',
+    ],
+    colapso: () => [
+      'COLAPSO',
+      'O telefone toca.',
+      'Você sabe que precisa atender. A mão não obedece.',
+      'O toque continua. A tela se apaga junto com o som.',
+    ],
+    sindicancia: (c) =>
+      c.s.flags['gameover_motivo'] === 'fraude_ficha'
+        ? [
+            'SINDICÂNCIA',
+            'A auditoria cruzou a ficha do Henrique com o Anexo 9-B. As duas mentiras têm a sua assinatura.',
+            'Fraude de documento médico. O processo vai para o conselho com o seu nome em cima.',
+            'Você entrega o crachá na portaria. O Henrique não aparece para se despedir.',
+            'Na fila da central, as ligações continuam piscando. Outra pessoa vai atender.',
+          ]
+        : [
+            'SINDICÂNCIA',
+            'Duas sindicâncias por óbito. O processo chega à diretoria e ao conselho.',
+            'Afastamento cautelar. Você entrega o crachá na portaria.',
+            'Na fila da central, as ligações continuam piscando. Outra pessoa vai atender.',
+          ],
+  },
+  threads: [
+    {
+      id: 'antonio',
+      title: 'Seu Antônio',
+      ok: (c) => c.key('antonio') === 'salvo',
+      good: 'Seu Antônio e a esposa batem à porta com um bolo de fubá. Ele voltou a pescar no açude.',
+      bad: 'A viúva do Seu Antônio manda um bilhete: "Ele não quis incomodar. Nunca quis."',
+    },
+    {
+      id: 'juliana',
+      title: 'Juliana',
+      when: (c) => c.flag('juliana_cliente') || c.key('juliana') !== undefined,
+      ok: (c) => c.key('juliana') === 'salvo',
+      good: 'A Juliana leva trinta encomendas de uma vez para o ateliê.',
+      bad: 'O ateliê perdeu a primeira cliente.',
+    },
+    {
+      id: 'marcia',
+      title: 'Tia Márcia',
+      when: (c) => c.flag('marcia_viva') || c.flag('marcia_morreu'),
+      ok: (c) => c.flag('marcia_viva'),
+      good: 'A Tia Márcia vai ao aniversário de 9 anos do Liam e leva uma caixa de lápis de cor.',
+      bad: 'O Liam deixa um desenho no túmulo da Tia Márcia, preso com uma pedrinha.',
+    },
+    {
+      id: 'biel',
+      title: 'Biel e Seu Jairo',
+      when: (c) => c.day >= 16,
+      ok: (c) => c.key('jairo') === 'salvo',
+      good: 'Biel, aos 17, num curso de socorrista. Primeiro da turma em RCP.',
+      bad: 'Biel no velório do avô, olhando o celular, sem conseguir ligar para ninguém.',
+    },
+    {
+      id: 'rosangela',
+      title: 'Rosângela',
+      ok: (c) => c.key('rosangela') === 'salvo',
+      good: 'A Rosângela é sócia do ateliê. O nome dela está na placa.',
+      bad: 'Uma nota de rodapé no jornal, entre a previsão do tempo e os classificados.',
+    },
+    {
+      id: 'simone',
+      title: 'Simone',
+      ok: (c) => c.v('lealSimone') >= 6 && c.flag('materia_publicada') && !c.flag('simone_demitida'),
+      good: 'A Simone ficou na central. Promovida a supervisora. Os post-its agora são oficiais.',
+      bad: 'A Simone foi demitida no corte do fim do mês. Ninguém sabe para onde ela foi.',
+    },
+    {
+      id: 'henrique',
+      title: 'Dr. Henrique',
+      when: (c) => c.day >= 12,
+      ok: (c) => c.flag('denunciou_henrique') && !c.flag('henrique_morreu'),
+      good: 'Uma carta do Henrique: "Eu te odiei por três semanas. Hoje faz 60 dias que eu não bebo."',
+      bad: (c) => (c.flag('henrique_morreu') ? 'O crachá do Henrique no quadro de cortiça, com uma fita preta.' : 'O Henrique continua no noturno. A voz dele fica mais lenta a cada mês.'),
+    },
+    {
+      id: 'peixoto',
+      title: 'Dr. Peixoto',
+      ok: (c) => !!c.s.sources.peixoto,
+      good: 'O Peixoto depõe na CPI contra a Saúde+ Gestão. Leva a planilha das metas impressa.',
+      bad: 'O Peixoto assume uma central em outra cidade, com as mesmas metas.',
+    },
+    {
+      id: 'bene',
+      title: 'Seu Bené',
+      ok: (c) => c.v('intimBene') >= 7,
+      good: 'Churrasco de aposentadoria do Seu Bené. Você está lá. Ele te apresenta como "{m:o melhor regulador|a melhor reguladora} que eu já ouvi".',
+      bad: 'O Seu Bené se aposenta sem ninguém saber o seu nome.',
+    },
+    {
+      id: 'cida',
+      title: 'Dona Cida',
+      when: (c) => c.day >= 19,
+      ok: (c) => c.key('cida') === 'salvo',
+      good: 'A carta de letra tremida da Dona Cida: voltou a assistir à novela.',
+      bad: 'A máquina de costura da Dona Cida, na sala {doconj}, coberta com um pano.',
+    },
+  ],
+  credits: [
+    'QAP — Emergency Dispatch',
+    'Um jogo sobre ouvir.',
+    '',
+    'O trote à emergência tira a ambulância de quem precisa — e pode ser crime.',
+    'Em caso de dúvida, ligue. É para isso que a regulação existe.',
+    '',
+    'Guia para quem liga para a emergência:',
+    '· Diga o endereço com um ponto de referência.',
+    '· Diga se a pessoa respira e se está acordada.',
+    '· Diga desde que horas está assim.',
+    '· Não desligue até a regulação mandar.',
+    '',
+    'Se você está passando por um momento difícil: CVV — 188 (24h, gratuito) · cvv.org.br',
+    '',
+    'Protocolos simplificados para fins de jogo. Não use este jogo como manual médico.',
+  ],
+};
+
+export const ACHIEVEMENTS: AchievementDef[] = [
+  { id: 'outro_lado', name: 'Do Outro Lado da Linha', desc: 'Terminar a campanha da Simone.' },
+  { id: 'post_it_certo', name: 'Letra Firme', desc: 'Campanha da Simone: um turno inteiro com todas as pré-triagens na cor certa (mínimo 6).' },
+  { id: 'ouvido_absoluto', name: 'Ouvido Absoluto', desc: 'Identificar 10 trotes sem fazer mais de uma pergunta.' },
+  { id: 'ela_so_queria_conversar', name: 'Ela Só Queria Conversar', desc: 'Conversar com a Dona Cida em todos os dias em que ela ligou.' },
+  { id: 'nem_pelo_meu_filho', name: 'Nem Pelo Meu Filho', desc: 'Resolver o dia 9 pelo protocolo.' },
+  { id: 'calabresa', name: 'Calabresa', desc: 'Entender o pedido de pizza.' },
+  { id: 'contou_bonito', name: 'Contou Bonito', desc: 'Salvar alguém com RCP guiada por telefone.' },
+  { id: 'rendezvous', name: 'Às 11, pelas 14', desc: 'Descobrir o rendez-vous das 14:20.', secret: true },
+  { id: 'vaga_zero', name: 'Vaga Zero', desc: 'Negociar uma vaga zero no Regional.' },
+  { id: 'sem_cafe', name: 'Sem Cafeína', desc: 'Terminar a campanha sem tomar café na central.' },
+  { id: 'maos_firmes', name: 'Mãos Firmes', desc: 'Guiar um parto por telefone sem estourar o pânico.' },
+  { id: 'ouvir_a_familia', name: 'Ouvir a Família', desc: 'Perceber a hipoglicemia da Dona Zélia.' },
+  { id: 'dobra', name: 'Dobra', desc: 'Emendar uma noite na Intervenção (USA 01) entre dois plantões da Regulação.' },
+  { id: 'noite_limpa', name: 'Noite Limpa', desc: 'Na Intervenção, entregar todos os pacientes de uma noite estáveis e no hospital certo.' },
+  { id: 'esperou_a_pm', name: 'Equipe Inteira', desc: 'Na Intervenção, esperar a polícia antes de entrar numa cena insegura.' },
+  { id: 'denunciou', name: 'Quem Cala Consente', desc: 'Não encobrir o Henrique.' },
+  { id: 'o_menino', name: 'O Menino que Gritava Lobo', desc: 'Acreditar no Biel quando importava.' },
+  { id: 'linha_ocupada', name: 'Linha Ocupada', desc: 'Final ruim.' },
+  { id: 'a_gente_sobreviveu', name: 'A Gente Sobreviveu', desc: 'Final normal.' },
+  { id: 'medico_do_telefone', name: 'O Médico do Telefone', desc: 'Final bom.' },
+  { id: 'a_cadeira', name: 'A Cadeira', desc: 'Final secreto.', secret: true },
+  { id: 'infinito_25', name: 'Plantão Sem Fim', desc: 'Atender 25 ligações no Plantão Infinito.' },
+  { id: 'infinito_50', name: 'Lenda da Central', desc: 'Atender 50 ligações no Plantão Infinito.' },
+  { id: 'melhor_amigo', name: 'Melhor Amigo', desc: 'Brincar com o Ozzy em 10 noites diferentes.' },
+];
