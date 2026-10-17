@@ -18,6 +18,8 @@ import { installFontFixes, FONT_FIX_UI, FONT_FIX_MAST } from './fontFix';
 import { renderScene } from './scenes';
 import { Pix, presentPix, gradedCopy } from './pix';
 import { liamDrawing, LIAM_SUBJECTS } from './liamArt';
+import { renderVagaZero, drawVagaZero, VAGA_ZERO_TIMING, type VagaZeroOpts } from './vagaZero';
+
 import { homeGrader, quantize } from './palette';
 
 const app = document.getElementById('app')!;
@@ -361,6 +363,49 @@ const SAMPLE: Record<ArtSceneBg, { objects: string[]; cast: SceneCast[] }> = {
     }
     s2.appendChild(r2);
   }
+}
+
+// ---------------------------------------------------------------- vaga zero: o tempo parando
+{
+  const k = Number(params.get('vzscale') ?? 2);
+  const s = section('vaga-zero', `Vaga zero — o tempo parando (renderVagaZero, 320×180 ×${k}): entrada, negociação, acordo, sem acordo, Peixoto, dia 19`);
+  const row = document.createElement('div');
+  row.className = 'flex';
+  const T = VAGA_ZERO_TIMING;
+  const shots: { label: string; o: VagaZeroOpts }[] = [
+    { label: 'antes: o telefone do Regional tocando', o: { t: 0, phase: 'normal', gender: 'M' } },
+    { label: 'entrada (600 ms): a cor indo embora', o: { t: 600, phase: 'entrada', gender: 'M' } },
+    { label: 'negociando: Resistência 4, fita pela metade', o: { t: 4000, phase: 'negociando', gender: 'M', resistance: 4, fuse: 0.5, saulo: 'bravo' } },
+    { label: 'acordo (1100 ms): a cor volta da sua mesa', o: { t: 9000, phase: 'acordo', phaseT: 1100, gender: 'F' } },
+    { label: 'acordo (fim): o post-it azul', o: { t: 9800, phase: 'acordo', phaseT: 2400, gender: 'F' } },
+    { label: 'sem acordo: o relógio cobra 40 min, RETIDA', o: { t: 9000, phase: 'sem_acordo', phaseT: 1600, gender: 'M', lostMinutes: 40 } },
+    { label: 'Peixoto no interfone', o: { t: 9000, phase: 'peixoto', phaseT: 900, gender: 'M', fuse: 0.7, peixoto: 'cansado' } },
+    { label: 'dia 19 (Cida): a Simone de pé, o post-it em cor', o: { t: 5000, phase: 'negociando', gender: 'F', special: 'cida', resistance: 2, fuse: 0.3, saulo: 'preocupado' } },
+    { label: 'dia 19, acordo: "CIDA 18:36"', o: { t: 9000, phase: 'acordo', phaseT: 2600, gender: 'F', special: 'cida', saulo: 'feliz' } },
+  ];
+  for (const sh of shots) {
+    const c = canvas(320, 180, k);
+    row.appendChild(cell(c, sh.label));
+    presentPix(c.getContext('2d')!, renderVagaZero(sh.o), 0, 0, 1, 'vz');
+  }
+  // ao vivo: o ciclo inteiro (entrada → negociação → acordo), repetindo
+  const live = canvas(320, 180, k);
+  row.appendChild(cell(live, 'ao vivo: entrada → negociação (o pulso, a fita) → acordo, em ciclo de 12 s'));
+  const lctx = live.getContext('2d')!;
+  const t0 = performance.now();
+  const drawLive = (t: number) => {
+    const e = (t - t0) % 12000;
+    const o: VagaZeroOpts =
+      e < T.entrada
+        ? { t: e, phase: 'entrada', gender: 'M' }
+        : e < 8000
+          ? { t: e, phase: 'negociando', gender: 'M', resistance: e < 5000 ? 4 : 1, fuse: ((e - T.entrada) % 3400) / 3400 }
+          : { t: e, phase: 'acordo', phaseT: e - 8000, gender: 'M' };
+    drawVagaZero(lctx, o);
+  };
+  drawLive(t0);
+  animations.push(drawLive);
+  s.appendChild(row);
 }
 
 // ---------------------------------------------------------------- jornal
