@@ -166,25 +166,90 @@ export const DAY = day({
       },
     },
   }),
+  // 1.1 — ida (a base da Vila fechada), almoço (sentar com o Peixoto ou com o Zé Carlos) e volta (o Zé Carlos no ponto)
+  ida: () => ({
+    id: 'd05_ida',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:25. Na Rua das Acácias, 901, a base da USA 03 está com o portão fechado e um cadeado novo, brilhando. Um papel A4 colado com fita: "BASE TEMPORARIAMENTE DESATIVADA — SAÚDE+ GESTÃO".' },
+          { who: 'DIRCE', t: '(de vassoura, do outro lado da rua) Fecharam a ambulância do bairro, {dr}. Agora se eu cair, eu caio mais longe.' },
+        ],
+      },
+    },
+  }),
+  almoco: () => ({
+    id: 'd05_almoco',
+    bg: 'central',
+    cast: ['PEIXOTO', 'ZÉ CARLOS'],
+    nodes: {
+      start: {
+        // o Peixoto fala do pai em voz alta (antes era o interfone das 12:30): o documento vai para a mesa
+        onEnter: fx.all(fx.doc('peixoto_pai'), fx.set('peixoto_pai')),
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Dia do corte. A copa tem duas mesas ocupadas. Numa, o Zé Carlos, da USA 03, come a última marmita antes de ser remanejado. Na outra, pela porta aberta da coordenação, o Peixoto come um sanduíche natural olhando a planilha.' },
+          { who: 'ZÉ CARLOS', t: 'Doze anos na Vila Esperança. Amanhã eu sou "equipe remanejada". Remanejada pra onde, ninguém fala.' },
+          { who: 'PEIXOTO', t: '(da sala, sem levantar os olhos) Pro bem da frota, Zé. Meu pai tem oitenta e quatro anos e nunca precisou de ambulância. É hábito. A cidade se acostumou a chamar.' },
+          { who: 'NARRADOR', t: 'Duas cadeiras vazias: uma do lado do Zé Carlos, outra na frente da mesa do Peixoto.' },
+        ],
+        choices: [
+          { label: 'Sentar com o Peixoto.', next: 'peixoto' },
+          { label: 'Sentar com o Zé Carlos.', next: 'ze', effect: fx.set('almoco_d5_ze') },
+        ],
+      },
+      peixoto: {
+        lines: [
+          { who: 'PEIXOTO', t: 'Quer saber se eu durmo bem, {dr}? Durmo. Sabe por quê? Porque eu olho pro meu pai e penso: oitenta e quatro anos, nunca precisou. Saúde é hábito.' },
+        ],
+        choices: [
+          { label: '"Seu pai mora sozinho?"', next: 'pai', effect: fx.set('peixoto_pai_conversa') },
+          { label: '"Infarto não é hábito, Peixoto."', next: 'habito' },
+          { label: '(Comer calad{m:o|a}.)', next: 'calar' },
+        ],
+      },
+      pai: {
+        lines: [
+          { who: 'PEIXOTO', t: 'Na Bela Vista. Com uma cuidadora que ele demite toda semana. O Seu Osvaldo. Goiabada escondida na gaveta das meias, a cuidadora me contou.' },
+          { who: 'PEIXOTO', t: '...Por que você quer saber?' },
+          { who: 'NARRADOR', t: 'Pela primeira vez, ele levanta os olhos da planilha.' },
+        ],
+      },
+      habito: { lines: [{ who: 'PEIXOTO', t: 'Me prova com número, {dr}. Número eu entendo. Bom almoço.' }] },
+      calar: { lines: [{ who: 'NARRADOR', t: 'O sanduíche dele é de peito de peru com cenoura ralada. Ele come olhando o rostinho do painel, como quem vigia um filho.' }] },
+      ze: {
+        onEnter: fx.set('tel_ze_carlos'),
+        lines: [
+          { who: 'ZÉ CARLOS', t: 'Você mora onde, {dr}? ...Vila Esperança? Rua das Acácias? A casa azul? Eu moro na Ipê-Roxo, três ruas pra cima.' },
+          { who: 'ZÉ CARLOS', t: 'Anota meu número. Se der ruim de noite na Vila, eu tenho glicosímetro, tenho perna e não tenho mais viatura. Mas tenho perna.' },
+          { who: 'NARRADOR', t: 'Ele bate duas vezes na mesa, como o Bené bate na porta, e vai lavar a marmita.' },
+        ],
+      },
+    },
+  }),
+  volta: (c) => ({
+    id: 'd05_volta',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:30. No ponto da Vila, o Zé Carlos de roupa comum, chinelo, uma sacola de mercado em cada mão. Remanejado para "a casa dele".' },
+          c.flag('tel_ze_carlos')
+            ? { who: 'ZÉ CARLOS', t: '(levantando uma das sacolas, de longe) Ipê-Roxo, {dr}! Três ruas! Não perde o número!' }
+            : { who: 'NARRADOR', t: 'Ele não te conhece. Olha a base fechada do outro lado da rua por um tempo comprido, e vai embora.' },
+        ],
+      },
+    },
+  }),
   timeline: [
+    // flags.md: d4_pm_tardia / d4_pm_ok — o Bené fala da cena de ontem no primeiro rádio do dia
+    { at: '07:01', kind: 'radio', who: 'USA 01 · BENÉ', when: is.flag('d4_pm_tardia'), text: 'Central, USA 01 em QRV. Ontem a PM chegou em oito minutos, {bene}. Oito. Eu contei cada um encostado no pneu. ...Mas chegou.' },
+    { at: '07:01', kind: 'radio', who: 'USA 01 · BENÉ', when: (c) => c.flag('d4_pm_ok') && !c.flag('d4_pm_tardia'), text: 'Central, USA 01 em QRV. Ontem a PM entrou primeiro no bar. Promessa de regulador, hein, {bene}? Tá anotada no painel.' },
     { at: '07:02', kind: 'radio', who: 'USA 03 · ZÉ CARLOS', text: 'Central, USA 03 entregando a viatura na garagem da OS. Ordem de cima. Foi uma honra, pessoal. Cuidem da Vila Esperança pra gente.' },
     { at: '07:03', kind: 'radio', who: 'SISTEMA', text: 'Frota reduzida (Manual p.5): USA 03 e USB 05 fora de circulação. Painel de metas ativo: 2 USA.' },
     { at: '09:20', kind: 'simone', who: 'SIMONE', text: 'Conta de quem tá aqui há vinte e dois anos, {dr}: USA demora de duas a quatro horas pra voltar, com a retenção de maca. Manda as duas cedo e você almoça sem nenhuma.' },
-    {
-      at: '12:30',
-      kind: 'interfone',
-      who: 'DR. PEIXOTO',
-      text: '{Dr}, almoçando aqui de olho no painel. Sabe o que me tira do sério? Gente que chama ambulância porque cortou o dedo. Meu pai tem 84 anos e nunca precisou de ambulância. É hábito, {dr}, o povo se acostumou mal.',
-      run: (c) => {
-        c.doc('peixoto_pai');
-        c.set('peixoto_pai');
-      },
-      options: [
-        { id: 'pai', label: '"Seu pai mora sozinho?"', reply: 'Sozinho, na Bela Vista. Não quer cuidadora, não quer bengala, não quer nada. Saúde de ferro, o Seu Osvaldo. ...Por quê?' },
-        { id: 'habito', label: '"Infarto não é hábito, Peixoto."', reply: 'Mas a conta é, {dr}. Alguém paga a conta. Bom almoço.' },
-        { id: 'calar', label: '(Não responder.)', reply: '...Bom. Meta é meta. Bom almoço, {dr}.' },
-      ],
-    },
     {
       at: '15:30',
       kind: 'simone',
@@ -196,9 +261,10 @@ export const DAY = day({
         u.radioName,
         `Central, ${u.label} na casa da Dona Benedita. Ela se recusa a ir. Diz que tem 86 anos e nunca precisou de ambulância. Tá desidratada, confunde o nome da vizinha. O que eu faço?`,
         [
+          // 1.1 (correção ética): idosa confusa não tem condição de assinar recusa. O padrão é convencer e levar.
           {
             id: 'falar',
-            label: 'Falar com ela pelo rádio (10 min)',
+            label: 'Falar com ela pelo rádio até ela topar ir (10 min)',
             cost: 10,
             effect: (s) => {
               s.add('humanidade', 1, 'convenceu a Dona Benedita');
@@ -209,17 +275,20 @@ export const DAY = day({
           {
             id: 'termo',
             label: 'Liberar mediante termo de recusa',
-            effect: (s) => s.set('d5_benedita_termo'),
-            reply: 'Assinou o termo com a letra tremida. Deixamos soro caseiro com a vizinha. Liberada.',
+            effect: (s) => {
+              s.set('d5_benedita_termo_tentou');
+              s.set('d5_benedita_levada');
+            },
+            reply: '{Dr}, ela chamou a vizinha de Jandira, que é o nome da irmã dela. Ela não tem condição de assinar nada. A gente vai levar mesmo assim, com jeito.',
           },
           {
             id: 'levar',
-            label: 'Levar mesmo assim (ela está confusa)',
+            label: 'Convencer e levar: a equipe conversa com ela e leva (ela está confusa)',
             effect: (s) => s.set('d5_benedita_levada'),
             reply: 'Levamos. Ela xingou a equipe até a esquina e depois dormiu no meu ombro.',
           },
         ],
-        'termo',
+        'levar',
         8,
       );
     }),
@@ -362,8 +431,8 @@ export const DAY = day({
       at: '08:40',
       anchor: true,
       num: '(17) 3324-2480',
-      caller: 'Kelly (recepcionista)',
-      callerName: 'Kelly',
+      caller: 'Yumi (recepcionista)',
+      callerName: 'Yumi',
       type: 'testemunha',
       voice: 'jovem_m',
       note: 'ACADEMIA. Homem caído, tão fazendo massagem nele!',
@@ -389,6 +458,8 @@ export const DAY = day({
         paciente: 'Ele não fala, {m:moço|moça}! Ele tá roxo!',
         referencia: 'Em cima da loja de pneus! Tem escada! Vou mandar alguém esperar lá embaixo!',
         seguranca: 'Seguro! Só cheio de gente em volta!',
+        pulso: ['TAÍS (de longe, sem parar a massagem): {{Não tem pulso! Eu olhei no pescoço!|sem_pulso}} Vinte e seis, vinte e sete...'],
+        pele: 'Roxo! A boca tá roxa e o rosto tá ficando cinza, {m:moço|moça}!',
       },
       extra: [
         {
@@ -420,7 +491,7 @@ export const DAY = day({
         { a: 'gasping', b: 'manual:parada', insight: '"Puxando o ar de vez em quando" é respiração agônica, não respiração: parada (Manual p.1).' },
         { a: 'azia', b: 'manual:atipico', kind: 'confirma', insight: 'A "azia que não passava" de ontem pode ter sido o aviso: infarto sem dor clássica (Manual p.3).' },
       ],
-      patient: { name: 'Marco Aurélio Teixeira', age: 48, sex: 'M' },
+      patient: { name: 'Marco Aurélio Fontes', age: 48, sex: 'M' },
       truth: (c: Ctx) => ({
         dx: 'Parada cardiorrespiratória (fibrilação ventricular)',
         sev: 'vermelho',
@@ -436,7 +507,7 @@ export const DAY = day({
             : '{central}, {unit}. Fibrilação, três choques e voltou. A aluna massageou até a gente subir a escada. Quem tava contando no telefone? Contou bonito.',
         dead: 'Central... {unit}. Quarenta minutos de reanimação. Óbito às {hora}. A aluna que massageou tá sentada na escada, não quer ir embora.',
         under: 'Central, {unit}! É parada! Iniciamos massagem, precisamos de USA agora!',
-        dismissed: 'KELLY: {m:Moço|Moça}! Ninguém veio! A Taís não aguenta mais massagear! Ele tá morrendo!',
+        dismissed: 'YUMI: {m:Moço|Moça}! Ninguém veio! A Taís não aguenta mais massagear! Ele tá morrendo!',
       },
       diary: {
         alive: 'Parada na esteira da academia. Uma aluna de enfermagem massageou até a gente chegar. Voltou.',
@@ -457,8 +528,8 @@ export const DAY = day({
       at: '09:40',
       pool: 'pediatria,respiratorio',
       num: '(17) 3327-0980',
-      caller: 'Dona Neusa (avó)',
-      callerName: 'Dona Neusa',
+      caller: 'Dona Glória (avó)',
+      callerName: 'Dona Glória',
       type: 'comum',
       voice: 'idosa',
       note: 'Criança tirada da piscina. Avó desesperada.',
@@ -477,7 +548,7 @@ export const DAY = day({
         idade: 'Quatro aninhos.',
         historico: 'Nada. É saudável. Bombinha não usa.',
         sangramento: 'Não.',
-        paciente: ['[tosse forte]', 'ENZO: Vó... [choro] ...engoli água...'],
+        paciente: ['[tosse forte]', 'TOBIAS: Vó... [choro] ...engoli água...'],
         referencia: 'Clube Municipal, entra pelo portão da piscina.',
         seguranca: 'Seguro. O salva-vidas só vem sábado, viu?',
       },
@@ -506,11 +577,11 @@ export const DAY = day({
       worsen: [
         {
           after: 90,
-          lines: ['DONA NEUSA: {m:Moço|Moça}... ele parou de chorar e tá ficando {{molinho, com sono|sonolento}}... tá puxando o ar com a barriga!'],
+          lines: ['DONA GLÓRIA: {m:Moço|Moça}... ele parou de chorar e tá ficando {{molinho, com sono|sonolento}}... tá puxando o ar com a barriga!'],
           truth: { dx: 'Afogamento com insuficiência respiratória', sev: 'vermelho', ok: ['USA'], risk: { good: 130, bad: 200 } },
         },
       ],
-      patient: { name: 'Enzo Gabriel Martins', age: 4, sex: 'M' },
+      patient: { name: 'Tobias Martins', age: 4, sex: 'M' },
       // RT1: "dispneia aguda" (respira rápido e puxado, tosse que não para) é discriminador de USA; criança que
       // submergiu vai ao hospital mesmo sem sintoma (BPed26). Consciente, corada, poucos segundos sob a água: USB
       // preferida; USA ⚖ (antes era excesso).
@@ -552,6 +623,8 @@ export const DAY = day({
         sangramento: 'Sangue? Credo, não.',
         seguranca: 'Seguro. Só eu e o gato. O gato não conta.',
         referencia: 'Do lado da Igreja São Benedito, casa amarela, portão verde. Anota aí, vai que eu precise.',
+        pulso: 'Tá batendo, tá batendo. Um pouco ligeiro, do susto do jornal.',
+        pele: 'Corada, {meu} {filho}. Medrosa, mas corada.',
       },
       extra: [
         {
@@ -581,7 +654,7 @@ export const DAY = day({
           say: 'Dona Cida, já que a senhora tocou no assunto: põe um tapete antiderrapante no banheiro e deixa o telefone sempre perto. Se cair, não levanta com pressa e me liga.',
           // Prevenção de queda (sem protocolo de regulação específico): tapete antiderrapante, telefone por perto,
           // não levantar com pressa depois de cair. Conselho seguro.
-          a: 'Tapete de borracha? A Dirce da frente tem um. Vou pedir pra ela comprar na feira. Ai, {meu} {filho}, você fala igual o meu falecido. Ele cuidava de tudo.',
+          a: 'Tapete de borracha? A Noêmia da frente tem um. Vou pedir pra ela comprar na feira. Ai, {meu} {filho}, você fala igual o meu falecido. Ele cuidava de tudo.',
           onAsk: fx.set('cida_tapete'),
         },
       ],
@@ -746,32 +819,36 @@ export const DAY = day({
       caller: 'Voz de criança',
       type: 'trotista',
       voice: 'crianca',
-      note: 'Criança. Diz que a professora desmaiou.',
+      note: 'Criança. Diz que a professora desmaiou. Voz séria.',
       noteWrong: 'Criança chorando. Professora desmaiada na sala.',
-      addr: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte', ref: 'Escola Estadual Prof. Aurélio Matos.' },
-      amb: ['escola', 'risadas'],
+      // 1.1 (trotes-folgados.md): difícil e sem risada. Crianças sérias demais, combinando a resposta antes de dizer;
+      // "Respira. Não. Respira."; sinal de escola em plena aula e nenhum adulto por perto. Prepara o dia 6.
+      addr: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte', ref: 'Escola Estadual Prof. Aurélio Valença.' },
+      amb: ['escola'],
       open: [
-        'Alô? É da ambulância? {{A professora caiu no chão e não acorda!|professora}}',
-        '[{{risadinhas de várias crianças|risadinhas}}; alguém sussurra "fala que tá sangrando!"]',
-        'Ela tá... ela tá sangrando! Muito!',
+        'Alô? É da ambulância? {{A professora caiu no chão e não acorda.|professora}}',
+        '[{{sussurros de várias crianças, sérias demais, combinando alguma coisa antes de cada frase|risadinhas}}]',
+        'Ela tá... [sussurro: "fala que tá sangrando"] ...ela tá sangrando.',
       ],
       q: {
-        oque: 'Ela tava escrevendo na lousa e caiu! Pum! [risadinha]',
-        consciencia: '{{Não acorda... quer dizer, acordou, mas desmaiou de novo!|cons_confusa}}',
-        respira: 'Respira pelo nariz! [risadas abafadas]',
-        idade: 'Ela é velha. Uns... cem anos?',
-        sangramento: 'Sangue pra todo lado! Vermelho!',
-        paciente: ['[sussurros] "fala você!" "não, fala você!"', '[risadas]'],
-        referencia: 'Na escola Aurélio Matos. Na sala do quarto ano B.',
-        seguranca: 'Seguro, seguro.',
-        historico: 'Ela é brava. [risada]',
+        oque: ['[sussurro: "fala que foi da cadeira"]', 'Ela caiu da cadeira. Bateu a cabeça.'],
+        consciencia: '{{Não acorda... quer dizer, acordou, mas desmaiou de novo.|cons_confusa}}',
+        respira: ['[sussurro]', '{{Respira. Não. ...Respira.|resp_confusa}}'],
+        pulso: ['[sussurros]', 'A gente não sabe pegar pulso. A gente é do quarto ano.'],
+        pele: ['[sussurro: "fala branca"]', 'Branca. Bem branca.'],
+        idade: 'Ela é velha. Uns... quarenta? Cem?',
+        sangramento: '[sussurro] ...Um pouco. No braço. Não, na cabeça.',
+        paciente: ['[sussurros] "fala você!" "não, fala você!"', '[silêncio]'],
+        referencia: 'Na escola Aurélio Valença. Na sala do quarto ano B.',
+        seguranca: 'Seguro.',
+        historico: 'Ela é brava.',
       },
       extra: [
         {
           id: 'adulto',
           label: 'Chamar um adulto',
-          say: 'Chama um adulto aí perto pra falar comigo, por favor.',
-          a: ['[{{o sinal da escola toca|sinal}}]', 'VOZ DE ADULTO: Quem é que tá com celular na minha sala?!', '[o telefone é abafado; correria; uma porta batendo]'],
+          say: 'Chama um adulto aí perto pra falar comigo, por favor. Outra professora, a diretora, a moça da cantina.',
+          a: ['[{{o sinal da escola toca, no meio da aula, e ninguém aparece|sinal}}]', '[sussurro: "fala que não tem"]', '{{Não tem adulto. A gente tá sozinho na sala.|sem_adulto}}'],
         },
       ],
       callback: ['[toca... toca...]', 'PROFESSORA: Alô? ...Regulação?! {{Esse celular é de um aluno, tava escondido na mochila|retorno_professora}}. Ninguém desmaiou aqui, {dr}. Eu estou ótima e muito brava. Desculpa.'],
@@ -782,7 +859,7 @@ export const DAY = day({
       ],
       patient: { name: '"Professora desmaiada"' },
       truth: { dx: 'Trote (alunos com celular na sala)', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
-      radio: { prank: 'Central, {unit} na escola Aurélio Matos. A professora do 4º B tá ótima e furiosa. Achou o celular na mochila. Era trote.' },
+      radio: { prank: 'Central, {unit} na escola Aurélio Valença. A professora do 4º B tá ótima e furiosa. Achou o celular na mochila. Era trote.' },
     }),
     // ------------------------------------------------------------------ 9
     call({
@@ -805,7 +882,7 @@ export const DAY = day({
       ],
       q: {
         oque: 'Ela mora sozinha. Eu passei hoje e ela tava na cama, a cozinha intacta, o pão de anteontem fechado no saquinho.',
-        consciencia: ['Tá acordada, responde. Mas {{agora há pouco me chamou de Lurdinha, que era a irmã dela|confusa}}.', 'Ela não confunde nada, {dr}. Faz palavra cruzada todo dia.'],
+        consciencia: ['Tá acordada, responde. Mas {{agora há pouco me chamou de Jandira, que era a irmã dela|confusa}}.', 'Ela nunca confunde nada, {dr}. Faz palavra cruzada todo dia. Hoje confundiu.'],
         respira: 'Respira normal, só cansadinha.',
         idade: 'Oitenta e seis.',
         inicio: 'Desde quarta. Com esse calor.',
@@ -957,6 +1034,8 @@ export const DAY = day({
               { who: 'NARRADOR', t: 'Mais tarde, no celular, o extrato do dia: "Bônus — meta de eficiência: R$ 30". Você apaga a notificação antes que {oconj} veja.', when: is.flag('d5_meta_batida') },
               { who: 'NARRADOR', t: 'Você sabe exatamente de qual ficha saíram esses trinta reais.', when: is.flag('d5_meta_suja') },
               { who: 'NARRADOR', t: 'A casa apaga as luzes uma por uma. A última é a da sala, onde {oconj} ainda corta o molde.', when: is.not('d5_meta_batida') },
+              // flags.md: maquina_prometida — sem a máquina, a capa sai à mão, de lençol velho
+              { who: 'NARRADOR', t: 'Em cima da cadeira do Liam, uma capa de super-herói feita de lençol velho, com uma estrela azul costurada à mão, ponto por ponto. Sem máquina. {Oconj} ficou até tarde.', when: (cc) => cc.flag('maquina_prometida') && !cc.flag('maquina') },
             ],
           },
         },
