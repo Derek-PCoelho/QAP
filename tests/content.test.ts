@@ -9,6 +9,8 @@ import { cluesIn } from '../src/engine/text';
 
 const KNOWN_TOKENS = new Set(['dr', 'Dr', 'DR', 'tit', 'nome', 'NOME', 'filho', 'Filho', 'pai', 'Pai', 'o', 'O', 'ele', 'Ele', 'dele', 'um', 'sozinho', 'cansado', 'obrigado', 'querido', 'menino', 'meu', 'Meu', 'seu', 'Seu', 'regulador', 'medico', 'Medico', 'esposo', 'conj', 'CONJ', 'oconj', 'Oconj', 'doconj', 'proconj', 'bene', 'sobrenome', 'central', 'unit', 'dx', 'Dx', 'name', 'hora', 'dest']);
 const SPEAKERS = new Set(['LUCIA', 'LÚCIA', 'DAVI', 'ZELIA', 'ZÉLIA', 'EU', 'NARRADOR', 'SIMONE', 'HENRIQUE', 'PEIXOTO', 'DR. PEIXOTO', 'BENE', 'BENÉ', 'CARLA', 'ARLINDO', 'ASSESSOR', 'CIDA', 'JAIRO', 'NOGUEIRA', 'JULIANA', 'ROSANGELA', 'ROSÂNGELA', 'ANTONIO', 'ANTÔNIO', 'BIEL', 'WESLEY', 'MARCIA', 'MÁRCIA', 'PAULA', 'DRA. PAULA', 'PLANTONISTA', 'MARCOS', 'TICO', 'JOANA', 'ODETE', 'OSVALDO', 'VIZINHA', 'PROFESSORA', 'DIRETORA', 'CASTRO', 'FERNANDA', 'TODOS', 'VOZ', 'RÁDIO', 'TELEFONE', 'DIRETOR', 'MÉDICO', 'ENFERMEIRA', 'LÚCIA E DAVI', 'IRMÃ', 'CRIANÇA', 'MOÇA', 'DIRCE', 'AÍLTON', 'TONINHO', 'LIA', 'ZÉ CARLOS', 'ROSE', 'MÁRCIO', 'SAULO', 'CÔNJUGE', 'LIAM', 'DIEGO', 'TAINARA', 'ADEMIR', 'NEIDE', 'CLEIDE', 'JACÓ', 'IOLANDA', 'EDSON']);
+// 1.1, roteiro dos dias 11–20 e finais: falantes novos (sem retrato próprio por enquanto)
+for (const s of ['REGINALDO', 'IOLANDA', 'EDSON', 'DIEGO', 'TAINARA', 'FILHO DO NOGUEIRA', 'HELOÍSA', 'MAURO', 'TAÍS', 'SGT. ROCHA', 'JACÓ', 'RAPAZ', 'ANSELMO', 'CAIO']) SPEAKERS.add(s);
 
 function ctxs(day: number): Ctx[] {
   const out: Ctx[] = [];

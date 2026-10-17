@@ -6,9 +6,16 @@
 // Antes do show: duas ligações de "passou mal no sol" com verdades diferentes.
 // Casa: aniversário do Liam, "um dia inteiro com {m:o pai|a mãe}".
 // Fios: 🌾 Juliana (filha do Seu Antônio, D3/D11) · ↺ café e Laços · 🌱 manga comprida (D16).
+// 1.1 (ROTEIRO, dia 15): almoço em pé (pré-autorizar o reforço de Rio Claro → 18 min em vez de
+// 28; ou o Bené na saída lateral → a USA 01 3 min mais perto); o Saulo abre dois leitos do quarto
+// andar se `saulo_confianca ≥ 2` (R2); o Sgt. Rocha lembra do bar do Neno; a Taís voluntária; o
+// aniversário por faixa × origem do dinheiro (3.1-e); o presente da Cida = o caderno de guardanapos
+// do Seu Nestor (R5); o desenho escondido fica com a Dona Iolanda (3.3); trote sem risada; nomes.
 // =============================================================================
-import type { Ctx, SceneDef, DLine, SceneNode, MciVictim, ShiftScriptCtx } from '../../engine/types';
+import type { Ctx, SceneDef, DLine, SceneNode, MciVictim, ShiftScriptCtx, BillDef } from '../../engine/types';
 import { day, call, fx, NUM, ADDR } from '../dsl';
+import { addressTarget, route } from '../../engine/city/path';
+import { aulas, faixa, origem, rua, saulo, vivoNoDiario, zeliaViva } from './arco';
 
 const presente = (c: Ctx, m: 'lucia' | 'davi') => {
   const f = c.s.family[m];
@@ -20,6 +27,9 @@ const noturnoFala = (c: Ctx) => (c.flag('denunciou_henrique') ? 'PAULA' : 'HENRI
 
 /** tempo até o reforço de Rio Claro de Minas chegar ao Parque (igual ao mci.reinforcementMin) */
 const REFORCO_MIN = 28;
+/** com o reforço pré-autorizado no almoço, Rio Claro já sai antes: 18 min */
+const REFORCO_PRE = 18;
+const reforcoMin = (c: { flag(f: string): boolean }) => (c.flag('reforco_preautorizado') ? REFORCO_PRE : REFORCO_MIN);
 
 // -----------------------------------------------------------------------------
 // As 14 vítimas do tumulto (START: anda → verde; FR > 30, enchimento > 2 s ou
@@ -29,30 +39,50 @@ const VITIMAS: MciVictim[] = [
   // vermelhas (3)
   { id: 'juliana', name: 'Juliana Ferreira', age: 27, desc: 'Pisoteada na grade caída, perto do portão. Fala pouco, perde o ar no meio da frase, segura o lado esquerdo do peito', anda: false, respira: true, fr: 36, enchimento: 2, obedece: true, cor: 'vermelho', key: 'juliana' },
   { id: 'kevin', name: 'Kevin Souza', age: 19, desc: 'Prensado contra o alambrado. Pálido, suor frio, pele manchada, diz que está com muita sede', anda: false, respira: true, fr: 26, enchimento: 4, obedece: true, cor: 'vermelho' },
-  { id: 'josue', name: 'Josué Ramos', age: 58, desc: 'Caiu de cabeça da arquibancada. Não abre o olho quando chamam, só geme e puxa o braço quando beliscam', anda: false, respira: true, fr: 16, enchimento: 2, obedece: false, cor: 'vermelho' },
+  { id: 'josue', name: 'Jurandir Ramos', age: 58, desc: 'Caiu de cabeça da arquibancada. Não abre o olho quando chamam, só geme e puxa o braço quando beliscam', anda: false, respira: true, fr: 16, enchimento: 2, obedece: false, cor: 'vermelho' },
   // amarelas (5)
-  { id: 'larissa', name: 'Larissa Prado', age: 23, desc: 'Tornozelo virado pra dentro, não apoia o pé. Conversa, chora de dor, pede o celular', anda: false, respira: true, fr: 22, enchimento: 1, obedece: true, cor: 'amarelo' },
+  { id: 'larissa', name: 'Luana Prado', age: 23, desc: 'Tornozelo virado pra dentro, não apoia o pé. Conversa, chora de dor, pede o celular', anda: false, respira: true, fr: 22, enchimento: 1, obedece: true, cor: 'amarelo' },
   { id: 'edmilson', name: 'Edmilson Pinto', age: 40, desc: 'Braço direito torto abaixo do cotovelo. Sentado no gramado, segura o braço com a outra mão; tentou levantar e as pernas bambearam de dor', anda: false, respira: true, fr: 20, enchimento: 2, obedece: true, cor: 'amarelo' },
   { id: 'ryan', name: 'Ryan Oliveira', age: 16, desc: 'Corte fundo na coxa no arame do alambrado. Um amigo aperta com a camiseta, o sangue parou de escorrer', anda: false, respira: true, fr: 24, enchimento: 2, obedece: true, cor: 'amarelo' },
-  { id: 'neusa', name: 'Neusa Martins', age: 66, desc: 'Derrubada no empurra-empurra. Dor forte no quadril, não consegue levantar, pergunta pela neta', anda: false, respira: true, fr: 20, enchimento: 2, obedece: true, cor: 'amarelo' },
+  { id: 'neusa', name: 'Cremilda Martins', age: 66, desc: 'Derrubada no empurra-empurra. Dor forte no quadril, não consegue levantar, pergunta pela neta', anda: false, respira: true, fr: 20, enchimento: 2, obedece: true, cor: 'amarelo' },
   { id: 'gilmar', name: 'Gilmar Nascimento', age: 35, desc: 'Segurança do evento, empurrado de costas contra a grade. Dor nas costas e formigamento nas pernas, mas mexe os pés', anda: false, respira: true, fr: 22, enchimento: 2, obedece: true, cor: 'amarelo' },
   // verdes (6)
-  { id: 'enzo', name: 'Enzo Barbosa', age: 12, desc: 'Cotovelo ralado, camiseta rasgada. Anda atrás da mãe pedindo pra voltar pro show', anda: true, respira: true, fr: 20, enchimento: 1, obedece: true, cor: 'verde' },
-  { id: 'patricia', name: 'Patrícia Alves', age: 30, desc: 'Em pânico, chorando, diz que não consegue respirar. Anda de um lado pro outro procurando a amiga', anda: true, respira: true, fr: 34, enchimento: 1, obedece: true, cor: 'verde' },
+  { id: 'enzo', name: 'Gael Barbosa', age: 12, desc: 'Cotovelo ralado, camiseta rasgada. Anda atrás da mãe pedindo pra voltar pro show', anda: true, respira: true, fr: 20, enchimento: 1, obedece: true, cor: 'verde' },
+  { id: 'patricia', name: 'Rebeca Alves', age: 30, desc: 'Em pânico, chorando, diz que não consegue respirar. Anda de um lado pro outro procurando a amiga', anda: true, respira: true, fr: 34, enchimento: 1, obedece: true, cor: 'verde' },
   { id: 'wanderson', name: 'Wanderson Freire', age: 22, desc: 'Corte no supercílio, o rosto todo vermelho de sangue. Anda, conversa, quer tirar foto com a PM', anda: true, respira: true, fr: 18, enchimento: 1, obedece: true, cor: 'verde' },
   { id: 'raimundo', name: 'Raimundo Araújo', age: 45, desc: 'Torceu o pé na saída. Anda mancando sozinho, xingando o sapato novo', anda: true, respira: true, fr: 18, enchimento: 2, obedece: true, cor: 'verde' },
-  { id: 'zuleide', name: 'Zuleide Mendes', age: 70, desc: 'A pressão baixou no calor e ela sentou no meio-fio. Já levantou e anda sozinha até a sombra', anda: true, respira: true, fr: 18, enchimento: 2, obedece: true, cor: 'verde' },
+  { id: 'zuleide', name: 'Iraci Mendes', age: 70, desc: 'A pressão baixou no calor e ela sentou no meio-fio. Já levantou e anda sozinha até a sombra', anda: true, respira: true, fr: 18, enchimento: 2, obedece: true, cor: 'verde' },
   { id: 'amanda', name: 'Amanda Vieira', age: 18, desc: 'Desmaiou no aperto e já acordou. Anda, fala, lembra de tudo, só está tonta', anda: true, respira: true, fr: 20, enchimento: 1, obedece: true, cor: 'verde' },
 ];
+
+/** o evento do Parque; `reinforcementMin` acompanha `reforco_preautorizado` (ajustado no início do dia,
+ *  no almoço e às 16:55, sempre nos dois sentidos, para não vazar de uma campanha para outra) */
+const MCI = { victims: VITIMAS, redWindow: 35, reinforcementMin: REFORCO_MIN, reinforcementUnits: 2 };
+const ajustaReforco = (c: { flag(f: string): boolean }) => {
+  MCI.reinforcementMin = reforcoMin(c);
+};
 
 // -----------------------------------------------------------------------------
 // Scripts de pressão (17:00–18:40)
 // -----------------------------------------------------------------------------
+/** almoço: o Bené guarda a USA 01 na saída lateral do Parque (3 min mais perto da primeira vermelha) */
+const saidaLateral = (c: ShiftScriptCtx) => {
+  if (!c.flag('bene_saida_lateral') || c.sflag('saida_lateral')) return;
+  const u = c.shift.units['USA01'];
+  if (!u || u.status !== 'QRV') return;
+  const r = route(u.pos, addressTarget(ADDR.parque), 'none', c.now);
+  if (r.blocked || r.path.length < 2) return;
+  const k = r.minutes > 3 ? Math.round(((r.path.length - 1) * 3) / r.minutes) : r.path.length - 1;
+  const pt = r.path[Math.max(0, Math.min(r.path.length - 1, k))];
+  u.pos = [pt[0], pt[1]];
+  c.sflag('saida_lateral', true);
+  c.radio('USA 01 · BENÉ', '{bene}, USA 01 QRV na esquina da saída lateral do Parque. De frente pra rua, de ré pro palco. Se precisar da cidade, eu volto.', 'info');
+};
 /** reforço pedido e chegado: libera uma USA da cidade que estava presa no evento */
 const reforcoTroca = (c: ShiftScriptCtx) => {
   if (c.sflag('reforco_trocou') || !c.flag('mci_reforco')) return;
   const mci = c.callStatus('d15_mci');
-  if (!mci?.decision || c.now < mci.decision.t + REFORCO_MIN) return;
+  if (!mci?.decision || c.now < mci.decision.t + reforcoMin(c)) return;
   if (c.freeUnits('USA').length) return;
   const u = c.unitsOfType('USA').find((x) => x.callId === mci.id && (x.status === 'LOCAL' || x.status === 'RETIDO'));
   if (!u) return;
@@ -73,7 +103,9 @@ const julianaRadio = (c: ShiftScriptCtx) => {
     c.request(
       from,
       pai
-        ? 'Central, a moça da grade, a Juliana, tá estável. Quebrou costela, mas fala. Pediu pra avisar o pai, o Seu Antônio, da Vila Nova. Disse que ele é cardíaco e não pode saber pelo jornal.'
+        ? c.flag('juliana_sabe')
+          ? 'Central, a moça da grade, a Juliana, tá estável. Quebrou costela, mas fala. Pediu pra avisar o pai, o Seu Antônio, da Vila Nova. E pediu pra dizer: "fala pro meu pai que foi a mesma central. Ele vai entender."'
+          : 'Central, a moça da grade, a Juliana, tá estável. Quebrou costela, mas fala. Pediu pra avisar o pai, o Seu Antônio, da Vila Nova. Disse que ele é cardíaco e não pode saber pelo jornal.'
         : 'Central, a moça da grade, a Juliana, tá estável. Quebrou costela, mas fala. Pediu pra avisar a mãe, na Vila Nova. Disse que a mãe já perdeu o marido esse mês e não pode saber pelo jornal.',
       [
         {
@@ -109,6 +141,17 @@ const regionalLotado = (c: ShiftScriptCtx) => {
   const u = Object.values(c.shift.units).find((x) => x.callId === m.id && x.status === 'RETIDO');
   if (!u) return;
   c.sflag('regional_pedido', true);
+  if (saulo(c) >= 2) {
+    // R2 (D15): com a confiança do Saulo, ele abre dois leitos do quarto andar por conta própria
+    c.set('saulo_abriu_leitos');
+    c.setUnit(u.id, 'QRV');
+    c.radio(
+      u.radioName,
+      `Central, ${u.label} no Regional. O Dr. Saulo desceu no corredor, olhou a gente e abriu dois leitos do quarto andar "por conta própria", ele disse. Subiu direto. Estamos QRV.`,
+      'ok',
+    );
+    return;
+  }
   c.request(
     u.radioName,
     `Central, ${u.label} no Regional com vítima do show. Corredor lotado, sem maca. A gente tá preso aqui, sem previsão.`,
@@ -129,7 +172,61 @@ const regionalLotado = (c: ShiftScriptCtx) => {
 
 // -----------------------------------------------------------------------------
 // Casa: aniversário do Liam
+// O bolo segue a regra do dinheiro (ROTEIRO 3.1-e): aperto = fiado do Toninho; justo = pago à
+// vista; folga = encomendado com a sirene que acende; sobra do envelope = dois andares de
+// confeitaria; sobra das noites na ambulância = você dorme antes dos parabéns.
 // -----------------------------------------------------------------------------
+type Bolo = 'fiado' | 'vista' | 'sirene' | 'confeitaria' | 'sobra_bico';
+function boloDoDia(c: Ctx): Bolo {
+  const f = faixa(c);
+  if (f === 'aperto') return 'fiado';
+  if (f === 'justo') return 'vista';
+  if (f === 'sobra' && origem(c) === 'vereador') return 'confeitaria';
+  if (f === 'sobra' && origem(c) === 'bico') return 'sobra_bico';
+  return 'sirene';
+}
+const BOLO_TEXTO: Record<Bolo, DLine[]> = {
+  fiado: [{ who: 'NARRADOR', t: 'Tem bolo na mesa. De padaria, confeito azul, uma ambulância de plástico espetada no meio. {Oconj} comprou fiado no Seu Toninho.' }],
+  vista: [
+    { who: 'NARRADOR', t: 'Tem bolo na mesa. De padaria, confeito azul, uma ambulância de plástico espetada no meio.' },
+    { who: 'LUCIA', t: 'Pago à vista. O Toninho até estranhou.', when: (c) => presente(c, 'lucia') },
+  ],
+  sirene: [
+    { who: 'NARRADOR', t: 'Tem bolo na mesa, encomendado: uma ambulância de plástico em cima do glacê, com uma sirene de pilha que acende azul e vermelho.' },
+    { who: 'DAVI', t: 'Ela acende! Ela ACENDE!' },
+  ],
+  confeitaria: [
+    { who: 'NARRADOR', t: 'Tem um bolo de dois andares na mesa, de confeitaria do Centro, com o nome do Liam em açúcar dourado.' },
+    { who: 'DAVI', t: 'É o maior da escola!' },
+    { who: 'LUCIA', t: '(baixinho, sem sorriso) É o maior da escola.', when: (c) => presente(c, 'lucia') },
+  ],
+  sobra_bico: [{ who: 'NARRADOR', t: 'Tem bolo na mesa, encomendado: uma ambulância de plástico em cima do glacê, com uma sirene de pilha que acende.' }],
+};
+/** a conta do bolo acompanha o bolo (folga e sobra já vêm pagas: o dinheiro existe) */
+const BOLO_CONTA: BillDef[] = [
+  {
+    id: 'bolo_davi',
+    label: 'Bolo de aniversário do Liam',
+    amount: 60,
+    when: (c) => (!foiEmbora(c) || longe(c)) && (!presente(c, 'davi') || boloDoDia(c) === 'fiado' || boloDoDia(c) === 'vista'),
+    desc: (c) => (!presente(c, 'davi') ? '{Oconj} comprou em Rio Claro e mandou a conta.' : boloDoDia(c) === 'vista' ? 'Pago à vista no Seu Toninho. Se não pagar agora, vira fiado.' : 'Fiado no caderno do Seu Toninho. "Paga quando der, doutor."'),
+    onPay: fx.set('aniversario_pago'),
+    onSkip: (e) => {
+      e.set('aniversario_fiado');
+      if (!presente(e, 'davi')) e.add('lacos', -1, '{oconj} pagou o bolo do bolso');
+    },
+  },
+  {
+    id: 'bolo_davi_encomenda',
+    label: 'Bolo de aniversário do Liam (encomenda)',
+    amount: (c) => (boloDoDia(c) === 'confeitaria' ? 180 : 90),
+    auto: true,
+    when: (c) => presente(c, 'davi') && boloDoDia(c) !== 'fiado' && boloDoDia(c) !== 'vista',
+    desc: (c) => (boloDoDia(c) === 'confeitaria' ? 'Dois andares, confeitaria do Centro. Pago.' : 'Encomendado no Seu Toninho, com a sirene que acende. Pago.'),
+    onPay: fx.set('aniversario_pago'),
+  },
+];
+
 function cenaAniversario(c: Ctx): SceneDef {
   const irritado = c.s.irritado > 0;
   const D = presente(c, 'davi');
@@ -139,6 +236,8 @@ function cenaAniversario(c: Ctx): SceneDef {
   const presenteCida = c.flag('cida_conversou_d15') || c.v('humanidade') >= 6;
   const julianaPerdida = c.key('juliana') === 'perdido' && c.flag('juliana_cliente');
   const escondeDesenho = irritado ? fx.set('davi_desenho_escondido') : undefined;
+  const iolanda = aulas(c) >= 1;
+  const bolo = boloDoDia(c);
 
   const promessaChoices = [
     { label: '"Domingo. O dia inteiro. Eu desligo o celular e a gente vai no campinho."', next: 'promessa', affectionate: true, effect: fx.all(fx.set('promessa_davi'), fx.add('lacos', 1, 'prometeu o domingo')) },
@@ -173,7 +272,7 @@ function cenaAniversario(c: Ctx): SceneDef {
         tel_fim: {
           lines: [
             { who: 'LUCIA', t: '(pegando o telefone) Ele ficou esperando a ligação desde as sete, {nome}. {c:Obrigada|Obrigado} por ligar.' },
-            ...(zelia && presenteCida ? [{ who: 'ZELIA', t: '(da cozinha) A Cida mandou um estojo de lápis de cor pro menino. Guardei pra quando ele voltar.' }] : []),
+            ...(zelia && presenteCida ? [{ who: 'ZELIA', t: '(da cozinha) A Cida mandou um caderno pro menino. Caderno velho, de capa dura, cheio de guardanapo colado. Guardei pra quando ele voltar.' }] : []),
           ],
         },
       },
@@ -181,8 +280,10 @@ function cenaAniversario(c: Ctx): SceneDef {
   }
 
   // ---- em casa
-  const start: DLine[] = [{ who: 'NARRADOR', t: 'Tem bolo na mesa. De padaria, confeito azul, uma ambulância de plástico espetada no meio. {Oconj} comprou fiado no Seu Toninho.' }];
+  const start: DLine[] = [...BOLO_TEXTO[bolo]];
   if (zelia) start.push({ who: 'ZELIA', t: 'Chegou atrasad{o}. Igualzinho no dia que ele nasceu.' });
+  if (c.flag('foi_apresentacao')) start.push({ who: 'DAVI', t: 'Você foi na minha apresentação. Pode vir no meu aniversário também? ...Ah. Você veio.' });
+  else start.push({ who: 'DAVI', t: 'Esse ano você veio!' });
   if (apanhando) start.push({ who: 'NARRADOR', t: 'Trinta e dois graus, e o Liam está de blusa de manga comprida.' });
   if (irritado) {
     start.push(
@@ -199,21 +300,24 @@ function cenaAniversario(c: Ctx): SceneDef {
   }
   start.push({ who: 'DAVI', t: 'Sabe o que eu quero de presente? Não é brinquedo.' }, { who: 'DAVI', t: 'Eu quero um dia inteiro com você. {m:O pai inteiro|A mãe inteira}. Sem telefone.' });
 
-  const bolo: DLine[] = [{ who: 'NARRADOR', t: zelia ? 'Parabéns pra você, com a Dona Zélia meio tom acima de todo mundo.' : 'Parabéns pra você. A cadeira da Dona Zélia fica vazia na cabeceira, e todo mundo canta mais alto por causa disso.' }];
+  const parabens: DLine[] = [];
+  if (bolo === 'sobra_bico') parabens.push({ who: 'NARRADOR', t: 'Você senta na cadeira da cozinha "só um minuto" e acorda com todo mundo cantando. Dormiu antes dos parabéns. O Liam acha engraçado. {Oconj}, não.' });
+  parabens.push({ who: 'NARRADOR', t: zelia ? 'Parabéns pra você, com a Dona Zélia meio tom acima de todo mundo.' : 'Parabéns pra você. A cadeira da Dona Zélia fica vazia na cabeceira, e todo mundo canta mais alto por causa disso.' });
   if (julianaPerdida && L) {
-    bolo.push(
+    parabens.push(
       { who: 'NARRADOR', t: 'No meio do bolo, o celular {doconj} vibra. {c:Ela|Ele} lê, sai da sala e volta com o olho vermelho.' },
       { who: 'LUCIA', t: '(baixinho) A Juliana. A minha primeira cliente. Ela tava no show.' },
     );
   }
   if (presenteCida) {
-    bolo.push(
-      zelia ? { who: 'ZELIA', t: 'Ah! A Cida mandou isso pela vizinha.' } : { who: 'LUCIA', t: 'Chegou isso pela vizinha. É da Dona Cida.' },
-      { who: 'NARRADOR', t: 'Um estojo de lápis de cor embrulhado em papel de pão. Bilhete com letra tremida: "Pro Liam desenhar a ambulância {m:do pai|da mãe}. Vó Cida."' },
+    parabens.push(
+      zelia ? { who: 'ZELIA', t: 'Ah! A Cida mandou isso pela vizinha.' } : L ? { who: 'LUCIA', t: 'Chegou isso pela vizinha. É da Dona Cida.' } : { who: 'NARRADOR', t: 'A vizinha deixou um embrulho no portão. É da Dona Cida.' },
+      { who: 'NARRADOR', t: 'Não é estojo. É um caderno de capa dura, gordo, cheio de guardanapos colados, cada um com um retrato a caneta. Bilhete com letra tremida: "Pro Liam, que desenha. Era do meu falecido. — Vó Cida."' },
+      { who: 'DAVI', t: '(folheando, de boca aberta) É tudo gente de ônibus...' },
     );
   }
-  if (c.flag('marcia_viva')) bolo.push({ who: 'NARRADOR', t: 'Na mochila dele, um cartão da escola: "Pro meu artista preferido. Tia Márcia."' });
-  if (irritado) bolo.push({ who: 'NARRADOR', t: 'A folha dobrada não aparece mais. Nem naquela noite, nem depois.' });
+  if (c.flag('marcia_viva')) parabens.push({ who: 'NARRADOR', t: 'Na mochila dele, um cartão da escola: "Pro meu artista preferido. Tia Márcia."' });
+  if (irritado) parabens.push({ who: 'NARRADOR', t: iolanda ? 'A folha dobrada não aparece mais. Não foi pro lixo: no sábado ela vai na mochila, pro 301 do Ed. Aurora, e fica com a Dona Iolanda.' : 'A folha dobrada não aparece mais. Nem naquela noite, nem depois.' });
 
   const nodes: Record<string, SceneNode> = {
     start: { lines: start, onEnter: escondeDesenho, choices: promessaChoices },
@@ -239,9 +343,27 @@ function cenaAniversario(c: Ctx): SceneDef {
       ],
       next: 'bolo',
     },
-    bolo: { lines: bolo },
+    bolo: { lines: parabens },
   };
-  return { id: 'd15_aniversario', bg: 'cozinha', cast: ['DAVI', ...(L ? ['LUCIA'] : []), ...(zelia ? ['ZELIA'] : [])], nodes };
+  const inspect = presenteCida
+    ? {
+        objects: [
+          {
+            id: 'caderno_nestor',
+            label: 'O caderno da Dona Cida',
+            desc: 'Retratos a caneta em guardanapo de bar: um cobrador cochilando, uma senhora com galinha no colo, um moleque de boné puxando palmas. Numa página do meio, um casal de costas no corredor de um ônibus, ele de joelho. Embaixo, a lápis: "Linha 12. Av. Brasil."',
+            x: 150,
+            y: 104,
+            w: 34,
+            h: 22,
+            unlock: 'caderno_nestor',
+            onFind: fx.set('caderno_nestor_visto'),
+          },
+        ],
+        links: [],
+      }
+    : undefined;
+  return { id: 'd15_aniversario', bg: 'cozinha', cast: ['DAVI', ...(L ? ['LUCIA'] : []), ...(zelia ? ['ZELIA'] : [])], nodes, inspect };
 }
 
 function bicoD15(c: Ctx): SceneDef {
@@ -267,12 +389,70 @@ function bicoD15(c: Ctx): SceneDef {
 }
 
 // -----------------------------------------------------------------------------
+// Almoço (almoco.md, D15 — "Vinte mil pessoas, uma saída"). Só uma das duas preparações.
+// -----------------------------------------------------------------------------
+function almocoD15(c: Ctx): SceneDef {
+  void c;
+  return {
+    id: 'd15_almoco',
+    bg: 'central',
+    cast: ['SIMONE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Sexta da Expo. O almoço é em pé, encostado na pia da copa. Pela janela, o Bené enche a garrafa térmica no filtro do pátio.' },
+          { who: 'BENÉ', t: 'Uma saída, {bene}. Vinte mil pessoas e uma saída. Eu já vi grade cair em rodeio. Cai pra frente.' },
+          { who: 'SIMONE', t: 'Meu sobrinho foi às sete pra pegar grade. Sem boné. Mandou foto da fila. Vai sobrar pra gente.' },
+          { who: 'CASTRO', t: 'Se cair, a gente vai precisar de Rio Claro antes de precisar.' },
+          { who: 'NARRADOR', t: 'A porta da coordenação está aberta. O Peixoto finge que não está ouvindo.' },
+        ],
+        choices: [
+          { label: '"Peixoto, pré-autoriza o reforço de Rio Claro agora."', next: 'peixoto' },
+          { label: '"Bené, guarda a USA 01 pra mim na saída lateral."', next: 'lateral', effect: fx.set('bene_saida_lateral') },
+          { label: 'Comer quieto.', next: 'quieto' },
+        ],
+      },
+      peixoto: {
+        lines: [{ who: 'DR. PEIXOTO', t: '(da porta) Agora? Antes de acontecer? Isso custa diária de viatura parada, {dr}. Rio Claro cobra até o cafezinho.' }],
+        choices: [
+          {
+            label: '"Custa menos que catorze vítimas."',
+            next: 'assina',
+            effect: (e) => {
+              e.set('reforco_preautorizado');
+              ajustaReforco(e);
+            },
+          },
+          { label: '"Então deixa."', next: 'deixa' },
+        ],
+      },
+      assina: {
+        lines: [
+          { who: 'NARRADOR', t: 'O Peixoto olha pra você um tempo comprido. Depois assina um formulário em cima do micro-ondas, com a caneta da planilha.' },
+          { who: 'DR. PEIXOTO', t: 'Catorze. Você chutou um número bonito. Se não acontecer nada, essa diária sai do seu índice.' },
+          { who: 'BENÉ', t: '(da janela) Tomara que saia, {bene}. Tomara que saia.' },
+        ],
+      },
+      deixa: { lines: [{ who: 'DR. PEIXOTO', t: 'Se acontecer, você pede. Pedir depois é mais barato. (ele fecha a porta)' }] },
+      lateral: {
+        lines: [
+          { who: 'BENÉ', t: 'Saída lateral eu conheço. Fico de frente pra rua, de ré pro palco. A partir das três.' },
+          { who: 'BENÉ', t: 'Se a cidade precisar de mim antes, me chama que eu volto. Ninguém fica sem a 01 por causa de show.' },
+        ],
+      },
+      quieto: { lines: [{ who: 'NARRADOR', t: 'Vocês comem em pé, olhando o pátio. O feijão da Simone está bom. Ninguém fala disso.' }] },
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
 export const DAY = day({
   day: 15,
   title: 'O Show',
   weekday: 'Sexta-feira',
   weather: 'Sol forte, 32 °C. Expo Aurora no Parque de Exposições.',
   goal: { maxUSA: 4, bonus: 30 },
+  onStart: (e) => ajustaReforco(e),
   newspaper: (c) => {
     const cic = c.flag('d14_ciclista_obito') ? 'obito' : c.flag('d14_ciclista_vivo') ? 'vivo' : '';
     const pre = c.flag('d14_preeclampsia_obito') ? 'obito' : c.flag('d14_preeclampsia_viva') ? 'viva' : '';
@@ -287,7 +467,7 @@ export const DAY = day({
             ? { title: 'Ciclista atropelado na Beira-Rio sobrevive', text: 'O motorista fugiu. Um pescador apertou a coxa da vítima, orientado pela Regulação por telefone, até a ambulância chegar.' }
             : { title: 'Beira-Rio: atropelamento com fuga', text: 'Um ciclista foi atingido em frente ao pesqueiro. A polícia procura o motorista.' },
         pre === 'viva'
-          ? { title: 'Gestante de alto risco é salva na Maternidade', text: 'Jaqueline, 24 anos, chegou com pressão de 17 por 11. "Eu achei que era o calor", disse. Mãe e bebê passam bem.' }
+          ? { title: 'Gestante de alto risco é salva na Maternidade', text: 'Mirela, 24 anos, chegou com pressão de 17 por 11. "Eu achei que era o calor", disse. Mãe e bebê passam bem.' }
           : pre === 'obito'
             ? { title: 'Jovem grávida morre na Vila Nova', text: 'A gestante de 24 anos teve convulsões em casa. O bebê nasceu prematuro e está na UTI neonatal.' }
             : { title: 'Pré-natal: pressão alta exige atenção', text: 'Dor de cabeça forte e visão "brilhando" na gravidez são sinal de alerta, lembra a Secretaria.' },
@@ -315,14 +495,32 @@ export const DAY = day({
   }),
   timeline: [
     { at: '07:02', kind: 'radio', who: 'COPOM · PM', text: 'Central, PM informa: Expo Aurora hoje, show gratuito das 13h às 17h no Parque de Exposições. Público estimado em vinte mil pessoas.' },
-    { at: '12:30', kind: 'simone', who: 'SIMONE', text: 'Meu sobrinho mandou foto da fila do show. Tem gente lá desde as sete da manhã, no sol, sem boné. Vai sobrar pra gente.' },
+    { at: '15:00', kind: 'script', id: 'saida_lateral', run: saidaLateral },
     {
       at: '16:40',
       kind: 'interfone',
       who: 'DR. PEIXOTO',
-      text: '{Dr}, o show acaba às cinco. Se der confusão: Manual, página 15. Limite de viaturas por evento. Não me esvazia a cidade. Se precisar, pede reforço pra Regional de Rio Claro. Eu assino.',
+      text: (c) =>
+        c.flag('reforco_preautorizado')
+          ? '{Dr}, o show acaba às cinco. O reforço de Rio Claro tá assinado desde o almoço, com diária e tudo. Se der confusão: Manual, página 15. Não me faz arrepender.'
+          : '{Dr}, o show acaba às cinco. Se der confusão: Manual, página 15. Limite de viaturas por evento. Não me esvazia a cidade. Se precisar, pede reforço pra Regional de Rio Claro. Eu assino.',
     },
+    { at: '16:55', kind: 'script', id: 'reforco_tempo', run: (c) => ajustaReforco(c) },
     { at: '17:01', kind: 'radio', who: 'COPOM/193', text: 'Corpo de Bombeiros a caminho do Parque de Exposições: tumulto na saída do show, grade derrubada, várias vítimas.' },
+    {
+      at: '17:06',
+      kind: 'radio',
+      who: 'PM · SGT. ROCHA',
+      when: (c) => c.flag('d4_pm_tardia'),
+      text: 'Central, Sargento Rocha de novo. Foi {o} {dr} que pediu a gente atrasado no bar do Neno, no dia seis? Hoje a gente já veio junto. Pode mandar a equipe entrar.',
+    },
+    {
+      at: '17:18',
+      kind: 'radio',
+      who: 'PM · SGT. ROCHA',
+      when: (c) => vivoNoDiario(c, 'd05_academia'),
+      text: 'Central, tem uma moça de enfermagem aqui, voluntária, que diz que já fez massagem num dono de academia. Taís. Tá segurando o tornozelo de uma menina e acalmando os verdes. Deixo?',
+    },
     {
       at: '17:12',
       kind: 'pedido',
@@ -420,9 +618,11 @@ export const DAY = day({
       noteFixed: true,
       addr: ADDR.cida,
       amb: ['tv', 'musica'],
-      open: [
+      open: (c) => [
         'Oi {meu} {filho}, é a Cida! Bom dia! Ó, {{varri o quintal inteiro e travou as costas|costas}}. Fiquei torta igual um ponto de interrogação! [risada]',
-        'E hoje tem show no Parque, você vai? Eu ia, mas a Zélia disse que é {{muito empurra-empurra|empurra}}, que velha não tem que ir.',
+        zeliaViva(c)
+          ? 'E hoje tem show no Parque, você vai? Eu ia, mas a Zélia disse que é {{muito empurra-empurra|empurra}}, que velha não tem que ir.'
+          : 'E hoje tem show no Parque, você vai? Eu ia, mas é {{muito empurra-empurra|empurra}}. A sua mãe ia dizer que velha não tem que ir.',
       ],
       q: {
         oque: 'Abaixei pra pegar a pá e ploft. Travou aqui embaixo, na cintura.',
@@ -449,8 +649,8 @@ export const DAY = day({
           cost: 15,
           say: 'E a senhora, Dona Cida, além das costas? Vai acompanhar o show?',
           a: (c) => [
-            'Vou ouvir no rádio, que a TV tá com fantasma. Ah, e hoje é aniversário do Liam, né? A Zélia me contou!',
-            'Mandei um presentinho pela vizinha da Zélia. Coisa boba. Não abre antes da hora, hein?',
+            zeliaViva(c) ? 'Vou ouvir no rádio, que a TV tá com fantasma. Ah, e hoje é aniversário do Liam, né? A Zélia me contou!' : 'Vou ouvir no rádio, que a TV tá com fantasma. Ah, e hoje é aniversário do Liam, né? Tá anotado na minha folhinha desde o grupo.',
+            'Mandei um presentinho pela vizinha de vocês. Uma coisa do meu falecido, o Nestor. Ele ia gostar de saber que foi pra um menino que desenha. Não abre antes da hora, hein?',
             ...(c.flag('lucia_fora') || c.flag('lucia_foi_embora') ? ['A Zélia disse que ele tá longe, com {c:a mãe|o pai}... Liga pra ele, {meu} {filho}. Aniversário longe é aniversário pela metade.'] : []),
           ],
           onAsk: fx.all(fx.add('humanidade', 1, 'conversou com a Dona Cida'), fx.set('cida_conversou_d15')),
@@ -475,8 +675,8 @@ export const DAY = day({
       at: '11:10',
       pool: 'leve',
       num: '(17) 99733-1180',
-      caller: 'Bianca (amiga)',
-      callerName: 'Bianca',
+      caller: 'Jéssica (amiga)',
+      callerName: 'Jéssica',
       type: 'testemunha',
       voice: 'jovem_m',
       note: 'Moça desmaiou na fila do show.',
@@ -495,8 +695,8 @@ export const DAY = day({
         inicio: 'Agora, uns cinco minutos.',
         historico: 'Nada. {{Ela não tomou café, só cerveja|sem_cafe}}. Ninguém tomou, né, a gente queria pegar grade.',
         sangramento: 'Ralou o joelho quando sentou. Pouquinho.',
-        gestacao: ['CAMILA: Grávida? Não, {m:moço|moça}! Nem namorado eu tenho!', '[risadas das amigas]'],
-        paciente: 'CAMILA: Tô bem, tô bem... só tonta. {{Tô suando, mas tô boa|suando}}. Não quero sair da fila!',
+        gestacao: ['ABIGAIL: Grávida? Não, {m:moço|moça}! Nem namorado eu tenho!', '[risadas das amigas]'],
+        paciente: 'ABIGAIL: Tô bem, tô bem... só tonta. {{Tô suando, mas tô boa|suando}}. Não quero sair da fila!',
         seguranca: 'Seguro, tem PM pra todo lado.',
       },
       extra: [
@@ -506,7 +706,7 @@ export const DAY = day({
         { a: 'acordou', b: 'suando', insight: 'Desmaiou, acordou logo, suando, lúcida, sem comer e no sol: desmaio por calor e jejum. Orientação: sombra, água, comer.' },
         { a: 'desmaiou', b: 'manual:verde', insight: 'Desmaio rápido, já acordada e falando normalmente: caso leve. UPA só se não melhorar (Manual p.1).' },
       ],
-      patient: { name: 'Camila Rodrigues', age: 19, sex: 'F' },
+      patient: { name: 'Abigail Rodrigues', age: 19, sex: 'F' },
       // RC20: desmaio testemunhado = "história de inconsciência" → USI/USB. Vasovagal por calor e jejum (pródromo,
       // segundos, lúcida, sem vômito): orientação preferida (sombra, água, comer; UPA se não melhorar), USB ⚖ (antes
       // era excesso), como em d08_onibus.
@@ -547,7 +747,7 @@ export const DAY = day({
         inicio: 'Faz uns vinte minutos que ficou assim. Piorando.',
         historico: 'Nada. Atleta, joga bola toda semana.',
         sangramento: 'Não.',
-        paciente: ['FELIPE: Que dia é hoje... cadê o palco...', '[ele balbucia alguma coisa sem sentido]', 'Viu? Tá assim.'],
+        paciente: ['MATHEUS: Que dia é hoje... cadê o palco...', '[ele balbucia alguma coisa sem sentido]', 'Viu? Tá assim.'],
         seguranca: 'Seguro.',
         pele: ['Vermelho que nem pimentão.', 'Encostei: {{tá pelando, mas seco! Parou de suar|pele_seca}}.'],
         pulso: 'Tá batendo rápido, {dr}. Muito rápido.',
@@ -568,7 +768,7 @@ export const DAY = day({
         { a: 'pele_seca', b: 'confuso', insight: 'Confuso, pele quente e seca, que parou de suar, depois de horas no sol: insolação grave (intermação). Não é só bebida. Vermelho.' },
         { a: 'nao_reconhece', b: 'manual:vermelho', insight: 'Confusão e alteração de consciência: risco imediato de morte. USA (Manual p.1).' },
       ],
-      patient: { name: 'Felipe Soares', age: 23, sex: 'M' },
+      patient: { name: 'Matheus Soares', age: 23, sex: 'M' },
       // Conferido (RM4: alteração importante da consciência e da temperatura = vermelho → USA). A janela de risco é
       // balanceamento de jogo.
       truth: { dx: 'Insolação grave (intermação)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 50, bad: 120 } },
@@ -626,7 +826,7 @@ export const DAY = day({
         { a: 'fr_alta', b: 'manual:start_vermelho', insight: 'Respira mais de 30 por minuto, não obedece ou enchimento lento: VERMELHO, USA (Manual p.15).' },
         { a: 'nao_abre_olho', b: 'manual:start_vermelho', insight: 'Não abre o olho, não obedece comando: VERMELHO, mesmo respirando (Manual p.15).' },
       ],
-      mci: { victims: VITIMAS, redWindow: 35, reinforcementMin: REFORCO_MIN, reinforcementUnits: 2 },
+      mci: MCI,
       // se ninguém regular o evento até as 19:00, as vítimas graves morrem no gramado
       nightDeath: true,
       onResolve: (e, r) => {
@@ -700,10 +900,10 @@ export const DAY = day({
       note: 'Diz que tem outro tumulto no shopping.',
       noteWrong: 'OUTRO tumulto, {dr}! No shopping! Muita vítima!',
       addr: { rua: 'Av. Brasil', n: 4801, bairro: 'Jardim Primavera', ref: 'Shopping Aurora.' },
-      amb: ['risadas', 'musica'],
+      amb: ['musica'],
       open: [
         'Emergência?! Corre que {{tem outro tumulto no shopping|outro_tumulto}}! Tão pisoteando gente na escada rolante! {{Umas cem pessoas|cem}}!',
-        '[{{música alta de carro, risadas, alguém grita "aumenta o som!"|risadas}}]',
+        '[{{ao fundo, calma, a musiquinha de loja do shopping; uma voz no alto-falante anuncia promoção de chinelo|musica_loja}}]',
       ],
       q: {
         oque: 'É... o povo do show foi tudo pro shopping e a escada rolante... desabou! É!',
@@ -712,14 +912,15 @@ export const DAY = day({
         idade: 'De todas as idades, {m:moço|moça}!',
         referencia: 'No shopping, ué. Do lado da praça de alimentação.',
         sangramento: 'Muito! A escada tá vermelha!',
-        paciente: ['[{{risada abafada|risada2}}]', 'Ninguém pode falar, tá todo mundo desmaiado!'],
+        paciente: ['[{{silêncio; a mesma musiquinha de loja, ninguém gritando perto|calmo}}]', 'Ninguém pode falar, tá todo mundo desmaiado!'],
         seguranca: 'Seguro! Pode mandar todas as ambulâncias!',
         historico: 'Hã?',
       },
-      callback: ['[{{Caixa postal. Antes do bip, a mesma música alta e uma risada.|retorno_caixa}}]'],
+      callback: ['[{{Caixa postal de adolescente: "Fala aí, deixa recado que eu vejo... ou não."|retorno_caixa}}]'],
       links: [
-        { a: 'cem', b: 'manual:trote_sinais', insight: 'Cem vítimas na escada rolante, ninguém mais ligou, risadas e som de carro: trote oportunista aproveitando o tumulto do Parque (Manual p.2).' },
-        { a: 'outro_tumulto', b: 'risadas', insight: '"Outro tumulto", com música alta e risadas no fundo: quem liga está numa festa, não numa tragédia.' },
+        { a: 'cem', b: 'manual:trote_sinais', insight: 'Cem vítimas na escada rolante e nenhum detalhe de corpo nenhum; ninguém mais ligou do shopping: trote oportunista aproveitando o tumulto do Parque (Manual p.2).' },
+        { a: 'outro_tumulto', b: 'musica_loja', insight: '"Tão pisoteando gente", e ao fundo a musiquinha de loja tocando calma, com anúncio de promoção. Pisoteamento não tem trilha sonora.' },
+        { a: 'calmo', b: 'cem', insight: 'Cem pessoas desmaiadas e silêncio em volta do telefone: o ambiente não combina com o relato (Manual p.2).' },
       ],
       patient: { name: '"Cem pessoas no shopping"' },
       truth: { dx: 'Trote oportunista', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
@@ -732,8 +933,8 @@ export const DAY = day({
       at: '17:50',
       pool: 'leve,psiq',
       num: '(17) 99367-0980',
-      caller: 'Dona Vera (mãe)',
-      callerName: 'Dona Vera',
+      caller: 'Dona Ivete (mãe)',
+      callerName: 'Dona Ivete',
       type: 'comum',
       voice: 'mulher',
       note: 'Mãe desesperada: o filho estava no show.',
@@ -745,7 +946,7 @@ export const DAY = day({
         '[{{respiração rápida, choro, a TV com o repórter falando do tumulto|tv_tumulto}}]',
       ],
       q: {
-        oque: 'Eu vi na TV. A grade caiu. O Lucas tava lá com os amigos. Ele não atende!',
+        oque: 'Eu vi na TV. A grade caiu. O Teodoro tava lá com os amigos. Ele não atende!',
         respira: 'Rápido! Não para! Minhas {{mãos tão formigando|formigando}}!',
         consciencia: 'Acordada! Desesperada!',
         idade: 'Quarenta e seis.',
@@ -762,7 +963,7 @@ export const DAY = day({
           label: 'Nome do filho? (lista de vítimas)',
           say: 'Qual o nome completo do seu filho? Eu tenho aqui a lista das vítimas do Parque.',
           a: [
-            'Lucas... Lucas Teodoro Alves. Dezessete anos. Tá na lista? Tá?',
+            'Teodoro... Teodoro Alves. Dezessete anos. Tá na lista? Tá?',
             '[{{o celular dela vibra em cima da mesa|celular}}]',
             '...{m:Moço|Moça}. É ele. Mensagem dele: "mãe tô bem, tô na casa do Gui, meu celular morreu". {{Ele tá bem|ele_bem}}. Ai, meu Deus. Ele tá bem.',
           ],
@@ -772,7 +973,7 @@ export const DAY = day({
           kind: 'acalmar',
           label: 'Respirar junto com ela',
           repeat: true,
-          say: 'Dona Vera, respira comigo. Puxa o ar pelo nariz... segura... solta devagar pela boca.',
+          say: 'Dona Ivete, respira comigo. Puxa o ar pelo nariz... segura... solta devagar pela boca.',
           a: ['[a respiração dela vai ficando mais lenta]', 'Tá... tá passando o formigamento...'],
         },
       ],
@@ -781,7 +982,7 @@ export const DAY = day({
         { a: 'ele_bem', b: 'filho_show', kind: 'confirma', insight: 'O filho mandou mensagem: está bem. Agora é cuidar da crise da mãe, por telefone.' },
       ],
       guide: { id: 'respiracao', onOri: true },
-      patient: { name: 'Vera Teodoro', age: 46, sex: 'F' },
+      patient: { name: 'Ivete Alves', age: 46, sex: 'F' },
       // RC22: "meu coração vai sair pela boca" agora é "palpitação atual" (USI/USB). Hiperventilação com gatilho claro,
       // frases inteiras, mãos formigando: orientação preferida, USB ⚖ (antes era excesso), como em d03_briga.
       truth: { dx: 'Crise de ansiedade (o filho estava no show e está bem)', sev: 'verde', ok: ['ORI', 'USB'], best: 'ORI', ref: ['CASA'], dest: ['UPA'] },
@@ -869,7 +1070,7 @@ export const DAY = day({
         idade: 'Ela disse que tem cinco. Mostrou com a mão.',
         sangramento: 'Um ralado no joelho. Já limpei com água da garrafinha.',
         historico: 'Não sei, {dr}. Ela não sabe falar de remédio.',
-        paciente: 'YASMIN: Eu quero a minha mãe... a minha mãe chama Rose... [choro]',
+        paciente: 'YASMIN: Eu quero a minha mãe... a minha mãe chama Sueli... [choro]',
         seguranca: 'Aqui no carrinho é seguro. Mas tá escurecendo e o povo tá nervoso.',
       },
       extra: [{ id: 'outros', label: 'Bateu a cabeça? Anda normal?', say: 'Ela bateu a cabeça? Reclama de dor em outro lugar? Anda normal?', a: 'Não bateu, ela disse. Anda normal, até pulou pra pegar pipoca. Só o joelho.' }],
@@ -883,21 +1084,29 @@ export const DAY = day({
       diary: { ori: 'Yasmin, cinco anos, perdida embaixo da arquibancada. O pipoqueiro segurou a mão dela até a PM chegar com a mãe.' },
     }),
   ],
+  ida: (c) =>
+    rua('d15_ida', 'rua', [
+      { who: 'NARRADOR', t: 'Aniversário do Liam. Na padaria da esquina, o Seu Toninho anota no caderno do fiado com o lápis de trás da orelha.' },
+      faixa(c) === 'folga' || faixa(c) === 'sobra'
+        ? { who: 'TONINHO', t: 'O bolo de ambulância tá encomendado pra seis da tarde, doutor. Já pagaram ontem. {Oconj} veio com o dinheiro contado.' }
+        : { who: 'TONINHO', t: 'O bolo de ambulância tá encomendado pra seis da tarde. Paga quando der, doutor. Aniversário não espera salário.' },
+    ]),
+  almoco: (c) => almocoD15(c),
+  volta: (c) =>
+    rua('d15_volta', 'rua', [
+      { who: 'NARRADOR', t: 'Você sai tarde: o show, o Parque, o rádio que não parou. O ônibus 12 está lotado de gente com a pulseira da Expo no braço.' },
+      ...(vivoNoDiario(c, 'd05_academia')
+        ? [
+            { who: 'NARRADOR', t: 'Uma moça de camiseta de enfermagem cochila no seu ombro. Acorda num tranco de lombada.' },
+            { who: 'TAÍS', t: 'Desculpa. Fiz massagem num menino hoje, no Parque. Duas vezes na mesma semana, credo. (ela olha pra você) ...A sua voz é conhecida.' },
+          ]
+        : [{ who: 'NARRADOR', t: 'Uma moça de camiseta de enfermagem cochila no seu ombro até a XV. Você não tem coragem de acordar.' }]),
+    ]),
   interlude: {
     teaser: (c) => (presente(c, 'davi') ? 'É aniversário do Liam. Tem bolo esperando.' : 'É aniversário do Liam. Ele está longe.'),
     familyLacos: 2,
     onBico: fx.add('lacos', -2, 'perdeu o aniversário do Liam'),
-    bills: [
-      {
-        id: 'bolo_davi',
-        label: 'Bolo de aniversário do Liam',
-        amount: 60,
-        when: (c) => !foiEmbora(c) || longe(c),
-        desc: (c) => (presente(c, 'davi') ? 'Comprado fiado na padaria do Seu Toninho.' : '{Oconj} comprou em Rio Claro e mandou a conta.'),
-        onPay: fx.set('aniversario_pago'),
-        onSkip: fx.all(fx.set('aniversario_fiado'), fx.add('lacos', -1, '{oconj} pagou o bolo do bolso')),
-      },
-    ],
+    bills: BOLO_CONTA,
     scene: (c) => cenaAniversario(c),
     bico: (c) => bicoD15(c),
   },

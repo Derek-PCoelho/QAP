@@ -4,10 +4,15 @@
 // pressão da avó numa criança de 2 anos, Dona Cida (inalação de produto).
 // Fios: 🌾 máquina da Cida (Humanidade ≥ 6) · ↺ Cida e Zélia (grupo de senhoras)
 // · 🌱 pé da Zélia (Modo Inconsistência doméstico → D16) · 🌱 curativo da Simone.
+// 1.1 (ROTEIRO, dia 13): almoço com a Joana (viu a Zélia de sapato fechado) e as amostras
+// da Simone; a fala do pé segue a regra do dinheiro; a Cida do grupo e o marido motorista de
+// ônibus (pista R5); o desenho "o moço da escada" (2 aulas); o papel das 22:07 achado no
+// jaleco; trote sem risada; ida (água sanitária da Dona Dirce) e volta (o Edson no Aurora).
 // =============================================================================
-import type { Ctx, SceneDef, DLine, HomeObject, LinkDef } from '../../engine/types';
+import type { Ctx, SceneDef, DLine, HomeObject, LinkDef, Choice } from '../../engine/types';
 import type { GuideScript } from '../../engine/content-api';
 import { day, call, fx, is, NUM, ADDR } from '../dsl';
+import { aulas, comFolga, edsonVivo, envelopeEntregue, origem, rua } from './arco';
 
 const presente = (c: Ctx, m: 'lucia' | 'davi') => {
   const f = c.s.family[m];
@@ -89,6 +94,15 @@ export const GUIDES_EXTRA: Record<string, GuideScript> = {
 // -----------------------------------------------------------------------------
 // Casa: o pé da Dona Zélia (Modo Inconsistência doméstico)
 // -----------------------------------------------------------------------------
+/** a desculpa da Dona Zélia para esconder o pé, conforme o dinheiro que existe */
+function dinheiroPe(c: Ctx): string {
+  if (!comFolga(c)) return 'Faz uma semana. Eu não quis falar. O dinheiro tá curto, a bombinha, a luz... Eu ia passar uma pomada.';
+  const o = origem(c);
+  if (o === 'vereador') return 'Faz uma semana. Eu não quis falar. Eu não queria gastar o dinheiro daquele homem no meu pé.';
+  if (o === 'bico') return 'Faz uma semana. Você já trabalha de noite por causa da gente. Eu não ia pedir curativo de noventa.';
+  return 'Faz uma semana. Eu não queria incomodar. Vocês tão respirando um pouco agora, e eu ia estragar.';
+}
+
 function cenaPe(c: Ctx): SceneDef {
   const esconde = fechada(c);
   const L = presente(c, 'lucia');
@@ -148,18 +162,38 @@ function cenaPe(c: Ctx): SceneDef {
   if (D && !esconde) {
     startLines.push({ who: 'DAVI', t: 'Vó, por que você tá de sapato dentro de casa?' }, { who: 'ZELIA', t: 'Pra não pegar friagem, menino. Come.' });
   }
+  // ROTEIRO 3.3 (2 aulas): "o moço da escada" do Ed. Aurora
+  const escada = D && aulas(c) >= 2;
+  if (escada) {
+    startLines.push(
+      { who: 'DAVI', t: '{Pai}, olha o desenho da aula. É o moço da escada do prédio da Dona Iolanda. Ele fica sentado no degrau do terceiro andar, às dez da manhã. Cheira a bala.' },
+      { who: 'DAVI', t: 'Ele perguntou se eu queria ser médico. Eu disse que queria dirigir a ambulância grande. Ele riu e chorou junto.' },
+      { who: 'NARRADOR', t: 'No desenho, um homem de camisa social, encolhido num degrau, com a mão no bolso do peito. Do lado dele, um papelzinho de bala de menta.' },
+    );
+  }
+  // o papel das 22:07 que ficou no bolso do jaleco (ROTEIRO 3.2, D13)
+  const papel = c.flag('anotou_henrique_d10') && !c.flag('denuncia_com_prova') && !c.flag('rasgou_bilhete') && (L || (c.flag('lucia_fora') && !c.flag('lucia_foi_embora')));
+  const joana = c.flag('joana_viu_zelia');
+  const devendo = c.flag('prometeu_devolver') && c.flag('envelope_aceito') && !c.flag('envelope_devolvido') && !envelopeEntregue(c) && !c.flag('envelope_queimado');
 
   const igrejaLines: DLine[] = [
     { who: 'EU', t: 'A senhora não foi no grupo hoje, mãe?' },
     { who: 'ZELIA', t: 'Fui não. Mas a Cida me ligou. Aparecida, do grupo de senhoras da Matriz. Viúva, mora na Bela Vista, fala pelos cotovelos.' },
     { who: 'ZELIA', t: 'Ela me contou que liga pra emergência todo santo dia. Todo dia, {filho}! Por qualquer coisa.' },
+    // R5: o marido da Cida era motorista de ônibus (é o Seu Nestor, do doze)
+    { who: 'ZELIA', t: 'E diz que o finado dela era motorista de ônibus. Trinta anos de volante. Eu não perguntei de qual linha. Velha não pergunta, velha sabe.' },
   ];
   if (h6) {
     igrejaLines.push(
       { who: 'ZELIA', t: 'E sabe o que ela disse? Que tem {um} {medico} lá que conversa com ela da novela. Que pergunta se ela almoçou. Que é a única voz que ela ouve o dia inteiro.' },
       { who: 'ZELIA', t: 'Aí eu falei o seu nome. A velha chorou no telefone, {filho}.' },
     );
-    if (oferta) igrejaLines.push({ who: 'ZELIA', t: 'Ela tem uma máquina de costura parada desde que a vista piorou. Quer dar {proconj}. Falou assim: "é pro ateliê {c:da mulher|do marido} {m:do meu doutor|da minha doutora}".' });
+    if (oferta)
+      igrejaLines.push(
+        c.flag('cida_costurava')
+          ? { who: 'ZELIA', t: 'Ela tem uma máquina de costura parada desde que a vista piorou. Quer dar {proconj}. Falou assim: "é pro ateliê {c:da mulher|do marido} {m:do meu doutor|da minha doutora}. O único que lembrou que eu costurava."' }
+          : { who: 'ZELIA', t: 'Ela tem uma máquina de costura parada desde que a vista piorou. Quer dar {proconj}. Falou assim: "é pro ateliê {c:da mulher|do marido} {m:do meu doutor|da minha doutora}".' },
+      );
     else igrejaLines.push({ who: 'ZELIA', t: 'Ela queria dar a máquina dela {proconj}, mas eu disse que a gente já tem uma. Ficou toda boba: disse que então vai mandar retalho.' });
   } else {
     igrejaLines.push(
@@ -168,6 +202,7 @@ function cenaPe(c: Ctx): SceneDef {
     );
   }
 
+  const depoisIgreja = papel ? 'papel' : 'noite';
   const curativoLines: DLine[] = [
     { who: 'NARRADOR', t: 'Na sua mochila, as amostras que a Simone deixou na gaveta: curativo de hidrogel, gaze, pomada. Dá pra começar hoje mesmo.', when: (cc) => cc.flag('curativo_gratis') },
     { who: 'NARRADOR', t: 'Curativo especial, na farmácia, custa noventa reais. Soro e gaze seguram até amanhã. Não mais que isso.', when: (cc) => !cc.flag('curativo_gratis') },
@@ -178,7 +213,7 @@ function cenaPe(c: Ctx): SceneDef {
     bg: 'cozinha',
     cast: ['ZELIA', ...(L ? ['LUCIA'] : []), ...(D ? ['DAVI'] : [])],
     nodes: {
-      start: { lines: startLines, next: 'igreja' },
+      start: { lines: startLines, next: 'igreja', onEnter: escada ? fx.set('desenho_escada') : undefined },
       igreja: {
         lines: igrejaLines,
         choices: oferta
@@ -191,7 +226,7 @@ function cenaPe(c: Ctx): SceneDef {
               { label: 'Recusar: "Não dá, mãe. É dela. É a lembrança dela."', next: 'maquina_nao' },
             ]
           : undefined,
-        next: 'noite',
+        next: depoisIgreja,
       },
       maquina_sim: {
         lines: L
@@ -201,22 +236,46 @@ function cenaPe(c: Ctx): SceneDef {
               { who: 'NARRADOR', t: '{Oconj} vira de costas pra pia. Demora pra virar de volta.' },
             ]
           : [{ who: 'ZELIA', t: 'Fica aqui na sala esperando {oconj}. Máquina boa não estraga parada.' }],
-        next: 'noite',
+        next: depoisIgreja,
       },
       maquina_nao: {
         lines: [
           { who: 'ZELIA', t: 'Orgulho igualzinho ao do seu pai.' },
           { who: 'ZELIA', t: 'Vou dizer pra ela que você agradeceu. Pelo menos isso.' },
         ],
+        next: depoisIgreja,
+      },
+      papel: L
+        ? {
+            lines: [
+              { who: 'LUCIA', t: 'Esse papel quase foi pro tanque, {nome}. Tava no bolso do jaleco. ({c:ela|ele} desdobra) "22:07. Henrique. Palmeiras." Quem é Henrique?' },
+            ],
+            choices: [
+              { label: 'Contar da noite da sua mãe e do noturno.', next: 'papel_conta', effect: fx.all(fx.add('lacos', 1, 'contou do Henrique'), fx.set('conjuge_sabe_henrique')) },
+              { label: '"É coisa do trabalho."', next: 'papel_cala' },
+            ],
+          }
+        : {
+            lines: [{ who: 'NARRADOR', t: 'A Dona Zélia lavou o seu jaleco. Na hora de dormir, o papel das 22:07 está em cima do seu travesseiro, dobrado nas mesmas dobras. Ela não disse nada.' }],
+            next: 'noite',
+          },
+      papel_conta: {
+        lines: [
+          { who: 'LUCIA', t: c.flag('denunciou_henrique') ? 'E você denunciou ele. Com isso no bolso, e ainda assim com medo. (pausa) Guarda direito. Papel assim não é pra tanque.' : 'E ele ainda tá lá? Toda noite? (pausa) Guarda isso direito, {nome}. Papel assim não é pra tanque.' },
+        ],
         next: 'noite',
       },
+      papel_cala: { lines: [{ who: 'LUCIA', t: 'Tudo é coisa do trabalho. ({c:ela|ele} devolve o papel e vai pendurar o jaleco)' }], next: 'noite' },
       noite: {
         lines: [
           { who: 'NARRADOR', t: 'Depois do jantar, a Dona Zélia levanta devagar, segurando na beirada da mesa.' },
+          { who: 'ZELIA', t: 'E aquele dinheiro, {filho}? Devolveu? (ela não espera a resposta) Não devolveu.', when: () => devendo },
           { who: 'ZELIA', t: 'Vou deitar. Amanhã tem feira e eu quero chegar antes do tomate acabar.' },
         ],
         choices: [
-          { label: esconde ? '"Mãe. Senta aqui. Deixa eu ver o seu pé."' : '"Mãe. Senta aqui. Tira esse sapato."', next: 'pe', needLink: 'ver_pe' },
+          { label: esconde ? '"Mãe. Senta aqui. Deixa eu ver o seu pé."' : '"Mãe. Senta aqui. Tira esse sapato."', next: 'pe', needLink: 'ver_pe', when: () => !joana },
+          // almoço do D13: a Joana viu a Dona Zélia mancando no portão (o pé fica marcado mesmo se ela esconde)
+          { label: '"Mãe, a Joana da ambulância te viu no portão de sapato fechado, mancando. Deixa eu ver o seu pé."', next: 'pe', when: () => joana },
           { label: '"Boa noite, mãe."', next: 'fim' },
         ],
       },
@@ -226,7 +285,9 @@ function cenaPe(c: Ctx): SceneDef {
           { who: 'NARRADOR', t: esconde ? 'Você tira o chinelo. Depois a meia, devagar, porque ela grudou.' : 'Você desamarra o sapato. Depois tira a meia, devagar, porque ela grudou.' },
           { who: 'NARRADOR', t: 'Na sola do pé direito, uma ferida do tamanho de uma moeda, funda, com a borda vermelha e quente. O cheiro chega antes da vista.' },
           { who: 'NARRADOR', t: 'Diabética há vinte anos. Você sabe o nome disso. E sabe o que acontece quando ninguém olha.' },
-          { who: 'ZELIA', t: 'Faz uma semana. Eu não quis falar. O dinheiro tá curto, a bombinha, a luz... Eu ia passar uma pomada.' },
+          // regra do dinheiro (ROTEIRO 3.1-e, D13): a desculpa muda com a faixa e a origem
+          { who: 'ZELIA', t: dinheiroPe(c) },
+          { who: 'ZELIA', t: 'Eu já ofereci ficar sem remédio pelo menino, lembra? Ficar sem curativo é fácil.', when: is.flag('zelia_ofereceu_remedio') },
         ],
         onEnter: onFind,
         choices: [
@@ -337,6 +398,58 @@ function bicoD13(c: Ctx): SceneDef {
 }
 
 // -----------------------------------------------------------------------------
+// Almoço (almoco.md, D13 — "Sapato fechado")
+// -----------------------------------------------------------------------------
+function almocoD13(c: Ctx): SceneDef {
+  const amostra = c.v('lealSimone') >= 7;
+  const joana = zeliaViva(c) && c.s.family.zelia.status !== 'internado';
+  const lines: DLine[] = [{ who: 'NARRADOR', t: '13:00. Terça. Cheiro de água sanitária até na copa. O filtro de barro pinga no copo de requeijão de alguém.' }];
+  if (amostra)
+    lines.push(
+      { who: 'NARRADOR', t: 'A Simone tira da bolsa uma sacola de farmácia e empurra pra você por cima da mesa de fórmica.' },
+      { who: 'SIMONE', t: 'Amostra de curativo. Gaze, pomada. A minha cunhada é da UBS da Vila Esperança. Não é pra você, é pra quem precisar. Você sabe quem.' },
+    );
+  else lines.push({ who: 'SIMONE', t: 'Terça de faxina. Já foram duas crianças com produto de limpeza e não deu nem uma hora da tarde. Come, {dr}.' });
+  if (!joana) {
+    lines.push({ who: 'NARRADOR', t: 'A Joana, da USB 01, esquenta a marmita no micro-ondas novo da OS e come de pé, olhando o pátio. Ninguém fala muito.' });
+    return { id: 'd13_almoco', bg: 'central', cast: ['SIMONE'], nodes: { start: { lines } } };
+  }
+  lines.push(
+    { who: 'NARRADOR', t: 'A Joana, da USB 01, chega para esquentar a marmita. Fica parada na frente do micro-ondas, contando os segundos com o dedo.' },
+    { who: 'JOANA', t: '{Dr}, ontem eu passei na Rua das Acácias de folga, levando a minha sogra na UBS. Tinha uma senhora regando planta no portão da casa azul.' },
+    { who: 'JOANA', t: 'De sapato fechado, nesse calor. Mancando. Disse que era mãe de alguém daqui da central. É a sua mãe?' },
+  );
+  return {
+    id: 'd13_almoco',
+    bg: 'central',
+    cast: ['SIMONE'],
+    nodes: {
+      start: {
+        lines,
+        choices: [
+          { label: '"É. Mancando como?"', next: 'como', effect: fx.set('joana_viu_zelia') },
+          { label: '"Ela gosta de sapato."', next: 'sapato' },
+        ],
+      },
+      como: {
+        lines: [
+          { who: 'JOANA', t: 'Puxando a perna direita. Pisando de lado, que nem quem tem pedra no sapato.' },
+          { who: 'JOANA', t: 'E de sapato fechado em casa, {dr}... ela é diabética? (você não responde) Então.' },
+          { who: 'NARRADOR', t: 'O micro-ondas apita. A Joana leva a marmita sem tampa, soprando.' },
+          { who: 'SIMONE', t: 'Pé de diabético a gente não espera doer, {dr}. Quando dói, já foi.', when: () => amostra },
+        ],
+      },
+      sapato: {
+        lines: [
+          { who: 'JOANA', t: 'Ninguém gosta de sapato a trinta e um graus, {dr}.' },
+          { who: 'NARRADOR', t: 'O micro-ondas apita. Ela pega a marmita e não insiste.' },
+        ],
+      },
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
 export const DAY = day({
   day: 13,
   title: 'Produto de Limpeza',
@@ -431,13 +544,6 @@ export const DAY = day({
   timeline: [
     { at: '07:01', kind: 'radio', who: 'USA 01 · BENÉ', text: '{bene}, USA 01 em QRV na base Centro. Terça de faxina: hoje chove produto de limpeza na cozinha de meia cidade.' },
     {
-      at: '12:20',
-      kind: 'simone',
-      who: 'SIMONE',
-      when: is.v('lealSimone', '>=', 7),
-      text: '{Dr}, minha cunhada trabalha na UBS da Vila Esperança. Ganhei um monte de amostra de curativo, gaze, pomada. Deixei na sua gaveta. Vai que alguém da sua casa precisa.',
-    },
-    {
       at: '14:10',
       kind: 'script',
       id: 'peixoto_criancas',
@@ -448,14 +554,6 @@ export const DAY = day({
           c.modal('DR. PEIXOTO', '{Dr}, duas USA pra criança antes das três da tarde. Tá certo, tá certo, criança é criança. Só lembra que o painel não sabe a idade de ninguém.', 'interfone');
         }
       },
-    },
-    {
-      at: '16:05',
-      kind: 'radio',
-      who: 'USB 01 · JOANA',
-      // dica sutil do pé escondido; se ela levou bronca no D10, esconde melhor e não aparece no portão
-      when: (c) => c.s.family.zelia.status !== 'morto' && !c.flag('zelia_fechada'),
-      text: 'Central, USB 01 voltando pra base pela Rua das Acácias. Tinha uma senhora regando planta no portão da casa azul, de sapato fechado nesse calor. Acenou pra gente e disse que é mãe de alguém daí da central.',
     },
   ],
   calls: [
@@ -491,7 +589,7 @@ export const DAY = day({
         sangramento: 'Na boca? Não sei! Tá tudo vermelho, a baba tá saindo rosinha...',
         historico: 'Nada, ela não tem nada. Só a bronquite quando era bebê.',
         inicio: 'Agora! Cinco minutos, se tanto!',
-        paciente: ['[choro alto, tosse]', 'ANA CLARA: Tá ardendo, mamãe! Tá ardeeendo!'],
+        paciente: ['[choro alto, tosse]', 'SOFIA: Tá ardendo, mamãe! Tá ardeeendo!'],
         seguranca: 'Seguro. Só eu e ela. O marido tá no serviço.',
         referencia: 'Esquina com a Av. Primavera, muro azul, pé de acerola na calçada.',
       },
@@ -510,7 +608,7 @@ export const DAY = day({
       ],
       worsen: [{ after: 25, lines: ['{m:Moço|Moça}, ela tá {{com a voz rouquinha|rouca}}... e tá fazendo um barulhinho fino pra puxar o ar!', '[chiado agudo no meio do choro]'], guide: 'intoxicacao' }],
       guide: { id: 'intoxicacao' },
-      patient: { name: 'Ana Clara Ribeiro', age: 3, sex: 'F' },
+      patient: { name: 'Sofia Ribeiro', age: 3, sex: 'F' },
       // Conferido (RT5: cáustico em criança, com baba e boca vermelha = substância de alta mortalidade, "na dúvida, alto
       // risco" → USA; a piora com estridor é USA no RC8/RP1; campo A12: não provocar vômito nem neutralizar). A janela
       // de risco é balanceamento de jogo.
@@ -526,7 +624,7 @@ export const DAY = day({
       diary: {
         alive: 'Três anos. Soda cáustica num copo de suco. A mãe ia provocar vômito; não provocou.',
         dead: 'Três anos. Soda cáustica num copo de suco.',
-        later: [{ day: 15, text: 'A Ana Clara voltou a tomar sopinha. A mãe mandou um áudio pra central agradecendo "a voz que mandou não fazer vomitar".', when: (c) => c.flag('d13_soda_viva') }],
+        later: [{ day: 15, text: 'A Sofia voltou a tomar sopinha. A mãe mandou um áudio pra central agradecendo "a voz que mandou não fazer vomitar".', when: (c) => c.flag('d13_soda_viva') }],
       },
     }),
     // ------------------------------------------------------------------ 2 ★ CIDA
@@ -651,8 +749,8 @@ export const DAY = day({
       at: '10:30',
       pool: 'cardio,grave',
       num: '(17) 3324-0880',
-      caller: 'Dona Rosa (esposa)',
-      callerName: 'Dona Rosa',
+      caller: 'Dona Zenaide (esposa)',
+      callerName: 'Dona Zenaide',
       type: 'comum',
       voice: 'idosa',
       note: 'Senhor de 68, dor no peito. Já infartou antes.',
@@ -660,7 +758,7 @@ export const DAY = day({
       addr: { rua: 'Rua Goiás', n: 880, bairro: 'Santa Luzia', ref: 'Casa de grade verde, do lado da borracharia.' },
       amb: ['radio_am', 'ventilador'],
       open: [
-        '{m:Moço|Moça}, é a Rosa. O Joaquim diz que tá infartando de novo. {{Todo mês ele acha que tá infartando|exagerado}}, viu? Mas hoje...',
+        '{m:Moço|Moça}, é a Zenaide. O Joaquim diz que tá infartando de novo. {{Todo mês ele acha que tá infartando|exagerado}}, viu? Mas hoje...',
         'Hoje ele tá {{suando que nem tampa de panela|suando}}.',
         'JOAQUIM: {{É igual à do meu infarto de antes, {dr}. Igualzinha.|mesma_dor}} Eu conheço essa dor.',
       ],
@@ -681,7 +779,7 @@ export const DAY = day({
         { a: 'irradia', b: 'manual:peito', insight: 'Mais de 40 anos, suor frio e dor que vai pro queixo e pro braço: provável infarto. USA (Manual p.3).' },
         { a: 'nitrato', b: 'mesma_dor', insight: 'A mesma dor do infarto anterior, e o remédio debaixo da língua não fez efeito: reinfarto até prova em contrário.' },
       ],
-      patient: { name: 'Joaquim Batista Lopes', age: 68, sex: 'M' },
+      patient: { name: 'Joaquim Lopes', age: 68, sex: 'M' },
       truth: { dx: 'Infarto (reinfarto)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 60, bad: 150 } },
       radio: {
         ok: '{central}, {unit} no local. Supra de ST, mesmo território do infarto antigo. Seguimos Regional pra hemodinâmica.',
@@ -793,7 +891,7 @@ export const DAY = day({
       ],
       worsen: [{ after: 40, lines: ['{Dr}, ele não tá acordando direito! Eu chamo e ele só geme! A boquinha tá ficando roxinha!'], guide: 'intox_comprimido' }],
       guide: { id: 'intox_comprimido' },
-      patient: { name: 'Lorenzo Batista', age: 2, sex: 'M' },
+      patient: { name: 'Lorenzo Paiva', age: 2, sex: 'M' },
       // Conferido (RT5: anti-hipertensivo de adulto em criança é substância de alta mortalidade; "na dúvida, alto risco").
       // A janela de risco é balanceamento de jogo.
       truth: { dx: 'Intoxicação por remédio de pressão (criança de 2 anos)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 50, bad: 120, guideBonus: 15 } },
@@ -915,25 +1013,27 @@ export const DAY = day({
       note: 'Criança. Diz que o irmão bebeu soda.',
       noteWrong: 'Outra criança com soda, {dr}! Pega logo!',
       addr: { rua: 'Rua das Palmeiras', n: 1500, bairro: 'Vila Esperança' },
-      amb: ['risadas', 'tv'],
+      amb: ['tv'],
       open: [
-        'Alô? É da emergência? {{Meu irmão bebeu soda cáustica|soda_trote}}! Um litro inteiro! Ele tá {{espumando pela boca igual sabão|espuma}}!',
-        '[{{risadinhas abafadas; alguém cochicha "fala do sabão, fala do sabão"|risadas}}]',
+        'Alô? É da emergência? {{Meu irmão bebeu soda cáustica|soda_trote}}! {{Um litro inteiro|litro}}! Ele tá {{espumando pela boca igual sabão|espuma}}!',
+        '[TV ligada num desenho, alto. {{Alguém cochicha perto do telefone: "fala do sabão, fala do sabão"|cochicho}}]',
       ],
       q: {
         ingestao: 'Soda... é, soda! Bebeu {{um litro, não, dois litros|dois_litros}}! Da propaganda da TV!',
         consciencia: 'Tá... tá desmaiado. Não, tá acordado. Tá dançando!',
-        respira: 'Respira bolha de sabão! [risada]',
+        respira: 'Respira bolha de sabão. É, bolha.',
         idade: 'Uns... dez? Ele é mais velho que eu. Não, é mais novo.',
         oque: 'Ele bebeu! Bebeu tudo! Manda a ambulância com a sirene ligada!',
         historico: 'Doença? Ele é chato, isso conta?',
-        paciente: ['[sussurro: "faz voz de morto, faz"]', 'IRMÃO: Aaaaai... eu morri... [risadas]'],
+        paciente: ['[sussurro: "{{faz voz de morto, faz|voz_de_morto}}"]', 'IRMÃO: Aaaaai... eu morri...', '[{{a mesma voz "envenenada", lá do fundo: "MÃE, CADÊ O CARREGADOR?"|carregador}}]'],
         referencia: 'Do lado da padaria. Da outra padaria.',
         seguranca: 'Seguro, pode vir rapidão!',
       },
       callback: ['[{{Caixa postal: "Oi, é o celular da Kátia, mãe do Kevin e do Kaique. Deixa recado."|retorno_mae}}]'],
       links: [
-        { a: 'espuma', b: 'risadas', insight: 'Espuma "igual sabão", risadas e alguém soprando a fala: brincadeira imitando a propaganda da TV.' },
+        { a: 'espuma', b: 'cochicho', insight: 'Espuma "igual sabão" e alguém soprando a fala ao lado do telefone: brincadeira imitando a propaganda da TV.' },
+        { a: 'voz_de_morto', b: 'carregador', insight: '"Faz voz de morto", e o irmão "envenenado" grita pela mãe atrás do carregador do celular. Quem bebeu soda não procura carregador.' },
+        { a: 'litro', b: 'manual:trote_sinais', insight: 'Ninguém bebe um litro de soda cáustica: a boca queima no primeiro gole. Relato de cinema, sem detalhe do corpo (Manual p.2).' },
         { a: 'dois_litros', b: 'manual:trote_sinais', insight: 'Relato cinematográfico ("dois litros"), risadas ao fundo: sinais de trote (Manual p.2).' },
         { a: 'retorno_mae', b: 'num', insight: 'O celular é da mãe dos meninos, que está fora. As crianças estão brincando com o telefone.' },
       ],
@@ -942,6 +1042,31 @@ export const DAY = day({
       radio: { prank: 'Central, {unit}. A Rua das Palmeiras acaba no 820. Rodamos a Vila Esperança, ninguém chamou. Trote.' },
     }),
   ],
+  ida: (c) =>
+    rua('d13_ida', 'calcada', [
+      { who: 'NARRADOR', t: 'Um dia de folga e a rua inteira cheira a água sanitária: faxina de verão. Na calçada da Dona Dirce, um galão aberto ao sol, e um balde espumando.' },
+      { who: 'DIRCE', t: 'Misturei com o pinho pra render, {dr}. Ficou um cheiro de piscina. Arde até o olho, mas limpa.' },
+    ], [
+      { label: '"Dona Dirce, não mistura água sanitária com desinfetante. Solta gás."', next: 'dirce', effect: fx.set('dirce_avisada') },
+      { label: 'Acenar e seguir para o ponto.' },
+    ], {
+      dirce: { lines: [
+        { who: 'DIRCE', t: 'Ai, credo. Gás? Vou jogar no ralo. (ela já está arrastando o balde) Obrigada, meu médico.' },
+        { who: 'NARRADOR', t: c.flag('zelia_caiu_d10') ? 'Sexta de noite ela gritou da janela e ninguém ouviu. Hoje alguém ouviu ela. Desde hoje, é "meu médico".' : 'Meu médico. A Dona Dirce nunca chamou ninguém de meu nada.' },
+      ] },
+    }),
+  almoco: (c) => almocoD13(c),
+  volta: (c) =>
+    rua('d13_volta', 'rua', edsonVivo(c)
+      ? [
+          { who: 'NARRADOR', t: 'O 12 passa pela Rua XV, 1950. Na portaria do Ed. Aurora, um porteiro com uma cicatriz no peito, aparecendo pela gola, acena para o ônibus.' },
+          { who: 'AÍLTON', t: 'O Edson. Morreu e voltou, dizem. Agora acena pra todo ônibus, que nem criança.' },
+          ...(aulas(c) >= 1 ? [{ who: 'NARRADOR', t: 'No vidro da portaria, preso com fita, um desenho a lápis de um prédio com uma janela acesa. Assinado embaixo, torto: "L."' }] : []),
+        ]
+      : [
+          { who: 'NARRADOR', t: 'O 12 passa pela Rua XV, 1950. A portaria do Ed. Aurora tem outro porteiro, de cabeça baixa no celular, e um cartaz colado no vidro: "Precisa-se de porteiro. Tratar com o síndico."' },
+          { who: 'AÍLTON', t: 'O de antes era gente boa. Acenava pro ônibus.' },
+        ]),
   interlude: {
     teaser: (c) => (zeliaViva(c) ? 'Em casa, a Dona Zélia diz que está só cansada.' : 'A casa está quieta demais.'),
     familyLacos: 1,

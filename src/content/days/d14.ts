@@ -5,9 +5,14 @@
 // ⚖ Idosa caída há horas: USB ou USA → Regional, com perguntas obrigatórias.
 // Casa: a Carla na porta (o irmão Rafael, 2019) e a Lúcia, que já era fonte dela.
 // Fios: ↺ Carla, Lúcia · 🌱 Bené (o motorista que chorou no meio-fio) · ordem verbal do D9.
+// 1.1 (ROTEIRO, dia 14): R3 — "Quem regulou?" → "o registro se perdeu na migração do sistema";
+// o Seu Anselmo (noites na 01) e o Plano Noturno como coisa a contar; almoço com a TV, a voz da
+// Carla e a Simone que quase conta 2019 (`simone_2019_meio`); "ninguém fala com imprensa" vem
+// pro almoço; a foto do casamento num ônibus (pista R5); ida (o Ozzy com calor); nomes da Parte 2.
 // =============================================================================
-import type { Ctx, EffCtx, SceneDef, DLine, SceneNode, InspectDef } from '../../engine/types';
+import type { Ctx, EffCtx, SceneDef, DLine, SceneNode, InspectDef, Choice } from '../../engine/types';
 import { day, call, fx, NUM, ADDR } from '../dsl';
+import { rua, zeliaEmCasa, zeliaViva } from './arco';
 
 const presente = (c: Ctx, m: 'lucia' | 'davi') => {
   const f = c.s.family[m];
@@ -48,13 +53,39 @@ function cenaCarla(c: Ctx): SceneDef {
   else if (dec === 'ORI') abertura.push({ who: 'CARLA', t: 'Hoje de manhã eu liguei pra central fingindo uma dor no peito. Você me mandou procurar a UPA. Educadamente. Foi o mais perto de um "não" que eu ouvi da central.' });
   else abertura.push({ who: 'CARLA', t: 'Hoje de manhã eu liguei pra central fingindo uma dor no peito. Fiquei esperando na fila até cansar.' });
 
-  const tiago: DLine[] = [
-    { who: 'CARLA', t: 'Meu irmão, Rafael, tinha vinte e seis anos. Em 2019 ele caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos.' },
-    { who: 'CARLA', t: 'O motorista da ambulância sentou no meio-fio e chorou. Nunca esqueci a cara dele. Chorava como quem já sabia.' },
+  const anselmo = c.flag('noite_nome_anselmo');
+  const historia = c.flag('noite_anselmo_historia');
+  const plano = c.flag('noite_plano_noturno');
+  const entregou = c.flag('contou_peixoto_carla');
+  if (entregou) abertura.push({ who: 'CARLA', t: 'E você me entregou pro seu chefe no almoço. Tudo bem. Eu entregaria também.' });
+
+  const tiago: DLine[] = historia
+    ? [
+        { who: 'CARLA', t: 'Meu irmão, Rafael... (ela para e olha pra você) Você já sabe. O meu pai te contou. Ele conta pra todo mundo que senta no meio-fio com ele.' },
+        { who: 'NARRADOR', t: 'Você sabe. O capacete azul, a cruz no poste da Av. Brasil, quatro quadras do Regional. A irmã segurando a mão dele. Quarenta minutos.' },
+        { who: 'CARLA', t: 'O motorista da ambulância sentou no meio-fio e chorou. Nunca esqueci a cara dele. Chorava como quem já sabia.' },
+      ]
+    : [
+        { who: 'CARLA', t: 'Meu irmão, Rafael, tinha vinte e seis anos. Em 2019 ele caiu de moto na Av. Brasil, a quatro quadras do Regional. A ambulância levou quarenta minutos.' },
+        { who: 'CARLA', t: 'O motorista da ambulância sentou no meio-fio e chorou. Nunca esqueci a cara dele. Chorava como quem já sabia.' },
+      ];
+  tiago.push(
     { who: 'CARLA', t: 'Eu sei que o salário de vocês atrasou dois meses. Sei que {{tem um menino de oito anos com asma nesta casa|carla_sabe}}.' },
     { who: 'CARLA', t: 'Não quero o seu nome. Quero saber como é aí dentro: o corte de viatura, as metas, a maca presa no Regional. O que a Saúde+ Gestão não põe no relatório.' },
-  ];
+  );
   if (ordem) tiago.push({ who: 'NARRADOR', t: 'No bolso do jaleco, dobrado, o post-it do dia 9: "USA 01 é reserva técnica, só sai pra parada." Ordem verbal, sem respaldo no Manual.' });
+
+  /** perguntas antes de decidir (cada uma uma vez; voltam pro mesmo nó de decisão) */
+  const perguntas: Choice[] = [
+    { label: '"Quem regulou aquela noite?"', next: 'regulou', when: (cc) => !cc.flag('carla_registro_perdido'), effect: fx.set('carla_registro_perdido') },
+    { label: '"Nunes. Eu conheço o seu pai."', next: 'pai', when: (cc) => anselmo && !cc.flag('carla_sabe_anselmo'), effect: fx.set('carla_sabe_anselmo') },
+    {
+      label: '"Tem uma coisa que eu ouvi de madrugada, na 01. O Plano Noturno."',
+      next: 'plano',
+      when: (cc) => plano && !cc.flag('carla_plano_noturno'),
+      effect: fx.set('carla_plano_noturno'),
+    },
+  ];
 
   const nodes: Record<string, SceneNode> = {
     start: {
@@ -75,6 +106,7 @@ function cenaCarla(c: Ctx): SceneDef {
     tiago: {
       lines: tiago,
       choices: [
+        ...perguntas,
         { label: 'Aceitar: "Anônimo. E você confere tudo duas vezes."', next: 'aceitou', effect: fx.all(fx.set('depoimento', 'aceitou'), fx.source('voce')) },
         {
           label: 'Aceitar e entregar o post-it da ordem verbal do Peixoto.',
@@ -85,6 +117,29 @@ function cenaCarla(c: Ctx): SceneDef {
         { label: 'Recusar: "Eu tenho família. Não posso."', next: 'recusou', effect: fx.set('depoimento', 'recusou') },
         { label: 'Adiar: "Me dá uns dias pra pensar."', next: 'adiou', effect: fx.set('depoimento', 'adiou') },
       ],
+    },
+    regulou: {
+      lines: [
+        { who: 'CARLA', t: 'Isso ninguém me diz. Eu pedi por escrito três vezes.' },
+        { who: 'CARLA', t: 'A OS diz que o registro daquela noite "{{se perdeu na migração do sistema|registro_perdido}}". Seis anos de registro, e a única noite que se perdeu foi a do meu irmão.' },
+      ],
+      next: 'tiago_volta',
+    },
+    pai: {
+      lines: [
+        { who: 'CARLA', t: '...O meu pai? (ela ri, sem graça) O Sereno. Claro que conhece. Ele fala de vocês. "A 01 que não tem pressa e chega."' },
+        { who: 'CARLA', t: 'Ele comprou um rádio depois do Rafael. Eu comprei um caderninho. Cada um corrige o mundo como pode.' },
+        { who: 'NARRADOR', t: c.flag('noite_anselmo_morreu') ? 'Você lembra da flor que o Bené amarrou no poste. Ela não fala do pai no passado. Ainda não sabe falar.' : 'Você lembra da capa cinza, do radinho de pilha chiando a frequência de vocês.' },
+      ],
+      next: 'tiago_volta',
+    },
+    plano: {
+      lines: [
+        { who: 'EU', t: 'Da meia-noite às seis, a cidade inteira tem uma USA só. A 01. O resto fica parado na base pra economizar diária. Chama Plano Noturno.' },
+        { who: 'CARLA', t: '(ela escreve rápido, sem olhar o papel) Uma USA. Pra cidade inteira. De madrugada.' },
+        { who: 'CARLA', t: 'O Rafael caiu às duas da manhã, {dr}.' },
+      ],
+      next: 'tiago_volta',
     },
     aceitou: {
       lines: [
@@ -112,10 +167,15 @@ function cenaCarla(c: Ctx): SceneDef {
       next: depois,
     },
     fim: {
-      lines: [{ who: 'NARRADOR', t: 'Mais tarde, você guarda o cartão da Carla na carteira, atrás da foto da família. Amanhã ele vai estar na sua mesa da central.' }],
+      lines: [
+        { who: 'DAVI', t: 'Quem era a moça do portão? (ele está de pijama no corredor) Ela tem cara de quem perdeu alguém.', when: () => presente(c, 'davi') },
+        { who: 'NARRADOR', t: 'Na cômoda do quarto, a foto do casamento dos seus pais, que a Dona Zélia trouxe da sala hoje: o seu pai magrelo de terno grande, ela de vestido de renda. Ao fundo, borrado, o corredor de um ônibus.', when: () => zeliaViva(c) },
+        { who: 'NARRADOR', t: 'Mais tarde, você guarda o cartão da Carla na carteira, atrás da foto da família. Sexta ele vai estar na sua mesa da central.' },
+      ],
       onEnter: fonteSilenciosa,
     },
   };
+  nodes.tiago_volta = { lines: [{ who: 'CARLA', t: 'E então, {dr}?' }], choices: nodes.tiago.choices };
 
   let inspect: InspectDef | undefined;
   if (prova) {
@@ -151,6 +211,11 @@ function cenaCarla(c: Ctx): SceneDef {
     }
     nodes.confronto = {
       lines: [
+        {
+          who: 'LUCIA',
+          t: prova === 'maquina' ? 'Você descobriu a passagem pela bolsa. Agora descobre o cartão pela máquina. Você repara em tudo, {nome}. Menos em mim.' : 'Você descobriu a passagem pela bolsa. Agora o cartão, pela bolsa de novo. Você repara em tudo, {nome}. Menos em mim.',
+          when: (cc) => cc.flag('lucia_proposta_descoberta'),
+        },
         { who: 'LUCIA', t: L ? '...Ela veio aqui faz duas semanas. Você tava no plantão.' : '(no telefone, depois de um silêncio comprido) ...Ela foi aí em casa faz duas semanas. Você tava no plantão.' },
         { who: 'LUCIA', t: 'Eu contei dos dois meses de salário atrasado. Da bombinha que acabou. De você chegando em casa com cara de quem chorou. Alguém tinha que falar, {nome}. Você não ia.' },
       ],
@@ -275,6 +340,58 @@ function bicoD14(c: Ctx): SceneDef {
 }
 
 // -----------------------------------------------------------------------------
+// Almoço (almoco.md, D14 — "Eu conheço a voz")
+// -----------------------------------------------------------------------------
+function almocoD14(c: Ctx): SceneDef {
+  const percebeu = c.flag('carla_teste_percebido');
+  const ligou = percebeu || c.val('d14_carla_decisao') !== undefined;
+  return {
+    id: 'd14_almoco',
+    bg: 'central',
+    cast: ['SIMONE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Quarta. A TV da copa, presa na parede com fita, passa o jornal local: a creche do Jardim Norte que fechou. A repórter da Gazeta aparece na frente do portão trancado.' },
+          ligou
+            ? { who: 'SIMONE', t: 'Essa voz. Ela ligou hoje de manhã, {dr}. A "Cláudia" da dor no peito que muda de lado. É a Carla Nunes, da Gazeta.' }
+            : { who: 'SIMONE', t: 'Essa é a Carla Nunes, da Gazeta. Fez a matéria da creche. Fala bonito, né? Fala que nem quem já perdeu alguma coisa.' },
+          { who: 'NARRADOR', t: 'O Peixoto aparece na porta da coordenação, de crachá virado pra dentro.' },
+          percebeu
+            ? { who: 'DR. PEIXOTO', t: 'Soube que uma "paciente" ligou cedo fazendo pergunta de frota e você percebeu, {dr}. Bom trabalho. E ordem da diretoria: ninguém fala com imprensa. Ninguém.' }
+            : { who: 'DR. PEIXOTO', t: 'A Gazeta tá fazendo matéria sobre a central. Ordem da diretoria: ninguém fala com imprensa. Ninguém. Perguntou de frota ou de tempo, é assessoria.' },
+          { who: 'NARRADOR', t: 'Ele volta pra sala e deixa a porta aberta. Quando a cadeira dele range, a Simone abaixa a voz.' },
+          { who: 'SIMONE', t: 'O irmão dela morreu esperando ambulância. Em dezenove. Eu tava aqui naquela noite, {dr}. Eu... (ela para) ...Esquece. Come.' },
+        ],
+        choices: [
+          { label: '"Você tava no rádio?"', next: 'radio', effect: fx.set('simone_2019_meio') },
+          { label: '"Ela vai vir atrás da gente."', next: 'atras' },
+          { label: 'Ir até a porta do Peixoto e contar da ligação estranha.', next: 'peixoto', effect: fx.all(fx.set('contou_peixoto_carla'), fx.add('lealSimone', -1, 'entregou a jornalista pro Peixoto')) },
+        ],
+      },
+      radio: {
+        lines: [
+          { who: 'SIMONE', t: 'Eu tava na mesa. Cobria o noturno naquele mês. Escrevi a nota: "Moto, Av. Brasil, rebaixado."' },
+          { who: 'SIMONE', t: 'Do lado eu escrevi: "Regional segurando a maca". A nota tá certa até hoje, {dr}. Foi a única coisa certa daquela noite.' },
+          { who: 'NARRADOR', t: 'Ela empurra o pote de feijão pra você e não fala mais nada até a uma e vinte.' },
+        ],
+      },
+      atras: {
+        lines: [
+          { who: 'SIMONE', t: 'Ela vem atrás de quem tiver coragem, {dr}. Não é a mesma coisa.' },
+        ],
+      },
+      peixoto: {
+        lines: [
+          { who: 'DR. PEIXOTO', t: 'Bom. Muito bom. (ele anota no canto da planilha impressa) Se ela ligar de novo, me passa direto.' },
+          { who: 'NARRADOR', t: 'Quando você volta pra mesa da copa, a Simone já lavou o pote dela e foi pro rádio.' },
+        ],
+      },
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
 export const DAY = day({
   day: 14,
   title: 'Carla',
@@ -329,30 +446,6 @@ export const DAY = day({
   }),
   timeline: [
     { at: '07:01', kind: 'radio', who: 'USA 02 · TICO', text: 'Central, USA 02 em QRV na base Norte. Quarta sem novidade. Por enquanto.' },
-    {
-      at: '12:10',
-      kind: 'interfone',
-      who: 'DR. PEIXOTO',
-      text: (c) =>
-        c.flag('carla_teste_percebido')
-          ? '{Dr}, soube que uma "paciente" ligou hoje cedo fazendo pergunta de frota e você percebeu. Era a jornalista da Gazeta. Bom trabalho. E ordem da diretoria: ninguém fala com imprensa. Ninguém.'
-          : '{Dr}, a Gazeta tá fazendo matéria sobre a central. Ordem da diretoria: ninguém fala com jornalista. Se alguém ligar perguntando de frota ou de tempo de resposta, encaminha pra assessoria. Entendido?',
-      options: [
-        { id: 'ok', label: '"Entendido."' },
-        { id: 'paciente', label: '"E se for paciente perguntando?"', reply: 'Paciente não pergunta quantas viaturas a gente tem, {dr}.' },
-      ],
-    },
-    {
-      at: '15:00',
-      kind: 'script',
-      id: 'simone_voz',
-      run: (c) => {
-        const k = c.callStatus('d14_carla');
-        if (k?.answered !== undefined && !c.flag('carla_teste_percebido') && c.v('lealSimone') >= 6) {
-          c.modal('SIMONE', '{Dr}, aquela moça de manhã, a da dor no peito que perguntava demais... Eu conheço a voz. É a Carla Nunes, da Gazeta. Ela fez a matéria da creche que fechou.', 'simone');
-        }
-      },
-    },
   ],
   calls: [
     // ------------------------------------------------------------------ 1 CEFALEIA SÚBITA
@@ -362,8 +455,8 @@ export const DAY = day({
       at: '07:20',
       pool: 'grave',
       num: '(17) 99406-2310',
-      caller: 'Sandra (esposa)',
-      callerName: 'Sandra',
+      caller: 'Dona Clarice (esposa)',
+      callerName: 'Dona Clarice',
       type: 'comum',
       voice: 'mulher',
       note: 'Esposa. Marido com dor de cabeça muito forte.',
@@ -373,7 +466,7 @@ export const DAY = day({
       open: [
         '{m:Moço|Moça}, meu marido tá com uma dor de cabeça que... ele disse que é {{a pior dor da vida dele|pior_vida}}. Ele nunca reclama de nada!',
         '[{{um homem gemendo baixo; depois, alguém vomitando|vomito}}]',
-        'GILBERTO: Apaga essa luz, Sandra... pelo amor de Deus, apaga a luz...',
+        'GILBERTO: Apaga essa luz, Clarice... pelo amor de Deus, apaga a luz...',
       ],
       q: {
         oque: 'Ele tava carregando os sacos de cimento da reforma e {{a dor veio de repente, igual uma paulada na nuca|paulada}}. Ele caiu sentado.',
@@ -394,7 +487,7 @@ export const DAY = day({
         { a: 'pior_vida', b: 'manual:vermelho', insight: 'Dor de cabeça súbita e explosiva, com vômito: risco imediato de morte. USA (Manual p.1).' },
       ],
       worsen: [{ after: 70, lines: ['{m:Moço|Moça}, ele tá ficando {{sonolento, falando mole|sonolento}}... ele não abre o olho quando eu chamo!'] }],
-      patient: { name: 'Gilberto Teixeira', age: 52, sex: 'M' },
+      patient: { name: 'Gilberto Paiva', age: 52, sex: 'M' },
       truth: { dx: 'Suspeita de hemorragia subaracnoide', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 60, bad: 140 } },
       radio: {
         ok: '{central}, {unit} no local. Cefaleia súbita, rigidez de nuca, fotofobia. Suspeita de hemorragia subaracnoide. Seguimos Regional pra tomografia.',
@@ -493,7 +586,9 @@ export const DAY = day({
       amb: ['tv', 'passaros'],
       open: (c) => [
         'Oi {meu} {filho}, é a Cida! Bom dia! Ó, primeiro: e o {{Liam|davi}}? Melhorou da asma, o menino?',
-        '{{A Zélia me contou que ele desenha ambulância|desenho}}. Eu fiquei com isso na cabeça a semana inteira.',
+        zeliaViva(c)
+          ? '{{A Zélia me contou que ele desenha ambulância|desenho}}. Eu fiquei com isso na cabeça a semana inteira.'
+          : '{{A sua mãe falava dele toda terça. Que ele desenha ambulância|desenho}}. Eu fiquei com isso na cabeça.',
         ...(c.flag('cida_maquina') ? ['E a máquina? {Oconj} já costurou alguma coisa? Fala pra {c:ela|ele} que a bobina tem um segredinho: tem que dar um tapinha do lado.'] : []),
       ],
       q: {
@@ -522,7 +617,10 @@ export const DAY = day({
           a: (c) =>
             c.flag('lucia_fora') || c.flag('lucia_foi_embora')
               ? ['Ah... casa vazia é ruim, {meu} {filho}. Eu sei bem como é.', 'Liga pra ele hoje. Criança guarda a voz da gente.']
-              : ['Ah, que coisa boa! Diz pra ele que a vó Cida mandou um beijo. Posso ser vó Cida? A Zélia não vai ficar com ciúme? [risada]', 'Meu falecido também desenhava. Fazia o meu retrato num guardanapo do bar e eu brigava.'],
+              : [
+                  zeliaViva(c) ? 'Ah, que coisa boa! Diz pra ele que a vó Cida mandou um beijo. Posso ser vó Cida? A Zélia não vai ficar com ciúme? [risada]' : 'Ah, que coisa boa! Diz pra ele que a vó Cida mandou um beijo. A Zélia ia gostar de ouvir isso.',
+                  'Meu falecido, o Nestor, também desenhava. Fazia retrato num guardanapo do bar, de quem tivesse na frente. O meu, eu brigava. Dos passageiros, ele guardava tudo.',
+                ],
           onAsk: fx.all(fx.add('humanidade', 1, 'conversou com a Dona Cida'), fx.set('cida_conversou_d14')),
         },
       ],
@@ -545,8 +643,8 @@ export const DAY = day({
       ref: 'D14 #4 ⚖',
       at: '10:40',
       num: '(17) 3327-3120',
-      caller: 'Cleide (filha)',
-      callerName: 'Cleide',
+      caller: 'Fátima (filha)',
+      callerName: 'Fátima',
       type: 'comum',
       voice: 'mulher',
       note: 'Filha achou a mãe caída no quarto.',
@@ -618,7 +716,7 @@ export const DAY = day({
       voice: 'idosa',
       note: 'Pastelaria. Rapaz queimou o braço no óleo.',
       noteWrong: 'Queimadurinha de cozinha. Leve.',
-      addr: { rua: 'Rua das Indústrias', n: 1320, bairro: 'Distrito Industrial', ref: 'Pastelaria em frente ao portão da fábrica de tecido.' },
+      addr: { rua: 'Av. Santos Dumont', n: 1320, bairro: 'Santa Luzia', ref: 'Pastelaria da Lurdinha, porta de aço, do lado do posto. Os motoristas da 01 comem ali.' },
       amb: ['cozinha', 'gritos'],
       open: [
         '{Dr}, o menino da fritura virou o tacho de óleo no braço! {{O braço inteiro, do cotovelo até a mão|braco_inteiro}}!',
@@ -667,7 +765,7 @@ export const DAY = day({
     call({
       id: 'd14_trote',
       ref: 'D14 #6',
-      at: '13:00',
+      at: '13:25',
       pool: 'trote',
       num: '(17) 99150-0901',
       caller: 'Voz de rapaz, calma',
@@ -691,14 +789,17 @@ export const DAY = day({
         paciente: ['Ele não consegue falar.', '[{{alguém ao fundo: "fala que ele tá roxo, fala!"|sopro}}]'],
         referencia: 'Em frente à escola. Do lado da escola, quer dizer.',
         sangramento: 'Não vi.',
+        pulso: 'Tem... {{uns duzentos|duzentos}}. É, duzentos. Tá batendo forte.',
+        pele: 'Normal. Cor de gente.',
         seguranca: 'Seguro. Pode vir.',
       },
-      extra: [{ id: 'nome', label: 'Nome do seu avô? E o seu?', say: 'Qual o nome do seu avô? E o seu?', a: 'Seu... Benedito. Benedito Silva. Eu sou o neto. Lucas.' }],
+      extra: [{ id: 'nome', label: 'Nome do seu avô? E o seu?', say: 'Qual o nome do seu avô? E o seu?', a: 'Seu... Benedito. Benedito Silva. Eu sou o neto. Bruno.' }],
       callback: ['[{{"Este número está desligado ou fora da área de cobertura."|retorno_desligado}}]'],
       links: [
         { a: 'mapa', b: 'casa_amarela', insight: 'Rua Ipê, 901 é a Escola Estadual, não uma casa amarela. E o sinal que se ouve ao fundo é o da escola.' },
-        { a: 'sinal', b: 'casa_amarela', insight: 'Sinal de escola e barulho de corredor no "quintal do avô", às 13h de uma quarta-feira: é aluno ligando de dentro da escola.' },
+        { a: 'sinal', b: 'casa_amarela', insight: 'Sinal de escola e barulho de corredor no "quintal do avô", logo depois do almoço de uma quarta-feira: é aluno ligando de dentro da escola.' },
         { a: 'sopro', b: 'responde_mole', insight: 'Alguém ao fundo soprando a fala ("fala que ele tá roxo"): a história está sendo inventada na hora.' },
+        { a: 'duzentos', b: 'responde_mole', insight: 'Duzentos batimentos "fortes" num avô de oitenta e tantos que "responde mole"? Quem conta pulso de verdade não acha duzentos. Resposta rápida demais, sem corpo (Manual p.2).' },
       ],
       patient: { name: '"Seu Benedito Silva"' },
       truth: { dx: 'Trote sofisticado (alunos ligando da escola)', sev: 'trote', ok: ['TROTE'], prankKind: 'trote' },
@@ -711,8 +812,8 @@ export const DAY = day({
       at: '14:10',
       anchor: true,
       num: '(17) 99563-1630',
-      caller: 'Jaqueline (gestante)',
-      callerName: 'Jaqueline',
+      caller: 'Mirela (gestante)',
+      callerName: 'Mirela',
       type: 'minimizador',
       voice: 'jovem_m',
       note: 'Gestante, dor de cabeça forte. Diz que "deve ser o calor".',
@@ -734,6 +835,9 @@ export const DAY = day({
         sangramento: 'Não, sangue não.',
         dorpeito: 'No peito não. {{Dói aqui em cima da barriga, do lado direito|dor_epigastrio}}. Achei que era azia.',
         paciente: 'Sou eu mesma. Meu marido tá no serviço, eu tô sozinha.',
+        // [validar] pulso e pele escritos à mão (pré-eclâmpsia grave antes da convulsão: pulso cheio, rosto inchado)
+        pulso: 'No pulso? Tá batendo forte. Dá pra sentir no ouvido, tum, tum, junto com a dor.',
+        pele: 'Vermelha. O rosto tá inchado, a vizinha disse que eu tô com cara de lua.',
         seguranca: 'Sozinha, mas seguro.',
       },
       extra: [
@@ -752,7 +856,7 @@ export const DAY = day({
         { a: 'inchada', b: 'dor_epigastrio', insight: 'Inchada, com pressão de 16 por 11 e dor em cima da barriga, do lado direito: sinais de gravidade da pré-eclâmpsia. Não é azia.' },
       ],
       worsen: [{ after: 60, lines: ['[{{barulho de queda; o telefone bate no chão|queda}}]', 'VIZINHA: Alô?! Alô! Ela tá se debatendo no chão! Tá tendo convulsão, {m:moço|moça}!'], guide: 'convulsao' }],
-      patient: { name: 'Jaqueline Freitas', age: 24, sex: 'F' },
+      patient: { name: 'Mirela Valença', age: 24, sex: 'F' },
       // [validar] O RO2 só põe em USA a DHEG com convulsão (ou história de convulsão); "pressão arterial elevada" é
       // USI/USB. Mas o sulfato de magnésio (AGO13) só vai na USA, e ela tem cefaleia, escotomas, dor epigástrica e
       // 16 por 11. Mantida só a USA (Manual p.7). Equipe: a USB deveria ser aceita como ⚖ antes da convulsão?
@@ -840,17 +944,21 @@ export const DAY = day({
         inicio: 'Agora! Dois minutos!',
         historico: 'Não sei, {m:moço|moça}, não conheço ele!',
         paciente: 'CICLISTA: Tá frio... por que tá tão frio?',
+        // [validar] pulso e pele escritos à mão (choque hemorrágico classe III: pulso fino e rápido, pele fria e pálida)
+        pulso: 'No pulso não acho... no pescoço tá {{rapidinho, fraco|pulso_fino}}.',
+        pele: '{{Branco, branco, e gelado|pele_fria}}. Suando frio. Com esse calor.',
         seguranca: 'Seguro. O carro sumiu. Tô com o pisca-alerta ligado.',
         referencia: 'Em frente ao pesqueiro, perto da ponte.',
       },
-      extra: [{ id: 'cabeca', label: 'Capacete? Bateu a cabeça?', say: 'Ele estava de capacete? Bateu a cabeça?', a: 'Tava de capacete, rachou no meio. Mas ele fala, lembra o nome. Wagner.' }],
+      extra: [{ id: 'cabeca', label: 'Capacete? Bateu a cabeça?', say: 'Ele estava de capacete? Bateu a cabeça?', a: 'Tava de capacete, rachou no meio. Mas ele fala, lembra o nome. Celso.' }],
       links: [
         { a: 'jato', b: 'manual:vermelho', insight: 'Sangramento em jato na coxa, palidez e tontura: hemorragia grave. USA + compressão guiada já (Manual p.1).' },
         { a: 'palido', b: 'sangra_muito', insight: 'Branco, tonto e com frio depois de perder muito sangue: está entrando em choque.' },
+        { a: 'pulso_fino', b: 'pele_fria', insight: 'Pulso fino e rápido, pele fria e suada a 30 °C: choque hemorrágico. Compressão firme no ponto que jorra, já.' },
       ],
       worsen: [{ after: 30, lines: ['{m:Moço|Moça}! {{Ele tá apagando! Tá ficando mole|apagando}}! O pano encharcou!'], guide: 'hemorragia' }],
       guide: { id: 'hemorragia' },
-      patient: { name: 'Wagner Dias', age: 34, sex: 'M' },
+      patient: { name: 'Celso Dias', age: 34, sex: 'M' },
       truth: { dx: 'Hemorragia na coxa (atropelamento de ciclista)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 45, bad: 110, guideBonus: 15 } },
       radio: {
         ok: '{central}, {unit} no local. Lesão arterial na coxa, em choque. Torniquete aplicado. Seguimos Regional.',
@@ -861,11 +969,38 @@ export const DAY = day({
       },
       onResolve: (e, r) => e.set(r.outcome === 'obito' ? 'd14_ciclista_obito' : 'd14_ciclista_vivo'),
       diary: {
-        alive: 'Wagner, ciclista. Atropelado na Beira-Rio, o carro fugiu. Um desconhecido apertou a coxa dele até a USA chegar.',
-        dead: 'Wagner, ciclista. Atropelado na Beira-Rio, o carro fugiu.',
+        alive: 'Celso, ciclista. Atropelado na Beira-Rio, o carro fugiu. Um desconhecido apertou a coxa dele até a USA chegar.',
+        dead: 'Celso, ciclista. Atropelado na Beira-Rio, o carro fugiu.',
       },
     }),
   ],
+  ida: (c) => {
+    const liam = presente(c, 'davi');
+    return rua('d14_ida', 'calcada', [
+      { who: 'NARRADOR', t: 'Mormaço. O Ozzy não late para a moto hoje. Está deitado na sombra do portão, de língua de fora, respirando que nem fole.' },
+      liam
+        ? { who: 'DAVI', t: '(da janela, de pijama) {Pai}! O Ozzy tá com calor! Pode pôr ele na geladeira?' }
+        : { who: 'NARRADOR', t: 'A janela do quarto do Liam está fechada. O Ozzy olha pra ela de vez em quando.' },
+    ], [
+      { label: 'Encher a vasilha do Ozzy de água com gelo.', next: 'ozzy', effect: liam ? fx.add('lacos', 1, 'gelo pro Ozzy') : undefined },
+      { label: 'Fazer carinho e correr pro ponto.' },
+    ], {
+      ozzy: { lines: [
+        { who: 'NARRADOR', t: 'O Ozzy bebe, espirra, e late para a moto atrasado, quando ela já virou a esquina.' },
+        liam
+          ? { who: 'DAVI', t: 'Ele latiu pro nada! Ele tá bom!' }
+          : zeliaEmCasa(c)
+            ? { who: 'ZELIA', t: '(da cozinha) Deixa que eu ponho, {filho}! Vai que o ônibus não espera!' }
+            : { who: 'NARRADOR', t: 'Ninguém viu. O Ozzy viu.' },
+      ] },
+    });
+  },
+  almoco: (c) => almocoD14(c),
+  volta: () =>
+    rua('d14_volta', 'rua', [
+      { who: 'NARRADOR', t: '19:20. O ônibus 12 está um forno. O Seu Aílton dirige de janela aberta e braço pra fora, que nem caminhoneiro.' },
+      { who: 'AÍLTON', t: 'O finado Nestor dizia que mormaço é o ônibus suando. Ele tinha uma frase pra tudo, doutor. O Bené sabe todas.' },
+    ]),
   interlude: {
     teaser: 'Alguém bate palma no portão às nove da noite.',
     familyLacos: 1,

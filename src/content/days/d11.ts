@@ -6,12 +6,31 @@
 // v2.0: a Dona Cida NÃO liga hoje (a vizinha dela, Dona Neusa, conta por quê).
 // Fios: ↺ Henrique (a ligação que sobra pra ele) · ↺ Antônio → Juliana (ateliê)
 //       · aluguel do Seu Nogueira (130, ou 140 se brigou no D2).
+// 1.1 (docs/ROTEIRO-1.1.md, dia 11): o bilhete das 22:07 pode ser mostrado ao Henrique;
+// o almoço é o Saulo pedindo uma USA emprestada (inversão da vaga zero, R2); o Nogueira
+// manca (pista R4); o desenho "a ambulância perdida" na geladeira; a loja ganha a
+// aliança de volta (R5); ida e volta no ônibus 12.
 // =============================================================================
-import type { Ctx, SceneDef } from '../../engine/types';
+import type { Ctx, DLine, Choice, SceneDef, ShiftScriptCtx } from '../../engine/types';
 import type { GuideScript } from '../../engine/content-api';
 import { day, call, fx, is } from '../dsl';
+import { ALIANCA_VOLTA, addNum, apertado, dinheiroDoVereador, presente, rua, zeliaEmCasa } from './arco';
 
 const atelie = (c: Ctx) => c.flag('maquina') && is.present('lucia')(c);
+
+/** o bilhete da noite da Dona Zélia, escrito agora (pelo desenho do Liam ou depois do jantar) */
+const escreveBilhete = fx.when(is.not('anotou_henrique_d10'), fx.all(fx.set('anotou_henrique_d10'), fx.set('bilhete_origem', 'desenho')));
+
+/** a USA emprestada ao Saulo sai do pátio assim que estiver livre (almoço do dia 11) */
+const emprestaUSA = (c: ShiftScriptCtx) => {
+  if (!c.flag('saulo_devendo') || c.sflag('usa_emprestada')) return;
+  const u = c.shift.units['USA01'];
+  const livre = u && (u.status === 'QRV' || u.status === 'RETORNO') ? u : c.freeUnits('USA')[0];
+  if (!livre) return;
+  c.sflag('usa_emprestada', true);
+  c.setUnit(livre.id, 'FORA', c.now + 60, 'Emprestada ao Regional · transferência para Rio Claro');
+  c.radio(livre.radioName, `Central, ${livre.label} saindo do Regional com o rapaz da dengue pra UTI de Rio Claro. Uma hora, ida e volta. O Dr. Saulo mandou dizer "obrigado" duas vezes.`, 'info');
+};
 
 // Conferido (campo B3/BC11: choque = pele fria e úmida, pulso fino → deitar, aquecer, não levantar; pernas elevadas
 // como no campo A8; campo A5: epistaxe com compressão digital; USP cap. 58: na dengue, sem anti-inflamatório nem AAS).
@@ -147,7 +166,7 @@ const julianaScene = (c: Ctx): SceneDef => {
         onEnter: fx.add('humanidade', 1, 'a Juliana'),
         lines: [
           { who: 'EU', t: 'Juliana... fui eu que atendi o seu pai.' },
-          { who: 'NARRADOR', t: 'Ela demora pra responder. A sacola de camisas fica entre vocês dois, no sofá.' },
+          { who: 'NARRADOR', t: 'Ela demora pra responder. A sacola de camisas fica entre {m:vocês dois|vocês duas}, no sofá.' },
           { who: 'JULIANA', t: 'Ele pedia desculpa pra tudo. Pro garçom, pro padre, pra emergência.' },
           { who: 'JULIANA', t: 'Ele não ia querer ninguém se culpando. Ele nunca quis incomodar. Nem pra morrer.' },
         ],
@@ -163,42 +182,165 @@ const julianaScene = (c: Ctx): SceneDef => {
           { who: 'LUCIA', t: 'Seis almofadas. Eu vou fazer com o maior cuidado do mundo.', when: () => k === 'perdido' },
           { who: 'LUCIA', t: 'Primeira encomenda, {nome}. Com nota e tudo.', when: () => k !== 'salvo' && k !== 'perdido' },
           { who: 'NARRADOR', t: '{c:Ela|Ele} abre um caderninho novo e escreve, com a letra caprichada: "Juliana — 1ª cliente". Sublinha duas vezes.' },
+          { who: 'NARRADOR', t: 'No jantar, a Dona Zélia passa o polegar no dedo vazio, onde a aliança ficava. Três vezes. Não percebe que faz isso.', when: (cc) => cc.flag('alianca_vendida') && !cc.flag('alianca_recomprada') && zeliaEmCasa(cc) },
+          { who: 'NARRADOR', t: 'Quando a casa apaga, você vê na geladeira, preso no ímã da pizzaria, o desenho novo do Liam: "A AMBULÂNCIA PERDIDA". Uma ambulância pequena rodando entre placas: PALMEIRAS, PALMEIRAS, PALMEIRAS.', when: (cc) => cc.flag('zelia_caiu_d10') },
         ],
+        choices: [
+          { label: '(Pegar um papel de pão e escrever o que aconteceu na noite da sua mãe.)', when: (cc) => cc.flag('zelia_caiu_d10') && !cc.flag('anotou_henrique_d10'), next: 'bilhete' },
+        ],
+      },
+      bilhete: {
+        onEnter: escreveBilhete,
+        lines: [{ who: 'NARRADOR', t: '"22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias." Você dobra o papel em quatro e guarda no bolso do jaleco.' }],
       },
     },
   };
 };
 
-const DENGUE_CASA: SceneDef = {
-  id: 'd11_dengue_casa',
-  bg: 'cozinha',
-  cast: ['DAVI', 'LUCIA', 'ZELIA'],
-  nodes: {
-    start: {
-      lines: [
-        { who: 'NARRADOR', t: 'Sábado à noite. A Prefeitura passou na rua à tarde com um panfleto: "10 minutos contra a dengue".' },
-        { who: 'DAVI', t: '{Pai}! Eu sou fiscal da dengue! A professora deu crachá e tudo!', when: is.present('davi') },
-        { who: 'NARRADOR', t: 'Vocês viram os vasos, esvaziam a calha, tampam a caixa d’água com um plástico e uma pedra. O Liam acha três criadouros e anota num caderno, com data e hora.', when: is.present('davi') },
-        { who: 'NARRADOR', t: 'Você vira os vasos do quintal {sozinho}, à luz do poste. O pratinho da samambaia tinha larva.', when: (c) => !is.present('davi')(c) },
-        { who: 'LUCIA', t: 'Se eu tivesse a máquina, fazia tela de janela pra rua inteira. Vinte reais cada. Ia ter fila.', when: is.present('lucia') },
-        { who: 'ZELIA', t: 'No meu tempo era areia no prato da planta e chinelo no mosquito.', when: is.alive('zelia') },
-      ],
-      choices: [
-        { label: 'Dar um prêmio pro fiscal: pipoca.', affectionate: true, when: is.present('davi'), next: 'pipoca' },
-        { label: 'Sentar cinco minutos no sofá.', next: 'sofa' },
-      ],
+function dengueCasa(c: Ctx): SceneDef {
+  const D = is.present('davi')(c);
+  const L = is.present('lucia')(c);
+  const Z = zeliaEmCasa(c);
+  const lines: DLine[] = [{ who: 'NARRADOR', t: 'Sábado à noite. A Prefeitura passou na rua à tarde com um panfleto: "10 minutos contra a dengue".' }];
+  if (D) {
+    lines.push(
+      c.flag('marcia_morreu')
+        ? { who: 'DAVI', t: '{Pai}! Eu sou fiscal da dengue! A professora nova deu crachá e tudo. ...A Tia Márcia ia dar.' }
+        : { who: 'DAVI', t: '{Pai}! Eu sou fiscal da dengue! A Tia Márcia deu crachá e tudo!' },
+      { who: 'NARRADOR', t: 'Vocês viram os vasos, esvaziam a calha, tampam a caixa d’água com um plástico e uma pedra. O Liam acha três criadouros e anota num caderno, com data e hora.' },
+    );
+    if (c.flag('bene_mapa_guardanapo')) lines.push({ who: 'DAVI', t: 'E olha: eu copiei o mapa do guardanapo do moço do rádio. Tô fazendo a cidade inteira, {pai}. Pra ambulância não se perder.' });
+  } else lines.push({ who: 'NARRADOR', t: 'Você vira os vasos do quintal {sozinho}, à luz do poste. O pratinho da samambaia tinha larva.' });
+  const cobrarMaquina = L && c.flag('maquina_prometida') && !c.flag('maquina');
+  if (cobrarMaquina) lines.push({ who: 'LUCIA', t: 'Você prometeu a máquina dia 6, {nome}. Eu anotei no calendário. Não pra cobrar. Pra lembrar que um dia você quis.' });
+  else if (L) lines.push({ who: 'LUCIA', t: 'Se eu tivesse a máquina, fazia tela de janela pra rua inteira. Vinte reais cada. Ia ter fila.' });
+  if (Z) lines.push({ who: 'ZELIA', t: 'No meu tempo era areia no prato da planta e chinelo no mosquito.' });
+  if (Z && c.flag('alianca_vendida') && !c.flag('alianca_recomprada')) lines.push({ who: 'NARRADOR', t: 'No jantar, a Dona Zélia passa o polegar no dedo vazio, onde a aliança ficava. Três vezes. Não percebe que faz isso.' });
+  const choices: Choice[] = [
+    ...(c.flag('zelia_caiu_d10') && D ? [{ label: 'Perguntar ao Liam do desenho da geladeira.', needLink: 'ambulancia_perdida', next: 'desenho' }] : []),
+    { label: 'Dar um prêmio pro fiscal: pipoca.', affectionate: true, when: () => D, next: 'pipoca' },
+    { label: 'Sentar cinco minutos no sofá.', next: 'sofa' },
+  ];
+  return {
+    id: 'd11_dengue_casa',
+    bg: 'cozinha',
+    cast: [D ? 'DAVI' : '', L ? 'LUCIA' : '', Z ? 'ZELIA' : ''].filter(Boolean),
+    nodes: {
+      start: {
+        lines,
+        // ROTEIRO flags.md (maquina_prometida, T no D11): Laços −1 se a faixa não é Aperto; em Aperto, só a fala
+        onEnter: (e) => {
+          if (cobrarMaquina && !apertado(e) && !e.flag('maquina_cobrada')) e.add('lacos', -1, 'a máquina prometida');
+          if (cobrarMaquina) e.set('maquina_cobrada');
+        },
+        choices,
+      },
+      desenho: {
+        onEnter: escreveBilhete,
+        lines: [
+          { who: 'DAVI', t: 'É a ambulância que se perdeu procurando a vó. Eu vi da janela. Ela passou três vezes na rua de cima.' },
+          { who: 'DAVI', t: 'O moço do telefone falou o nome errado da rua, né? Eu ouvi você falando "Acácias, Acácias".' },
+          { who: 'NARRADOR', t: 'Você pega um papel de pão e escreve, com a letra que treme: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias." Dobra em quatro. Guarda no bolso do jaleco.', when: (cc) => cc.val('bilhete_origem') === 'desenho' },
+        ],
+        next: 'pipoca',
+      },
+      pipoca: {
+        lines: [
+          { who: 'NARRADOR', t: 'Pipoca na panela de tampa de vidro. O Liam assiste os grãos estourarem como se fosse televisão.' },
+          { who: 'DAVI', t: 'Quando eu crescer, eu vou ser fiscal da dengue e {m:médico|médica} do telefone. Os dois.' },
+        ],
+      },
+      sofa: {
+        lines: [{ who: 'NARRADOR', t: 'Você senta "cinco minutos" e acorda às onze, com uma manta em cima e o panfleto da dengue grudado na bochecha.' }],
+      },
     },
-    pipoca: {
-      lines: [
-        { who: 'NARRADOR', t: 'Pipoca na panela de tampa de vidro. O Liam assiste os grãos estourarem como se fosse televisão.' },
-        { who: 'DAVI', t: 'Quando eu crescer, eu vou ser fiscal da dengue e {m:médico|médica} do telefone. Os dois.' },
-      ],
+    inspect: c.flag('zelia_caiu_d10')
+      ? {
+          objects: [
+            {
+              id: 'desenhos',
+              label: 'Desenho novo na geladeira',
+              desc: 'Preso no ímã da pizzaria: "A AMBULÂNCIA PERDIDA". Uma ambulância pequena rodando entre árvores, e em cada árvore uma placa: PALMEIRAS. Na última esquina, uma casa azul com uma velhinha na janela.',
+              x: 52,
+              y: 62,
+              w: 28,
+              h: 30,
+              unlock: 'ambulancia_perdida',
+            },
+          ],
+          links: [],
+        }
+      : undefined,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Almoço: o Saulo pede uma USA (inversão da vaga zero, R2)
+// -----------------------------------------------------------------------------
+function almocoD11(c: Ctx): SceneDef {
+  const negociou = c.flag('d9_negociou');
+  const depois = c.flag('anotou_henrique_d10') ? 'bilhete' : undefined;
+  const obrigado: DLine[] = [
+    { who: 'SAULO', t: '...Obrigado. Eu não esperava.' },
+    { who: 'SAULO', t: 'Você negociou comigo na quinta. Sem gritar. Por isso eu liguei pra você.', when: () => negociou },
+    { who: 'NARRADOR', t: 'O Bené já está descendo a escada do pátio com a chave na mão. "Uma hora, {bene}. Ou duas, se o Saulo me oferecer café."' },
+    { who: 'SIMONE', t: 'Emprestar ambulância pro hospital. Se o Peixoto descobrir, ele inventa uma meta pra isso.' },
+  ];
+  return {
+    id: 'd11_almoco',
+    bg: 'central',
+    cast: ['SIMONE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Sábado de dengue. A copa cheira a repelente. A Simone mostra no celular uma foto do Wesley de cama, com o termômetro na boca.' },
+          { who: 'SIMONE', t: 'Dengue. Logo ele. Tá reclamando que nem criança. E se o próximo nome na fila for o dele, {dr}?' },
+          { who: 'NARRADOR', t: 'O telefone fixo da copa toca. Ninguém liga para o fixo da copa.' },
+          { who: 'SAULO', t: 'Regulação? É o Saulo, do Regional. (crec, uma bolacha) Não é vaga. É o contrário.' },
+          { who: 'SAULO', t: 'Tenho um rapaz de vinte e dois anos com dengue grave, sangrando, que precisa da UTI de Rio Claro. A ambulância de transporte do hospital quebrou. Me empresta uma USA por uma hora?' },
+          { who: 'NARRADOR', t: 'A meta de hoje é uma USA só. A USA 01 está no pátio. Se você emprestar, ela some por uma hora.' },
+        ],
+        choices: [
+          { label: '"Empresto. Uma hora, Saulo."', next: 'empresta', effect: (e) => (e.set('saulo_devendo'), addNum(e, 'saulo_confianca', 2)) },
+          { label: '"E os seis leitos do quarto andar, Saulo?"', next: 'quarto', effect: fx.set('saulo_quarto_perguntado') },
+          { label: '"Não posso. Tô com uma USA pra cidade."', next: 'nega', effect: fx.set('saulo_negado') },
+        ],
+      },
+      quarto: {
+        lines: [
+          { who: 'NARRADOR', t: 'Silêncio do outro lado. Nem bolacha.' },
+          { who: 'SAULO', t: '...Me empresta a viatura ou não?' },
+        ],
+        choices: [
+          { label: '"Empresto."', next: 'empresta', effect: (e) => (e.set('saulo_devendo'), addNum(e, 'saulo_confianca', 3)) },
+          { label: '"Não posso."', next: 'nega', effect: fx.set('saulo_negado') },
+        ],
+      },
+      empresta: { lines: [...obrigado, { who: 'SAULO', t: 'Você sabe demais pra quem regula de telefone, Regulação.', when: (cc) => cc.flag('saulo_quarto_perguntado') }], next: depois },
+      nega: {
+        lines: [
+          { who: 'SAULO', t: 'Entendi. É o que eu falo pra vocês todo dia.' },
+          { who: 'SAULO', t: '(pausa) Agora eu entendi como soa.' },
+          { who: 'NARRADOR', t: 'Crec. A linha cai. A Simone continua olhando a foto do Wesley.' },
+        ],
+        next: depois,
+      },
+      // ROTEIRO 3.2 (almoço do D11): a Simone vê o bilhete das 22:07 no bolso do jaleco
+      bilhete: {
+        lines: [
+          { who: 'NARRADOR', t: 'Quando você tira o jaleco pra sentar, um papel dobrado escorrega do bolso. A Simone pega antes de você. Lê só a primeira linha.' },
+          { who: 'SIMONE', t: 'É a letra que eu tô pensando? ...Não me fala. Se me falar, eu tenho que fazer alguma coisa.' },
+        ],
+        choices: [
+          { label: '"É o Henrique, Simone. A noite da minha mãe."', next: 'contou', effect: fx.all(fx.add('lealSimone', 1, 'contou da noite da mãe'), fx.set('simone_sabe_zelia')) },
+          { label: '(Pegar o papel de volta sem dizer nada.)', next: 'calou' },
+        ],
+      },
+      contou: { lines: [{ who: 'SIMONE', t: '(ela devolve o papel dobrado nas mesmas dobras) Palmeiras. ...Tá. Agora eu sei. Agora a gente sabe.' }] },
+      calou: { lines: [{ who: 'SIMONE', t: 'Melhor. Por enquanto.' }] },
     },
-    sofa: {
-      lines: [{ who: 'NARRADOR', t: 'Você senta "cinco minutos" e acorda às onze, com uma manta em cima e o panfleto da dengue grudado na bochecha.' }],
-    },
-  },
-};
+  };
+}
 
 export const DAY = day({
   day: 11,
@@ -222,7 +364,7 @@ export const DAY = day({
         ? { title: '"Ele ri de nervoso", conta idosa salva de AVC', text: 'Dona Geralda, 74, chegou ao Regional dentro da janela de tratamento. "Meu filho ri quando tá nervoso. Ainda bem que acreditaram nele."' }
         : { title: 'AVC: tempo é cérebro', text: 'Neurologistas do Regional lembram: boca torta, braço fraco e fala enrolada são motivo para chamar a ambulância na hora.' },
       ...(c.flag('d10_onibus_viatura')
-        ? [{ title: 'Trote de "ônibus tombado" mobiliza viatura', text: 'Ambulância foi à Escola Estadual Prof. Aurélio Matos por um acidente que não existiu. A diretora pede que pais não espalhem boatos.' }]
+        ? [{ title: 'Trote de "ônibus tombado" mobiliza viatura', text: 'Ambulância foi à Escola Estadual Prof. Aurélio Valença por um acidente que não existiu. A diretora pede que pais não espalhem boatos.' }]
         : []),
       { title: 'Aluguel: IGP-M sobe e inquilinos sentem', text: 'Proprietários da Vila Esperança reajustam contratos no meio do mês. "É o índice", diz um deles. "Eu também pago conta."' },
     ],
@@ -230,6 +372,28 @@ export const DAY = day({
     ad: 'Mutirão contra a dengue: 10 minutos por semana. Vire o vaso, tampe a caixa d’água, limpe a calha.',
     weather: 'Calor úmido · 31 °C · pancadas à tarde',
   }),
+  ida: (c) =>
+    rua(
+      'd11_ida',
+      'calcada',
+      [
+        ...(c.flag('zelia_caiu_d10')
+          ? [
+              { who: 'NARRADOR', t: '06:15. A Dona Dirce está no seu portão antes de você abrir a porta.' },
+              { who: 'DIRCE', t: 'Vi a ambulância rodando a Vila ontem de noite, {dr}. Rodou, rodou, foi parar na Palmeiras. Eu gritei "é na Acácias!" da janela. Ninguém ouve velha.' },
+            ]
+          : []),
+        ...(c.flag('d9_parto_regulado') ? [{ who: 'NARRADOR', t: 'Na calçada da 88, o Diego passeia o Benício no carrinho, com um mosquiteiro por cima. "Repelente de bebê, doutor. A Tainara passou até no carrinho."' }] : []),
+        { who: 'NARRADOR', t: '06:40. O ônibus 12 cheira a repelente. Uma senhora oferece o vidro a todo mundo; o Seu Aílton passa no pescoço sem tirar a mão do volante.' },
+        { who: 'AÍLTON', t: 'Dengue, doutor. Minha sogra pegou. Ela é ruim de pegar as coisas, mas a dengue pegou ela.' },
+      ],
+    ),
+  almoco: (c) => almocoD11(c),
+  volta: () =>
+    rua('d11_volta', 'rua', [
+      { who: 'NARRADOR', t: '19:20. No ônibus, o rádio AM do Seu Aílton repete o aviso da Secretaria: "vire o vaso, tampe a caixa d’água". Ele vira o boné pra trás, que é o jeito dele de concordar.' },
+      { who: 'NARRADOR', t: 'Da janela, antes da sua parada, dá pra ver o seu portão. Tem um homem parado nele, com uma pasta de elástico debaixo do braço.' },
+    ]),
   handover: () => ({
     id: 'd11_passagem',
     bg: 'central',
@@ -245,7 +409,30 @@ export const DAY = day({
         choices: [
           { label: '"Ela tá bem. A USB levou quarenta minutos."', when: is.flag('henrique_atendeu_zelia'), next: 'bem' },
           { label: '"Você passou Rua das Palmeiras pra equipe, Henrique."', when: is.flag('henrique_atendeu_zelia'), next: 'confronto' },
+          // ROTEIRO 3.2 (D11): o bilhete das 22:07, mostrado na cara dele
+          { label: '(Mostrar o bilhete das 22:07.)', when: is.flag('anotou_henrique_d10'), next: 'bilhete' },
+          // INTERVENCAO §3: o caderno do Sereno ("Noturno passou rua errada. Liguei e corrigi. 3ª vez")
+          { label: '"Henrique, tem um senhor que corrige os seus endereços de madrugada."', when: is.flag('noite_leu_caderno'), next: 'caderno' },
           { label: '(Não responder.)', when: is.flag('henrique_atendeu_zelia'), next: 'dengue' },
+        ],
+        next: 'dengue',
+      },
+      bilhete: {
+        onEnter: fx.all(fx.set('mostrou_bilhete_henrique'), fx.add('lealHenrique', -1, 'mostrou o bilhete')),
+        lines: [
+          { who: 'NARRADOR', t: 'Você tira do bolso o papel de pão dobrado em quatro. Ele lê de pé, perto da máquina de café. Lê de novo.' },
+          { who: 'HENRIQUE', t: 'Essa letra é sua. (ele dobra o papel nas mesmas dobras e devolve) ...Guarda isso, {nome}. Não pra mim. Pra você.' },
+          { who: 'NARRADOR', t: 'A mão dele, quando encosta na sua, está gelada.' },
+        ],
+        next: 'dengue',
+      },
+      caderno: {
+        onEnter: fx.set('contou_caderno_henrique'),
+        lines: [
+          { who: 'EU', t: 'Um senhor de capa que escuta o rádio da Regulação de madrugada. Ele anota num caderno: "Noturno passou rua errada. Liguei e corrigi. Terceira vez." Eu li, Henrique.' },
+          { who: 'HENRIQUE', t: '(a bala de menta para no meio da boca) ...Tem um velho que liga às três da manhã corrigindo endereço. Eu achei que era trote.' },
+          { who: 'HENRIQUE', t: 'Era trote, né, {nome}? Fala que era trote.' },
+          { who: 'NARRADOR', t: 'Você não fala.' },
         ],
         next: 'dengue',
       },
@@ -293,7 +480,20 @@ export const DAY = day({
       ],
     },
     { at: '12:10', kind: 'interfone', who: 'DR. PEIXOTO', text: '{Dr}, ofício da Secretaria: febre é UBS. Sem sinal de alarme, nada de viatura. A frota não aguenta dengue, entendeu? E o painel tá olhando.' },
-    { at: '16:10', kind: 'simone', who: 'SIMONE', text: 'O Wesley pegou dengue, {dr}. Tá de cama, reclamando que nem criança. Eu fico olhando a fila e pensando: e se o próximo nome for o dele?' },
+    // a USA emprestada ao Saulo no almoço sai assim que estiver livre
+    { at: '13:21', kind: 'script', id: 'emprestimo1', run: emprestaUSA },
+    { at: '13:41', kind: 'script', id: 'emprestimo2', run: emprestaUSA },
+    { at: '14:01', kind: 'script', id: 'emprestimo3', run: emprestaUSA },
+    {
+      at: '14:30',
+      kind: 'script',
+      id: 'peixoto_uber',
+      run: (c) => {
+        if (!c.sflag('usa_emprestada') || c.shift.usaSent < 1) return;
+        c.add('desgaste', 2, 'o Peixoto e a USA emprestada');
+        c.modal('DR. PEIXOTO', 'Emprestar viatura pro Regional, {dr}? A gente agora é Uber de hospital? A meta de hoje era uma USA. Uma. (pausa) Não vou te dar advertência. Vou te dar um olhar. Imagina o olhar.', 'interfone');
+      },
+    },
     {
       at: '18:45',
       kind: 'script',
@@ -312,8 +512,8 @@ export const DAY = day({
       at: '07:10',
       pool: 'dengue,leve',
       num: '(17) 99631-0710',
-      caller: 'Patrícia',
-      callerName: 'Patrícia',
+      caller: 'Germana',
+      callerName: 'Germana',
       type: 'comum',
       voice: 'jovem_m',
       note: 'Moça, febre e dor atrás dos olhos. Acha que é dengue.',
@@ -335,10 +535,10 @@ export const DAY = day({
       },
       extra: [{ id: 'liquidos', label: 'Bebendo líquido? Urinando?', say: 'Você está conseguindo beber bastante líquido? Está urinando normal?', a: 'Tô bebendo água, soro da farmácia, suco. Fazendo xixi normal.' }],
       links: [{ a: 'sem_alarme', b: 'manual:dengue_sem', insight: 'Febre e dor atrás dos olhos, sem sinal de alarme, bebendo líquido: dengue sem alarme. Hidratação e UBS (Manual p.11).' }],
-      patient: { name: 'Patrícia Rocha', age: 26, sex: 'F' },
+      patient: { name: 'Germana Rocha', age: 26, sex: 'F' },
       truth: { dx: 'Dengue sem sinais de alarme', sev: 'verde', ok: ['ORI'], ref: ['UBS'] },
       radio: { excess: 'Central, {unit}. Dengue sem alarme, andando, bebendo água. Ela pediu desculpa por chamar a ambulância. Liberamos com orientação.' },
-      diary: { ori: 'Patrícia, 26. Dengue sem alarme. Metade do prédio dela também.' },
+      diary: { ori: 'Germana, 26. Dengue sem alarme. Metade do prédio dela também.' },
     }),
     // ----------------------------------------------------------------- 2 dengue sem alarme (exantema)
     call({
@@ -347,8 +547,8 @@ export const DAY = day({
       at: '07:55',
       pool: 'dengue,leve',
       num: '(17) 99412-0755',
-      caller: 'Cícero',
-      callerName: 'Cícero',
+      caller: 'Clóvis',
+      callerName: 'Clóvis',
       type: 'comum',
       voice: 'homem',
       note: 'Homem, febre e manchas pelo corpo.',
@@ -372,9 +572,9 @@ export const DAY = day({
         { a: 'some', b: 'manchas', kind: 'confirma', insight: 'Manchas vermelhas que somem à pressão, com coceira, no 4º dia: é o exantema da própria dengue, sem sinal de alarme.' },
         { a: 'febre_baixou', b: 'manual:dengue_alarme', insight: 'A febre baixou: é justamente quando os sinais de alarme costumam aparecer. Ele não tem nenhum agora; orientar a voltar a ligar se aparecerem (Manual p.11).' }, // Conferido (USP cap. 58: a fase crítica começa na defervescência, do 3º ao 7º dia; mancha que some à pressão não é "erupção cutânea fixa", RC seção 8)
       ],
-      patient: { name: 'Cícero Nascimento', age: 34, sex: 'M' },
+      patient: { name: 'Clóvis Nascimento', age: 34, sex: 'M' },
       truth: { dx: 'Dengue sem sinais de alarme (exantema)', sev: 'verde', ok: ['ORI'], ref: ['UBS'] },
-      diary: { ori: 'Cícero, 34. Dengue no 4º dia, manchas que somem à pressão. Orientado a ligar de novo se aparecer sinal de alarme.' },
+      diary: { ori: 'Clóvis, 34. Dengue no 4º dia, manchas que somem à pressão. Orientado a ligar de novo se aparecer sinal de alarme.' },
     }),
     // ----------------------------------------------------------------- 3 dengue COM alarme (dor abdominal + vômitos)
     call({
@@ -402,6 +602,8 @@ export const DAY = day({
         historico: 'Nada. Nunca ficou doente. Nem quer ir em médico.',
         dengue: '{{Dor forte na barriga e vômito sem parar, isso tem|alarme}}. E ele levantou pra ir no banheiro e teve que sentar no meio do caminho.',
         paciente: ['MURILO: Tô bem, mãe... é só... [{{ânsia de vômito|ansia}}]', 'MURILO: Desculpa... a barriga... aperta.'],
+        pele: 'Branquinho, a boca seca, rachada. A mão tá morna.',
+        pulso: 'Tá batendo rápido. Mas eu acho fácil, no pulso.',
         seguranca: 'Seguro.',
       },
       extra: [{ id: 'urina', label: 'Está urinando?', say: 'Ele está urinando? Quando foi a última vez?', a: '{{Desde ontem à noite não fez xixi|sem_urina}}.' }],
@@ -462,8 +664,8 @@ export const DAY = day({
       at: '10:30',
       pool: 'dengue,leve',
       num: '(17) 99288-1030',
-      caller: 'Rodrigo',
-      callerName: 'Rodrigo',
+      caller: 'Jefferson',
+      callerName: 'Jefferson',
       type: 'exagerador',
       voice: 'jovem_h',
       note: 'Rapaz, diz que tá "morrendo de dengue".',
@@ -495,10 +697,10 @@ export const DAY = day({
         { a: 'morrendo', b: 'sem_alarme', insight: '"Tô morrendo"... sem nenhum sinal de alarme. O que ele precisa é do atestado: UBS (Manual p.11).' },
         { a: 'atestado', b: 'manual:verde', insight: 'Ambulância como transporte para atestado: verde, orientação (Manual p.1).' },
       ],
-      patient: { name: 'Rodrigo Lima', age: 23, sex: 'M' },
+      patient: { name: 'Jefferson Lima', age: 23, sex: 'M' },
       truth: { dx: 'Dengue sem sinais de alarme', sev: 'verde', ok: ['ORI'], ref: ['UBS'] },
       radio: { excess: 'Central, {unit}. Rapaz com febre, andando, pediu pra passar na padaria antes. Era pelo atestado, {dr}.' },
-      diary: { ori: 'Rodrigo, 23. "Tô morrendo." Queria o atestado.' },
+      diary: { ori: 'Jefferson, 23. "Tô morrendo." Queria o atestado.' },
     }),
     // ----------------------------------------------------------------- 6 "desmaiou" (vasovagal no laboratório)
     call({
@@ -507,8 +709,8 @@ export const DAY = day({
       at: '11:30',
       pool: 'dengue,leve',
       num: '(17) 3321-2250',
-      caller: 'Rose (recepção do laboratório)',
-      callerName: 'Rose',
+      caller: 'Dona Telma (recepção do laboratório)',
+      callerName: 'Dona Telma',
       type: 'testemunha',
       voice: 'mulher',
       note: 'Laboratório. Paciente com dengue desmaiou.',
@@ -536,7 +738,7 @@ export const DAY = day({
         { a: 'olhou_sangue', b: 'manual:dengue_grave', insight: '"Desmaio" está na página do choque da dengue... mas ela desmaiou ao VER o sangue na seringa, acordou em segundos, está corada e quente: desmaio vasovagal, não choque (Manual p.11).' }, // Conferido (RC20: recuperação completa, sem dor no peito, dispneia, convulsão ou déficit; corada e quente, sem os sinais de choque do campo B3)
         { a: 'sempre', b: 'acordou', kind: 'confirma', insight: 'Desmaia com agulha desde criança e voltou em segundos: reflexo, não gravidade.' },
       ],
-      patient: { name: 'Larissa Teixeira', age: 19, sex: 'F' },
+      patient: { name: 'Larissa Quintino', age: 19, sex: 'F' },
       // RC20: desmaio testemunhado = "história de inconsciência" → USI/USB. Vasovagal típico (viu o sangue, segundos,
       // corada e quente, desmaia com agulha desde criança): orientação preferida, USB ⚖ (antes era excesso), como em
       // d08_onibus.
@@ -601,8 +803,8 @@ export const DAY = day({
       at: '14:00',
       pool: 'dengue,moderado',
       num: '(17) 99150-1350',
-      caller: 'Márcio (neto)',
-      callerName: 'Márcio',
+      caller: 'Rodolfo (neto)',
+      callerName: 'Rodolfo',
       type: 'comum',
       voice: 'jovem_h',
       note: 'Neto. Avô com dengue e "esquisito".',
@@ -620,7 +822,9 @@ export const DAY = day({
         dengue: '{{Não tá comendo nada, bebendo pouquinho|pouco_liquido}}. Vomitar não. Sangue não. Tontura... ele nem levanta.',
         sangramento: 'Não vi.',
         fast: 'Sorriu... sorriu normal. Levantou os dois braços, devagar. Falou "o céu é azul" meio mole, mas falou.',
-        paciente: ['SEU SEBASTIÃO: Hum? ...Carlinhos? ... [{{ele dorme no meio da frase|dorme_frase}}]'],
+        paciente: ['SEU GERMANO: Hum? ...Carlinhos? ... [{{ele dorme no meio da frase|dorme_frase}}]'],
+        pele: 'Pálido. A boca seca, a língua parece lixa. Não tá gelado, não.',
+        pulso: 'A tia achou no pulso: rapidinho e fraco.',
         seguranca: 'Seguro.',
       },
       extra: [{ id: 'glicemia', label: 'É diabético? Mediu o açúcar?', say: 'Ele é diabético? Alguém mediu o açúcar dele?', a: 'Não é diabético. A tia mediu com o aparelho dela: {{deu 132|glicemia}}.' }],
@@ -628,10 +832,10 @@ export const DAY = day({
         { a: 'sonolento', b: 'manual:dengue_alarme', insight: 'Sonolência e confusão na dengue de um idoso: sinal de alarme. USB → Regional (idoso ou confuso: REG — Manual p.11).' },
         { a: 'confuso', b: 'glicemia', insight: 'Confuso, mas com glicemia normal e FAST sem alteração: não é hipoglicemia nem AVC. É a dengue pesando num corpo de 82 anos.' },
       ],
-      patient: { name: 'Sebastião Gonçalves', age: 82, sex: 'M' },
+      patient: { name: 'Germano Gonçalves', age: 82, sex: 'M' },
       truth: { dx: 'Dengue com sinais de alarme em idoso (sonolência e confusão)', sev: 'amarelo', ok: ['USB'], dest: ['REG'], risk: { good: 90, bad: 240, needs: 'USB' } },
       radio: { ok: 'Central, {unit} no local. Idoso com dengue, desidratado, sonolento, pressão baixa. Soro e oxigênio. Seguimos Regional. Ele acordou na ambulância e perguntou pelo Carlinhos.' },
-      diary: { alive: 'Seu Sebastião, 82. Dengue com sinal de alarme. Chamou o neto pelo nome do filho.' },
+      diary: { alive: 'Seu Germano, 82. Dengue com sinal de alarme. Chamou o neto pelo nome do filho.' },
     }),
     // ----------------------------------------------------------------- 9 febre em criança, sem alarme
     call({
@@ -640,30 +844,30 @@ export const DAY = day({
       at: '16:30',
       pool: 'dengue,leve,pediatria',
       num: '(17) 99220-1520',
-      caller: 'Cleide (mãe)',
-      callerName: 'Cleide',
+      caller: 'Dona Zuleica (mãe)',
+      callerName: 'Dona Zuleica',
       type: 'comum',
       voice: 'mulher',
-      note: 'Mãe, criança com febre.',
+      note: 'Mãe, menina com febre.',
       noteWrong: 'Criança com febre e sangramento!',
       addr: { rua: 'Rua Quaresmeira', n: 1860, bairro: 'Jardim Primavera', ref: 'Na rua da oficina de geladeira, casa de esquina.' },
       amb: ['desenho'],
-      open: ['Oi, meu filho de seis anos tá com {{febre de 38 e pouco|febre}} desde ontem. Aqui na rua tá todo mundo com dengue. Eu fico com medo, né, por causa do que passa na televisão.'],
+      open: ['Oi, minha filha de seis anos tá com {{febre de 38 e pouco|febre}} desde ontem. Aqui na rua tá todo mundo com dengue. Eu fico com medo, né, por causa do que passa na televisão.'],
       q: {
-        oque: 'Febre. Ficou meio molinho de manhã. Agora tá vendo desenho.',
-        consciencia: 'Acordado, {{vendo desenho e pedindo pipoca|pipoca}}.',
+        oque: 'Febre. Ficou meio molinha de manhã. Agora tá vendo desenho.',
+        consciencia: 'Acordada, {{vendo desenho e pedindo pipoca|pipoca}}.',
         respira: 'Normal.',
         idade: 'Seis anos.',
         inicio: 'Ontem à noite.',
         dengue: '{{Barriga não dói, não vomitou, não sangrou nada|sem_alarme}}. Fez xixi de manhã, bastante.',
         historico: 'Nada. Vacina em dia.',
         sangramento: 'Não.',
-        paciente: ['ENZO: Mãe, a febre foi embora?', '[{{risadinha com o desenho|risadinha}}]'],
+        paciente: ['ISADORA: Mãe, a febre foi embora?', '[{{risadinha com o desenho|risadinha}}]'],
       },
       links: [{ a: 'sem_alarme', b: 'manual:dengue_sem', insight: 'Febre, ativo, pedindo pipoca, urinando, sem sinal de alarme: dengue sem alarme. Hidratação e UBS (Manual p.11).' }],
-      patient: { name: 'Enzo Martins', age: 6, sex: 'M' },
+      patient: { name: 'Isadora Martins', age: 6, sex: 'F' },
       truth: { dx: 'Febre na epidemia (provável dengue sem alarme)', sev: 'verde', ok: ['ORI'], ref: ['UBS'] },
-      diary: { ori: 'Enzo, 6. Febre, pedindo pipoca. A mãe saiu sabendo os sinais de alarme de cor.' },
+      diary: { ori: 'Isadora, 6. Febre, pedindo pipoca. A mãe saiu sabendo os sinais de alarme de cor.' },
     }),
     // ----------------------------------------------------------------- 10 ★ dengue grave (chega tarde; se sobrar, vai pro Henrique)
     call({
@@ -743,26 +947,37 @@ export const DAY = day({
         start: {
           lines: [
             { who: 'NARRADOR', t: 'Você desce do ônibus e o Seu Nogueira está no seu portão, com a pasta de elástico debaixo do braço e a camisa social grudada nas costas.' },
+            { who: 'NARRADOR', t: 'Quando ele se ajeita no portão, você repara: ele também manca. Da perna esquerda.' },
             c.flag('brigou_nogueira')
               ? { who: 'NOGUEIRA', t: '{Dr}. Não vou entrar, não precisa. O IGP-M subiu. E depois daquela conversa da conta de água... eu tive que rever umas coisas. Cento e quarenta, a partir deste mês.' }
               : { who: 'NOGUEIRA', t: 'Boa noite, {dr}. Desculpa vir no sábado. É o IGP-M, né? Sobe pra todo mundo. Cento e trinta, a partir deste mês.' },
             { who: 'NOGUEIRA', t: 'Tá no contrato. Cláusula sexta. Pode ler.' },
+            // regra do dinheiro (ROTEIRO 3.1-e): o dinheiro do envelope aparece por fora também
+            ...(dinheiroDoVereador(c) ? [{ who: 'NOGUEIRA', t: 'E tá bonito o portão, hein? Pintou? (ele olha a calçada nova, a lâmpada nova) Então no mês que vem a gente conversa de novo.' }] : []),
           ],
           choices: [
             { label: '"Tá certo, Seu Nogueira."', next: 'ok' },
-            { label: c.flag('brigou_nogueira') ? '"Quarenta reais é a semana de remédio da minha mãe."' : '"Trinta reais é a semana de remédio da minha mãe."', next: 'reclama' },
+            {
+              label: apertado(c)
+                ? c.flag('brigou_nogueira')
+                  ? '"Quarenta reais é a semana de remédio da minha mãe."'
+                  : '"Trinta reais é a semana de remédio da minha mãe."'
+                : '"Por causa de um índice, Seu Nogueira?"',
+              next: 'reclama',
+            },
           ],
         },
         ok: { lines: [{ who: 'NOGUEIRA', t: '{m:O senhor|A senhora} é gente fina, {dr}. Médico entende de número.' }] },
         reclama: {
           lines: [
             { who: 'NOGUEIRA', t: 'E o meu é o da pressão, {dr}. Todo mundo tem um remédio.' },
-            { who: 'NARRADOR', t: 'Ele aperta a sua mão com a mão suada e vai embora devagar. Ele também manca.' },
+            { who: 'NARRADOR', t: 'Ele aperta a sua mão com a mão suada e vai embora devagar, arrastando a perna. Para no meio-fio, olha o céu. "Se chover forte, as casas da Baixada viram rio", ele diz pra ninguém.' },
           ],
         },
       },
     }),
-    scene: (c) => (atelie(c) ? julianaScene(c) : DENGUE_CASA),
+    scene: (c) => (atelie(c) ? julianaScene(c) : dengueCasa(c)),
+    shop: [ALIANCA_VOLTA],
     bico: (c) =>
       atelie(c)
         ? {
