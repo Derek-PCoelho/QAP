@@ -63,7 +63,7 @@ export const ADDR: Record<string, AddrIn> = {
   marcia: { rua: 'Rua Jacarandá', n: 215, bairro: 'Jardim Primavera', ref: 'Casa do portão azul, tem um pé de manga enorme na frente.' },
   rosangela: { rua: 'Rua Ipê', n: 112, bairro: 'Jardim Norte', ref: 'Sobrado verde, primeira casa depois da esquina.' },
   diego: { rua: 'Rua das Acácias', n: 88, bairro: 'Vila Esperança', ref: 'Quatro casas depois da casa azul.' },
-  escola: { rua: 'Rua Ipê', n: 905, bairro: 'Jardim Norte', ref: 'Em frente à Escola Estadual Prof. Aurélio.' },
+  escola: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte', ref: 'Escola Estadual Prof. Aurélio Valença, portão da frente.' },
   igreja_bahia: { rua: 'Rua Bahia', n: 300, bairro: 'Centro' },
   parque: { rua: 'Rua do Parque', n: 1201, bairro: 'Parque das Exposições', ref: 'Portão principal do Parque de Exposições.' },
   central: { rua: 'Rua XV de Novembro', n: 601, bairro: 'Centro', ref: 'A própria Central de Regulação.' },
