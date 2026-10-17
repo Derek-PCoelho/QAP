@@ -194,6 +194,8 @@ export class HomeSim {
       st.flags['noite_em_claro'] = true;
       st.flags['fez_intervencao'] = true;
       for (const r of sum.results) st.flags['field_' + r.id] = true;
+      // história das noites (Intervenção): noites feitas, capítulos e escolhas
+      Object.assign(st.flags, sim.storyFlags());
       e.achievement('dobra');
       if (sum.results.length >= 3 && sum.stable === sum.results.filter((r) => r.outcome !== 'trote').length && sum.stable > 0) e.achievement('noite_limpa');
       if (sim.f.results.some((r) => r.id === 'bar_faca' && r.outcome !== 'equipe_ferida')) e.achievement('esperou_a_pm');
