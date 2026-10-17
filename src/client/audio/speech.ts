@@ -4,6 +4,7 @@
 // do texto em português guiam o ritmo e a entonação do balbucio.
 // =============================================================================
 import type { LineStyle, VoiceId } from '../../engine/types';
+import { bleepDuration } from '../../engine/bleep';
 import { clamp, hashStr, mulberry32, pick, rr, type Rand } from './dsp';
 
 export type Vowel = 'a' | 'E' | 'e' | 'i' | 'O' | 'o' | 'u';
@@ -146,7 +147,19 @@ export interface BreathSeg {
   inhale: boolean;
   amp: number;
 }
-export type Seg = SylSeg | BreathSeg;
+/** "piii" da censura (1.1): tom senoidal puro no lugar do palavrão, com a duração da palavra */
+export interface BeepSeg {
+  kind: 'beep';
+  t: number;
+  dur: number;
+  /** frequência do bipe (Hz) */
+  f: number;
+  amp: number;
+}
+export type Seg = SylSeg | BreathSeg | BeepSeg;
+
+/** frequência do bipe de censura */
+export const BEEP_HZ = 1000;
 
 export interface Plan {
   segs: Seg[];
@@ -166,7 +179,9 @@ export interface RawSyl {
   caps: boolean;
   /** pontuação após a sílaba (só no fim de palavra) */
   punct: '' | ',' | '.' | '?' | '!' | '...' | ';';
-  special?: 'laugh' | 'sob' | 'cough' | 'sigh' | 'breath' | 'pause';
+  special?: 'laugh' | 'sob' | 'cough' | 'sigh' | 'breath' | 'pause' | 'bleep';
+  /** duração do bipe (s), só em `special: 'bleep'` */
+  bleepDur?: number;
 }
 
 const VOWEL_CHARS = 'aeiouáàâãéêíóôõúüy';
@@ -352,39 +367,57 @@ function syllabify(word: string, caps: boolean): RawSyl[] {
   return out;
 }
 
+// Rubricas → efeito. Cada termo precisa começar uma palavra (antes, "/ri/" achava risada em
+// "[silêncio comprido]", "[gritos]", "(criança)", "(marido)", "(irritado)" e "(sem risco)", e
+// "/chor/" achava choro em "(cachorro latindo)"). Sem efeito reconhecido, a rubrica vira pausa.
+const W = '(?:^|[^\\p{L}])';
 const SPECIALS: [RegExp, RawSyl['special']][] = [
-  [/ri|riso|rindo|risad|gargalh|hah|ha ha/i, 'laugh'],
-  [/chor|solu|funga/i, 'sob'],
-  [/toss|engasg/i, 'cough'],
-  [/suspir|bocej/i, 'sigh'],
-  [/respir|ofeg|arfa/i, 'breath'],
+  [new RegExp(`${W}pi{2,}`, 'iu'), 'bleep'],
+  [new RegExp(`${W}(?:(?:ri|riu|rir|rindo|riso|risos)(?!\\p{L})|risad|risinh|gargalh|hah|ha ha|kkk)`, 'iu'), 'laugh'],
+  [new RegExp(`${W}(?:chor|solu[çc]|funga)`, 'iu'), 'sob'],
+  [new RegExp(`${W}(?:toss|engasg)`, 'iu'), 'cough'],
+  [new RegExp(`${W}(?:suspir|bocej)`, 'iu'), 'sigh'],
+  [new RegExp(`${W}(?:respir|ofeg|arfa)`, 'iu'), 'breath'],
 ];
 
-function specialSyl(kind: RawSyl['special']): RawSyl {
-  return { onset: '', v: 'a', nasal: false, coda: '', stress: false, wordStart: true, wordEnd: true, caps: false, punct: '', special: kind };
+/** efeito de uma rubrica ("[risadas]", "(chorando)") — exportado para os testes */
+export function rubricEffect(inner: string): NonNullable<RawSyl['special']> {
+  const hit = SPECIALS.find(([r]) => r.test(inner));
+  return hit ? hit[1]! : 'pause';
 }
 
-/** Texto → sílabas brutas (com pontuação e efeitos entre colchetes). */
+function specialSyl(kind: RawSyl['special'], bleepDur?: number): RawSyl {
+  const s: RawSyl = { onset: '', v: 'a', nasal: false, coda: '', stress: false, wordStart: true, wordEnd: true, caps: false, punct: '', special: kind };
+  if (bleepDur !== undefined) s.bleepDur = bleepDur;
+  return s;
+}
+
+/** Texto → sílabas brutas (com pontuação, efeitos entre colchetes e o "piii" da censura). */
 export function parseText(text: string): RawSyl[] {
   const s = cleanText(text).replace(/\d/g, (d) => ' ' + DIGITS[Number(d)] + ' ');
   const out: RawSyl[] = [];
-  // [rubrica] e (rubrica) são descrições de cena: viram choro, risada, pausa etc., nunca palavras lidas
-  const re = /\[([^\]]*)\]|\(([^)]*)\)|([A-Za-z\u00c0-\u00ff]+)|(\.\.\.|\u2026|[.,;:!?\u2014\u2013]|\s-\s)/g;
+  // [rubrica] e (rubrica) são descrições de cena: viram choro, risada, pausa etc., nunca palavras lidas;
+  // "#%!#@$" (3+ símbolos de quadrinho, ver engine/bleep.ts) é palavrão censurado: vira o bipe
+  const re = /\[([^\]]*)\]|\(([^)]*)\)|((?=[#%!@$&*]*[#%@$&*])[#%!@$&*]{3,12})|([A-Za-z\u00c0-\u00ff]+)|(\.\.\.|\u2026|[.,;:!?\u2014\u2013]|\s-\s)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s))) {
     if (m[1] !== undefined || m[2] !== undefined) {
       const inner = m[1] ?? m[2];
-      const hit = SPECIALS.find(([r]) => r.test(inner));
-      out.push(specialSyl(hit ? hit[1] : 'pause'));
+      const fx = rubricEffect(inner);
+      out.push(fx === 'bleep' ? specialSyl('bleep', 0.45) : specialSyl(fx));
       continue;
     }
     if (m[3] !== undefined) {
-      const word = m[3];
+      out.push(specialSyl('bleep', bleepDuration(m[3])));
+      continue;
+    }
+    if (m[4] !== undefined) {
+      const word = m[4];
       const caps = word.length > 1 && word === word.toUpperCase() && word !== word.toLowerCase();
       out.push(...syllabify(word, caps));
       continue;
     }
-    const p = m[4];
+    const p = m[5];
     const lastSyl = out[out.length - 1];
     if (!lastSyl) continue;
     const punct: RawSyl['punct'] =
@@ -470,7 +503,7 @@ export function buildPlan(raw: RawSyl[], spec: VoiceSpec, r: Rand, maxDur = MAX_
   for (let k = 0; k < items.length; k++) {
     const s = items[k];
     if (s.special) {
-      t = specialSegs(s.special, t, spec, r, push);
+      t = specialSegs(s.special, t, spec, r, push, s.bleepDur);
       if (s.special === 'sob') pendingBreak = true;
       continue;
     }
@@ -570,7 +603,7 @@ function onsetLen(o: Onset, d: number): number {
   return Math.min(m[o], d * 0.42);
 }
 
-function specialSegs(kind: NonNullable<RawSyl['special']>, t: number, spec: VoiceSpec, r: Rand, push: (s: Seg) => void): number {
+function specialSegs(kind: NonNullable<RawSyl['special']>, t: number, spec: VoiceSpec, r: Rand, push: (s: Seg) => void, bleepDur = 0.45): number {
   const syl = (tt: number, d: number, f: number, amp: number, v: Vowel, onset: Onset = 'h'): SylSeg => ({
     kind: 'syl', t: tt, dur: d, onset, onsetDur: Math.min(0.03, d * 0.35), v, nasal: false, coda: '', codaDur: 0, stress: true,
     f0: f, f0End: f * 0.94, amp, gap: d * 0.28, legato: false,
@@ -606,6 +639,11 @@ function specialSegs(kind: NonNullable<RawSyl['special']>, t: number, spec: Voic
       push({ kind: 'breath', t, dur: 0.17, inhale: true, amp: 0.8 });
       push({ kind: 'breath', t: t + 0.2, dur: 0.16, inhale: false, amp: 0.7 });
       return t + 0.4;
+    }
+    case 'bleep': {
+      // o "piii" da TV: começa colado na palavra anterior e deixa um respiro curto depois
+      push({ kind: 'beep', t: t + 0.02, dur: bleepDur, f: BEEP_HZ, amp: 1 });
+      return t + 0.02 + bleepDur + 0.08;
     }
     default:
       return t + 0.35;
