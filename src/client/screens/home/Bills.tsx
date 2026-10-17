@@ -31,7 +31,11 @@ export function Bills() {
   const picked = bills.filter((b) => !b.auto && chosen.includes(b.id));
   const total = autoTotal + picked.reduce((a, b) => a + b.amount, 0);
   const after = g.st.money - total;
-  const short = after < 0 ? -after : 0;
+  // as automáticas (transporte) saem de qualquer jeito, mesmo deixando o saldo negativo (o motor
+  // aceita): "faltar" só conta para o que o jogador marcou. Antes, com o saldo abaixo das
+  // automáticas, o botão ficava desabilitado para sempre e a noite travava nas contas.
+  const pickedTotal = total - autoTotal;
+  const short = Math.max(0, pickedTotal - Math.max(0, g.st.money - autoTotal));
   const unpaid = bills.filter((b) => !b.auto && !chosen.includes(b.id));
 
   const toggle = (id: string) => {
@@ -71,6 +75,7 @@ export function Bills() {
         </div>
       </div>
       {short > 0 && <p className="led-err">Faltam R$ {short} para pagar tudo o que está marcado.</p>}
+      {short === 0 && after < 0 && <p className="led-err">O saldo não cobre nem as contas automáticas: elas saem mesmo assim e o saldo fica negativo.</p>}
       <ul className="led-list">
         {bills.map((b) => {
           const on = b.auto || chosen.includes(b.id);

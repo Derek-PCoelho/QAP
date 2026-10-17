@@ -7,7 +7,8 @@ import { CONTENT } from '../src/content/index';
 import { Game } from '../src/engine/game';
 import { playBot, PROFILES } from '../src/engine/bot';
 import { SAVE_VERSION } from '../src/engine/state';
-import { protagonistFirst, resolveTokens } from '../src/engine/text';
+import { protagonistFirst, resolveTokens, PROTAGONIST_FIRST, SURNAME } from '../src/engine/text';
+import { DEFAULT_FIRST_NAME, DEFAULT_SURNAME } from '../src/client/art/names';
 
 const fx = (f: string) => readFileSync(new URL('./fixtures/' + f, import.meta.url), 'utf8');
 
@@ -67,6 +68,10 @@ describe('migração de saves v3 → v4', () => {
 });
 
 describe('nome do protagonista', () => {
+  it('os padrões do motor são os mesmos da arte (crachá)', () => {
+    expect(PROTAGONIST_FIRST).toEqual(DEFAULT_FIRST_NAME);
+    expect(SURNAME).toBe(DEFAULT_SURNAME);
+  });
   it('padrão por gênero e nome escolhido no {nome}', () => {
     const f = Game.create(CONTENT, { gender: 'F', difficulty: 'padrao', seed: 1 });
     expect(resolveTokens('{tit} {nome} {sobrenome}', 'F', f.st)).toBe('Dra. Camille Moura');

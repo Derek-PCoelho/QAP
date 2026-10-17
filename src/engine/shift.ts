@@ -656,6 +656,8 @@ export class ShiftSim {
     const call = sh.calls[id];
     if (!call || (call.status !== 'fila' && call.status !== 'espera')) return;
     if (sh.guideCallId) return;
+    // 1.1: hora do almoço e nenhuma ligação aberta: a próxima espera a cena do almoço (Game.checkLunch)
+    if (sh.flags['almocoPendente'] && !sh.activeId) return;
     if (sh.activeId && sh.activeId !== id) this.hold();
     const first = call.answered === undefined;
     call.status = 'ativa';
@@ -1304,8 +1306,9 @@ export class ShiftSim {
     unit.until = unit.t1;
     call.units.push(unit.id);
     if (!this.tarm) {
+      // QRR pela viatura (1.1, pedido do jogador): USA = QRR 3; USB urgente (vermelho/amarelo) = QRR 2; USB sem urgência = QRR 1
       const col = call.decision?.color;
-      const qrr = col === 'vermelho' ? 'QRR 3' : col === 'amarelo' ? 'QRR 2' : 'QRR 1';
+      const qrr = unit.type === 'USA' ? 'QRR 3' : col === 'vermelho' || col === 'amarelo' ? 'QRR 2' : 'QRR 1';
       this.radio(unit.radioName, `${unit.label} de QAP. QSL, ${qrr}: QTY para ${def.addr.rua}, ${def.addr.bairro}.`, 'info', call.id);
     }
     if (r.blocked) this.radio(unit.radioName, `${unit.label}: rota bloqueada pela água, vamos tentar contornar. Vai demorar.`, 'alerta');
@@ -2067,6 +2070,10 @@ export class ShiftSim {
       call.outcome = 'piorou';
       this.radio('SIMONE', `{dr}, a UPA avisou: ${def.patient.name} chegou lá por conta própria, piorado. Era caso de viatura.`.replace('{dr}', this.st.gender === 'M' ? 'Doutor' : 'Doutora'), 'alerta', id);
       this.writeDiary(call, 'sequela');
+      // como no ramo 'sem_retorno': paciente-chave perdido e o onResolve do conteúdo rodam também aqui
+      const t = this.truthOf(call);
+      if (t.key) this.eff().keyPatient(t.key, 'perdido');
+      if (def.onResolve) def.onResolve(this.eff(), { outcome: call.outcome, verdict: call.verdict, decision: call.decision });
     }
   }
 

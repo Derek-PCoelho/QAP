@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { protagonistFirst } from '../../engine/text';
 import { store, useStore } from '../store';
 import { ArtCanvas } from '../ui/ArtCanvas';
 import { drawEnding } from '../art';
@@ -37,7 +38,7 @@ export function Ending() {
     const lines = g.chairText();
     return (
       <div className="ending chair">
-        <ArtCanvas w={320} h={180} scale={4} animate fps={6} draw={(ctx, t) => drawEnding(ctx, 'escritorio_ar', { time: t, gender: st.gender, blend: 1 })} className="end-art" />
+        <ArtCanvas w={320} h={180} scale={4} animate fps={6} draw={(ctx, t) => drawEnding(ctx, 'escritorio_ar', { time: t, gender: st.gender, blend: 1, name: protagonistFirst(st.gender, st) })} className="end-art" />
         <div className="end-text bezel">
           {lines.map((l, i) => (
             <p key={i}>{l}</p>
@@ -63,7 +64,7 @@ export function Ending() {
   const artId = stage === 'texto' && n < body.length / 2 ? arts[0] : arts[1];
   return (
     <div className={'ending k-' + e.kind}>
-      <ArtCanvas w={320} h={180} scale={4} animate fps={6} draw={(ctx, t) => drawEnding(ctx, artId as never, { time: t, gender: st.gender, blend: e.kind === 'secreto' ? 1 : 0 })} className="end-art" />
+      <ArtCanvas w={320} h={180} scale={4} animate fps={6} draw={(ctx, t) => drawEnding(ctx, artId as never, { time: t, gender: st.gender, blend: e.kind === 'secreto' ? 1 : 0, name: protagonistFirst(st.gender, st) })} className="end-art" />
       {artId === 'desenho_davi' && !simone && <div className="kid-title">{st.gender === 'M' ? 'Meu pai salva as pessoas pelo telefone' : 'Minha mãe salva as pessoas pelo telefone'}</div>}
       {stage === 'texto' && (
         <div className="end-text bezel">

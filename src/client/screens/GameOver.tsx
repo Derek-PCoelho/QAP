@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { protagonistFirst } from '../../engine/text';
 import { store, useStore } from '../store';
 import { ArtCanvas } from '../ui/ArtCanvas';
 import { drawEnding } from '../art';
@@ -33,7 +34,7 @@ export function GameOver() {
   }, [inf, sent]);
   return (
     <div className="gameover">
-      <ArtCanvas w={320} h={180} scale={4} animate fps={6} draw={(ctx, t) => drawEnding(ctx, (ART[go.kind] ?? 'telefone_escuro') as never, { time: t, gender: g.st.gender, blend: 1 })} className="end-art" />
+      <ArtCanvas w={320} h={180} scale={4} animate fps={6} draw={(ctx, t) => drawEnding(ctx, (ART[go.kind] ?? 'telefone_escuro') as never, { time: t, gender: g.st.gender, blend: 1, name: protagonistFirst(g.st.gender, g.st) })} className="end-art" />
       <div className="go-text">
         {lines.slice(0, n).map((l, i) => (i === 0 ? <h1 key={i}>{readableTitle(l)}</h1> : <p key={i}>{l}</p>))}
         {inf && (
