@@ -7,8 +7,7 @@ import { icon, statusIcon, ICON_NAMES, STATUS_ICON_NAMES } from './icons';
 import { drawCityMap, mapPixelSize, type MapUnit, type MapRoute, type MapMarker } from './mapRender';
 import { landmarkPos } from '../../engine/city/map';
 import { route, addressTarget } from '../../engine/city/path';
-import { drawScene, SCENE_BGS, type SceneCast } from './scenes';
-import type { SceneBg } from '../../engine/types';
+import { drawScene, SCENE_BGS, HOUSE_ROOMS, houseExits, objectsFor, objectRect, type SceneCast, type ArtSceneBg, type SceneOpts } from './scenes';
 import { newsPhoto, NEWS_KINDS, NEWS_W, NEWS_H, NEWS_CROP_W, NEWS_CROP_H } from './newsPhotos';
 import { drawEnding, renderEnding as renderEndingPix, ENDING_KINDS, MURAL_FRAMES } from './endingArt';
 import { figurePix, type CastId } from './figures';
@@ -17,6 +16,7 @@ import { ozzySticker, OZZY_STICKERS, OZZY_STICKER_LABELS } from './stickers';
 import { installFontFixes, FONT_FIX_UI, FONT_FIX_MAST } from './fontFix';
 import { renderScene } from './scenes';
 import { Pix, presentPix, gradedCopy } from './pix';
+import { liamDrawing, LIAM_SUBJECTS } from './liamArt';
 import { homeGrader, quantize } from './palette';
 
 const app = document.getElementById('app')!;
@@ -183,7 +183,7 @@ const animations: ((t: number) => void)[] = [];
 }
 
 // ---------------------------------------------------------------- cenas
-const SAMPLE: Record<SceneBg, { objects: string[]; cast: SceneCast[] }> = {
+const SAMPLE: Record<ArtSceneBg, { objects: string[]; cast: SceneCast[] }> = {
   cozinha: {
     objects: ['cracha', 'geladeira_quebrada', 'desenhos', 'isopor', 'prato_seco', 'lata_acucar', 'suco_escondido', 'insulina', 'xicara', 'bolo', 'vela', 'roupa_varal', 'goteira', 'balde', 'meia_mancha', 'maquina', 'cartao_maquina'],
     cast: [
@@ -218,6 +218,22 @@ const SAMPLE: Record<SceneBg, { objects: string[]; cast: SceneCast[] }> = {
   igreja: { objects: ['flores'], cast: [{ id: 'LUCIA', pose: 'em_pe', x: 156 }, { id: 'DAVI', pose: 'em_pe', x: 174 }] },
   mesa: { objects: ['xicara', 'cracha'], cast: [] },
   preto: { objects: [], cast: [] },
+  quarto_casal: {
+    objects: ['cracha', 'caixa_costura', 'receita_sus', 'despertador', 'celular_carregando', 'guardanapo_mapa', 'telefone_cama'],
+    cast: [
+      { id: 'LUCIA', pose: 'sentado', x: 200 },
+      { id: 'EU_M', pose: 'em_pe', x: 92 },
+    ],
+  },
+  quintal: {
+    objects: ['tambor_cheio', 'tampinha', 'balde'],
+    cast: [
+      { id: 'ZELIA', pose: 'sentado', x: 152 },
+      { id: 'DAVI', pose: 'em_pe', x: 230 },
+      { id: 'LUCIA', pose: 'em_pe', x: 66 },
+    ],
+  },
+  banheiro: { objects: ['chinelo_zelia', 'remedios_zelia'], cast: [{ id: 'ZELIA', pose: 'em_pe', x: 70 }] },
 };
 {
   const sscale = Number(params.get('scenescale') ?? 2);
@@ -245,6 +261,104 @@ const SAMPLE: Record<SceneBg, { objects: string[]; cast: SceneCast[] }> = {
       animations.push(draw);
     }
     s.appendChild(row);
+  }
+}
+
+// ---------------------------------------------------------------- casa explorável
+{
+  const k = Number(params.get('casascale') ?? 2);
+  const only = params.get('casa');
+  const cast = (bg: ArtSceneBg, g: 'M' | 'F'): SceneCast[] =>
+    (SAMPLE[bg]?.cast ?? []).map((c) => ({ ...c, id: g === 'F' ? (c.id === 'LUCIA' ? 'ALEX' : c.id === 'EU_M' ? 'EU_F' : c.id) : c.id }));
+  for (const bg of HOUSE_ROOMS) {
+    if (only && only !== bg) continue;
+    const s = section('casa-' + bg, `Casa explorável — "${bg}": noite (com as saídas), dia e madrugada (×${k})`);
+    const row = document.createElement('div');
+    row.className = 'flex';
+    const exits = houseExits(bg);
+    const variants: { label: string; o: Partial<SceneOpts> }[] = [
+      { label: `noite · saídas: ${exits.map((e) => e.to).join(', ')}`, o: { tod: 'noite', exits: exits[0]?.to ?? true } },
+      { label: 'dia · protagonista mulher', o: { tod: 'dia', gender: 'F' } },
+      { label: 'madrugada (Bico)', o: { tod: 'madrugada' } },
+      { label: 'noite · blend .8', o: { tod: 'noite', blend: 0.8 } },
+    ];
+    const vsel = params.get('casav');
+    for (const [vi, v] of variants.entries()) {
+      if (vsel !== null && Number(vsel) !== vi) continue;
+      const c = canvas(320, 180, k);
+      row.appendChild(cell(c, v.label));
+      const ctx = c.getContext('2d')!;
+      const g = v.o.gender ?? 'M';
+      const draw = (t: number) =>
+        drawScene(ctx, { bg, blend: 0, objects: SAMPLE[bg]?.objects ?? [], cast: v.o.tod === 'madrugada' ? [] : cast(bg, g), ozzy: v.o.tod === 'madrugada' ? 'dormindo' : 'sentado', time: t, ...v.o });
+      draw(1000);
+      animations.push(draw);
+    }
+    s.appendChild(row);
+    // todos os objetos do cômodo de uma vez, com o retângulo clicável de cada um
+    const objs = objectsFor(bg);
+    const s2 = section('casa-obj-' + bg, `"${bg}" — os ${objs.length} objetos clicáveis de uma vez (retângulos em vermelho)`);
+    const wrap = document.createElement('div');
+    wrap.style.position = 'relative';
+    const c = canvas(320, 180, 3);
+    wrap.appendChild(c);
+    for (const id of objs) {
+      const r = objectRect(bg, id);
+      const d = document.createElement('div');
+      Object.assign(d.style, { position: 'absolute', left: r.x * 3 + 'px', top: r.y * 3 + 'px', width: r.w * 3 + 'px', height: r.h * 3 + 'px', outline: '1px dashed rgba(224,72,61,.8)' });
+      d.title = id;
+      wrap.appendChild(d);
+    }
+    s2.appendChild(wrap);
+    const list = document.createElement('div');
+    list.className = 'cap';
+    list.style.maxWidth = '960px';
+    list.textContent = objs.join(' · ');
+    s2.appendChild(list);
+    const ctx = c.getContext('2d')!;
+    const draw = (t: number) => drawScene(ctx, { bg, blend: 0, objects: objs, cast: [], ozzy: false, time: t, liamArt: Number(params.get('aulas') ?? 0) });
+    draw(1000);
+    animations.push(draw);
+  }
+}
+
+// ---------------------------------------------------------------- casa: dias que mudam a cena
+{
+  const k = Number(params.get('diascale') ?? 2);
+  const s = section('casa-dias', `Casa — dias marcados (casa.md): goteira, a volta da família, o aniversário, o Bico (×${k})`);
+  const row = document.createElement('div');
+  row.className = 'flex';
+  const days: { label: string; o: SceneOpts }[] = [
+    { label: 'D17 sala: goteiras, baldes, desenhos molhados', o: { bg: 'sala', blend: 0.3, objects: ['goteira', 'balde', 'desenhos_molhados'], cast: [{ id: 'ZELIA', pose: 'sentado', x: 236 }], time: 0, ozzy: 'deitado', liamArt: 1 } },
+    { label: 'D17 quintal: chuva, tambor transbordando', o: { bg: 'quintal', blend: 0.3, objects: ['chuva', 'tambor_transbordando', 'urso_varal'], cast: [], time: 0, ozzy: 'dormindo' } },
+    { label: 'D18 sala: a mala azul e o Pirata (os dois cães no tapete)', o: { bg: 'sala', blend: 0, objects: ['mala_azul'], cast: [{ id: 'LUCIA', pose: 'em_pe', x: 112 }, { id: 'DAVI', pose: 'em_pe', x: 152 }], time: 0, ozzy: 'dormindo', pirata: 'dormindo' } },
+    { label: 'D15 quintal: o Ozzy de chapéu de festa (dia)', o: { bg: 'quintal', blend: 0, objects: [], cast: [{ id: 'DAVI', pose: 'em_pe', x: 230 }], time: 0, ozzy: 'sentado', ozzyHat: true, tod: 'dia' } },
+    { label: 'D15 cozinha: bolo com sirene', o: { bg: 'cozinha', blend: 0, objects: ['bolo_sirene', 'vela', 'desenho_geladeira'], cast: [{ id: 'DAVI', pose: 'em_pe', x: 150 }, { id: 'ZELIA', pose: 'sentado', x: 204 }], time: 0, ozzy: 'sentado', liamArt: 2 } },
+    { label: 'D10 Bico: quarto do casal de madrugada, a caixinha no travesseiro', o: { bg: 'quarto_casal', blend: 0.2, objects: ['caixinha_veludo', 'celular_carregando'], cast: [], time: 0, ozzy: false, tod: 'madrugada' } },
+    { label: 'D10 banheiro: a queda (tapete torto, chinelo virado)', o: { bg: 'banheiro', blend: 0.2, objects: ['tapete_torto', 'chinelo_virado', 'poca_agua'], cast: [{ id: 'ZELIA', pose: 'deitado', x: 190, status: 'doente' }], time: 0, ozzy: false } },
+    { label: 'D9 quintal de dia: abelhas no limoeiro, Zélia na cadeira', o: { bg: 'quintal', blend: 0, objects: ['abelhas', 'pratinhos'], cast: [{ id: 'ZELIA', pose: 'sentado', x: 152 }], time: 0, ozzy: 'brincando', tod: 'dia' } },
+  ];
+  for (const d of days) {
+    const c = canvas(320, 180, k);
+    row.appendChild(cell(c, d.label));
+    const ctx = c.getContext('2d')!;
+    const draw = (t: number) => drawScene(ctx, { ...d.o, time: t });
+    draw(1000);
+    animations.push(draw);
+  }
+  s.appendChild(row);
+  // os desenhos do Liam: os 14 assuntos nos 3 níveis (giz, traço firme, grafite e aquarela)
+  const s2 = section('liam-desenhos', 'Desenhos do Liam na cena — 14 assuntos × 3 níveis pelas aulas de desenho (×6)');
+  for (const level of [0, 1, 2] as const) {
+    const r2 = document.createElement('div');
+    r2.className = 'flex';
+    for (const sub of LIAM_SUBJECTS) {
+      const p = new Pix(18, 16);
+      p.clear('#c9a46a');
+      liamDrawing(p, 2, 3, 14, 12, sub, level, 3, level === 0);
+      r2.appendChild(cell(img(p.toDataURL(6), 1, 18 * 6, 16 * 6), `${sub} · ${['giz', 'firme', 'aquarela'][level]}`));
+    }
+    s2.appendChild(r2);
   }
 }
 

@@ -36,6 +36,24 @@ const PAL: Record<string, string> = {
   w: '#f4f8ff', // brilho da bolinha
 };
 
+/**
+ * O Pirata, o cachorro da tia de Rio Claro de Minas (casa.md, dia 18): vira-lata
+ * branco e creme, com o tapa-olho preto em volta de um olho e as orelhas
+ * marrons. Usa os mesmos quadros do Ozzy, com outra paleta.
+ */
+const PIRATA_PAL: Record<string, string> = {
+  ...PAL,
+  o: '#fbf6ec',
+  O: '#e6dccb',
+  S: '#a8987e',
+  D: '#5a4a3a',
+  c: '#fffaf2',
+  C: '#d8ccb8',
+};
+/** cor do tapa-olho e das orelhas do Pirata */
+const PIRATA_PATCH = '#2a2420';
+const PIRATA_EAR = '#7a5236';
+
 // Quadros desenhados à mão ('.' = transparente). Todos virados para a direita.
 const FRAMES: Record<string, string[]> = {
   // sentado: a pluma do rabo deitada sobre as costas, colada na nuca
@@ -263,13 +281,46 @@ const FRAMES: Record<string, string[]> = {
 const BALL = makeSprite(['.bb..', 'bwbb.', 'bbbB.', '.bBB.', '.....'], PAL);
 
 const sprites = new Map<string, Sprite>();
-function spriteOf(key: string): Sprite {
-  let s = sprites.get(key);
+function spriteOf(key: string, breed: DogBreed = 'ozzy'): Sprite {
+  const sk = breed + ':' + key;
+  let s = sprites.get(sk);
   if (!s) {
-    s = makeSprite(FRAMES[key], PAL);
-    sprites.set(key, s);
+    s = breed === 'pirata' ? makeSprite(pirataRows(FRAMES[key]), { ...PIRATA_PAL, P: PIRATA_PATCH, E: PIRATA_EAR }) : makeSprite(FRAMES[key], PAL);
+    sprites.set(sk, s);
   }
   return s;
+}
+
+export type DogBreed = 'ozzy' | 'pirata';
+
+/** quadro do Ozzy virado Pirata: tapa-olho (P) em volta do primeiro olho e orelhas marrons (E) */
+function pirataRows(rows: string[]): string[] {
+  const g = rows.map((r) => r.split(''));
+  // o olho: o primeiro 'k' (ou 'D' de olho fechado) de cima para baixo, da esquerda para a direita
+  let ey = -1;
+  let ex = -1;
+  for (let y = 0; y < g.length && ey < 0; y++)
+    for (let x = 0; x < g[y].length; x++)
+      if (g[y][x] === 'k' || (g[y][x] === 'D' && g[y][x + 1] === 'D')) {
+        ey = y;
+        ex = x;
+        break;
+      }
+  if (ey >= 0)
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        const r = g[ey + dy];
+        if (!r || r[ex + dx] === undefined || r[ex + dx] === '.') continue;
+        if (r[ex + dx] === 'k' && !(dx === 0 && dy === 0)) continue;
+        if (dx === 0 && dy === 0 && r[ex] === 'D') continue;
+        if (dx !== 0 || dy !== 0) r[ex + dx] = 'P';
+      }
+  // orelhas: os 'S' soltos da primeira linha com desenho na metade da cabeça
+  for (let y = 0; y < Math.min(3, g.length); y++) {
+    const r = g[y];
+    for (let x = Math.floor(r.length * 0.5); x < r.length; x++) if (r[x] === 'S' && (r[x - 1] === '.' || r[x + 1] === '.')) r[x] = 'E';
+  }
+  return g.map((r) => r.join(''));
 }
 
 /** quadro da pose no tempo t (ms) */
@@ -304,14 +355,14 @@ export function dogFrameAt(pose: DogPose, t: number): string {
 const cache = new Map<string, Pix>();
 
 /** Pix do Ozzy na pose (contorno escuro, em cache por quadro e escala). Virado para a direita. */
-export function dogPix(pose: DogPose = 'sentado', t = 0, scale = 1): Pix {
+export function dogPix(pose: DogPose = 'sentado', t = 0, scale = 1, breed: DogBreed = 'ozzy'): Pix {
   const key = frameKey(pose, t);
-  const sk = scale > 1 ? `${key}@${scale}` : key;
+  const sk = (breed === 'ozzy' ? '' : breed + ':') + (scale > 1 ? `${key}@${scale}` : key);
   let p = cache.get(sk);
   if (!p) {
-    if (scale > 1) p = dogPix(pose, t).scaled(scale);
+    if (scale > 1) p = dogPix(pose, t, 1, breed).scaled(scale);
     else {
-      const s = spriteOf(key);
+      const s = spriteOf(key, breed);
       p = new Pix(s.w + 2, s.h + 2);
       p.sprite(s, 1, 1);
       p.outline('#120c08');
@@ -357,6 +408,35 @@ export interface DogDrawOpts {
   bark?: boolean;
   /** "z z z" subindo quando dorme (padrão: não — as cenas antigas não tinham) */
   zzz?: boolean;
+  /** 'pirata' = o vira-lata branco de tapa-olho da tia (mesmos quadros do Ozzy) */
+  breed?: DogBreed;
+  /** chapéu de festa de papel na cabeça (o aniversário do Liam) */
+  hat?: boolean;
+}
+
+/** ponto do alto da cabeça (entre as orelhas) em cada pose, no quadro virado para a direita (sem o contorno) */
+const HEAD_TOP: Record<DogPose, [number, number]> = {
+  sentado: [9, 0],
+  deitado: [13, 0],
+  dormindo: [12, 2],
+  brincando: [14, 2],
+  correndo: [15, 0],
+  latindo: [15, 0],
+  deitando: [13, 0],
+};
+
+/** chapéu de festa de papel (cone listrado com pompom e o elástico), base centrada em (x, y) */
+function partyHat(p: Pix, x: number, y: number, k: number): void {
+  const h = new Pix(7, 9);
+  for (let yy = 0; yy < 7; yy++) {
+    const half = Math.floor(yy / 2);
+    for (let xx = 3 - half; xx <= 3 + half; xx++) h.px(xx, yy + 2, (xx + yy) % 3 === 0 ? '#f2d45c' : '#d94436');
+  }
+  h.disc(3, 1, 1, '#5aa7d6');
+  h.px(3, 0, '#ffffff');
+  h.outline('#120c08');
+  const s = k > 1 ? h.scaled(k) : h;
+  p.blit(s, Math.round(x - s.w / 2), Math.round(y - s.h + 2 * k));
 }
 
 /** balão de fala 15×9 com "AU!" (cabo apontando para baixo, do lado de quem late) */
@@ -412,8 +492,8 @@ function drawZzz(p: Pix, x: number, y: number, t: number, k: number): void {
  */
 export function drawDog(p: Pix, x: number, y: number, pose: DogPose = 'sentado', t = 0, o: DogDrawOpts = {}): void {
   const k = Math.max(1, Math.floor(o.scale ?? 1));
-  const src = dogPix(pose, t, k);
-  const g = gradedCopy(src, o.map ?? null, o.mapKey ?? 'dog');
+  const src = dogPix(pose, t, k, o.breed ?? 'ozzy');
+  const g = gradedCopy(src, o.map ?? null, (o.breed === 'pirata' ? 'pir' : '') + (o.mapKey ?? 'dog'));
   const jump = pose === 'brincando' && frameKey(pose, t) === 'brincando1' ? 3 * k : 0;
   const left = Math.round(x - g.w / 2);
   const top = Math.round(y - g.h + 1) - jump;
@@ -432,6 +512,11 @@ export function drawDog(p: Pix, x: number, y: number, pose: DogPose = 'sentado',
     barkBubble(p, bx, top - 12 * k, !!o.flip, k);
   }
   if (pose === 'dormindo' && o.zzz) drawZzz(p, o.flip ? left + 1 * k : left + g.w - 6 * k, top - 3 * k, t, k);
+  if (o.hat) {
+    const [hx, hy] = HEAD_TOP[pose] ?? HEAD_TOP.sentado;
+    const ax = o.flip ? left + g.w - (hx + 1) * k - k : left + (hx + 1) * k;
+    partyHat(p, ax, top + (hy + 1) * k, k);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -498,6 +583,23 @@ export const OZZY_PLAY_PATHS: Record<string, [number, number][]> = {
     [80, 160],
     [240, 160],
     [150, 158],
+  ],
+  quarto_casal: [
+    [60, 146],
+    [270, 144],
+    [120, 140],
+    [186, 134],
+  ],
+  quintal: [
+    [110, 140],
+    [270, 136],
+    [150, 126],
+    [211, 124],
+  ],
+  banheiro: [
+    [70, 142],
+    [250, 144],
+    [172, 130],
   ],
 };
 

@@ -8,10 +8,46 @@
 import type { MemberStatus } from '../../engine/types';
 import { Pix, hash2, bayerOn } from './pix';
 import { HOME, shade } from './palette';
+import { drawText, textWidth } from './font';
 import { floorShadow, interviewClothes } from './props';
 
 export const SCENE_W = 320;
 export const SCENE_H = 180;
+
+/**
+ * Hora do dia do cenário: 'noite' (o padrão de sempre: lâmpada acesa, janela
+ * escura), 'dia' (janela clara, lâmpada apagada, luz que entra pela janela) e
+ * 'madrugada' (a casa no escuro, só o luar: o modo Bico).
+ */
+export type TimeOfDay = 'noite' | 'dia' | 'madrugada';
+export const TIMES_OF_DAY: TimeOfDay[] = ['noite', 'dia', 'madrugada'];
+
+let TOD: TimeOfDay = 'noite';
+/** hora do dia do cenário que está sendo montado (janelas e lâmpadas leem daqui) */
+export function setTod(t: TimeOfDay): void {
+  TOD = t;
+}
+export function tod(): TimeOfDay {
+  return TOD;
+}
+
+/**
+ * Opções da cena que chegam aos desenhos de fundo e de objeto pelo mesmo
+ * conjunto `has` dos objetos, como marcas que começam com "@":
+ * '@g:F' (gênero do protagonista), '@tod:dia', '@liam:2' (aulas de desenho).
+ */
+export function hasFlag(has: Set<string>, key: string): string | undefined {
+  const pre = '@' + key + ':';
+  for (const k of has) if (k.startsWith(pre)) return k.slice(pre.length);
+  return undefined;
+}
+/** gênero do protagonista guardado nas marcas da cena ('M' se ninguém disse) */
+export const genderOf = (has: Set<string>): 'M' | 'F' => (hasFlag(has, 'g') === 'F' ? 'F' : 'M');
+/** nível do desenho do Liam (0 = giz de cera; 1 = traço firme; 2 = grafite e aquarela) pelas aulas de desenho */
+export const liamLevel = (has: Set<string>): 0 | 1 | 2 => {
+  const n = Number(hasFlag(has, 'liam') ?? 0);
+  return n >= 3 ? 2 : n >= 1 ? 1 : 0;
+};
 
 export interface Rect {
   x: number;
@@ -66,6 +102,29 @@ export interface BgDef {
   /** onde o Ozzy dorme depois da brincadeira */
   ozzySleep?: { x: number; y: number };
   objects: Record<string, ObjDef>;
+  /** janelas do cômodo (luz do dia e luar da madrugada entram por elas) */
+  windows?: Rect[];
+  /** luz própria de dia / de madrugada (sem ela, valem dayRoomLight / dawnRoomLight pelas janelas) */
+  lightDia?: (p: Pix, front: boolean) => void;
+  lightMadrugada?: (p: Pix, front: boolean) => void;
+  /** portas e saídas para os outros cômodos (casa explorável) */
+  exits?: HouseExit[];
+}
+
+/**
+ * Saída de um cômodo da casa para outro: o retângulo clicável (porta desenhada
+ * ou beira do piso) e a seta com o nome do cômodo, que a cena desenha quando
+ * `SceneOpts.exits` está ligado.
+ */
+export interface HouseExit {
+  /** cômodo de destino (id de cenário) */
+  to: string;
+  /** rótulo da plaquinha (versalete 3×5) */
+  label: string;
+  /** retângulo clicável, em pixels da cena 320×180 */
+  r: Rect;
+  /** para onde a seta aponta: L/R = beira do piso; U = porta na parede do fundo */
+  arrow: 'L' | 'R' | 'U' | 'D';
 }
 
 export const clampX = (x: number, a = 10, b = 310) => Math.max(a, Math.min(b, Math.round(x)));
@@ -239,6 +298,12 @@ export function pendantLamp(p: Pix, x: number, y: number, top = 0): void {
   p.hl(x - 1, x + 1, y, '#5f8a7a');
   p.line(x - 2, y + 1, x - 5, y + 4, '#5f8a7a');
   p.hl(x - 6, x + 7, y + 5, '#e8e4d0');
+  if (TOD !== 'noite') {
+    // apagada: vidro leitoso
+    p.rect(x - 2, y + 6, 5, 2, '#d8d2c0');
+    p.px(x - 1, y + 6, '#f0ece0');
+    return;
+  }
   p.rect(x - 2, y + 6, 5, 2, '#ffe8b0');
   p.px(x - 1, y + 6, '#ffffff');
 }
@@ -248,6 +313,15 @@ export function bareBulb(p: Pix, x: number, y: number): void {
   p.vl(x, 0, y - 3, '#1e1610');
   p.rect(x - 1, y - 3, 3, 3, '#2e2622');
   p.px(x - 1, y - 3, '#4a403a');
+  if (TOD !== 'noite') {
+    // apagada: vidro claro com o filamento escuro
+    p.rect(x - 2, y, 5, 4, '#e0dccc');
+    p.rect(x - 1, y + 4, 3, 1, '#c8c4b4');
+    p.px(x - 1, y + 1, '#f8f6ee');
+    p.px(x, y + 2, '#8a8478');
+    p.px(x + 2, y + 2, '#b8b4a4');
+    return;
+  }
   p.rect(x - 2, y, 5, 4, '#ffe8b0');
   p.rect(x - 1, y + 4, 3, 1, '#ffe8b0');
   p.px(x - 1, y + 1, '#ffffff');
@@ -257,16 +331,20 @@ export function bareBulb(p: Pix, x: number, y: number): void {
 
 /** janela noturna com caixilho de madeira (céu, estrelas, muro do vizinho); o miolo pode ser trocado */
 export function nightPane(p: Pix, x: number, y: number, w: number, h: number, has: Has, o: { moon?: boolean; clothes?: boolean; seed?: number } = {}): void {
+  if (TOD === 'dia') {
+    dayPane(p, x, y, w, h, has, o);
+    return;
+  }
   p.vgrad(x, y, w, h, ['#121a30', '#1c2844', '#2a3654'], 0.7);
   for (let i = 0; i < Math.floor(w / 4); i++) p.px(x + 1 + Math.floor(hash2(i, x, o.seed ?? 3) * (w - 2)), y + 1 + Math.floor(hash2(i, y, (o.seed ?? 3) + 1) * (h * 0.5)), '#c8d4f0');
   if (o.moon) {
     p.disc(x + w - 7, y + 5, 3, '#eef0dc');
     p.disc(x + w - 6, y + 4, 2, '#1c2844');
   }
-  // muro e casa do vizinho com a janela acesa
+  // muro e casa do vizinho com a janela acesa (de madrugada, apagada)
   p.rect(x, y + h - 6, w, 6, '#161e2a');
   p.rect(x + 2, y + h - 11, 13, 5, '#1d2636');
-  p.rect(x + 5, y + h - 10, 3, 2, '#e8b860');
+  p.rect(x + 5, y + h - 10, 3, 2, TOD === 'madrugada' ? '#2a3448' : '#e8b860');
   if (o.clothes) {
     // varal da área de serviço
     p.line(x, y + 5, x + w - 1, y + 4, '#6a7080');
@@ -274,6 +352,30 @@ export function nightPane(p: Pix, x: number, y: number, w: number, h: number, ha
     else {
       p.rect(x + 4, y + 6, 6, 5, '#c8b8a0');
       p.rect(x + w - 11, y + 5, 5, 6, '#8a9ab8');
+    }
+  }
+}
+
+/** janela de dia: céu azul com nuvem, o muro do vizinho e a casa dele ao sol */
+export function dayPane(p: Pix, x: number, y: number, w: number, h: number, has: Has, o: { clothes?: boolean; seed?: number } = {}): void {
+  p.vgrad(x, y, w, h, ['#78a8d8', '#9cc4e4', '#c8dcea'], 0.7);
+  const sd = o.seed ?? 3;
+  const cx = x + 4 + Math.floor(hash2(sd, 1, 9) * Math.max(1, w - 14));
+  p.ellipse(cx + 4, y + 5, 5, 1.6, '#f4f8fc');
+  p.ellipse(cx + 1, y + 6, 3, 1.2, '#ffffff');
+  // telhado e parede do vizinho ao sol, o muro
+  p.rect(x, y + h - 11, w, 5, '#d8c4a0');
+  p.rect(x + 2, y + h - 14, 14, 4, '#b8603e');
+  for (let xx = x + 2; xx < x + 16; xx += 3) p.px(xx, y + h - 13, '#d07a52');
+  p.rect(x + 5, y + h - 10, 3, 3, '#5a7a98');
+  p.rect(x, y + h - 6, w, 6, '#c8bca8');
+  p.hl(x, x + w - 1, y + h - 6, '#e8e0d0');
+  if (o.clothes) {
+    p.line(x, y + 5, x + w - 1, y + 4, '#6a7080');
+    if (has.has('roupa_varal')) interviewClothes(p, x + Math.floor(w / 2) - 15, y + 5);
+    else {
+      p.rect(x + 4, y + 6, 6, 5, '#f0e8d8');
+      p.rect(x + w - 11, y + 5, 5, 6, '#9ab0d0');
     }
   }
 }
@@ -333,3 +435,158 @@ export function frontChair(p: Pix, cx: number, floorY: number): void {
 
 /** atalho de objeto: retângulo clicável + camada + desenho estático e/ou animação */
 export const o = (x: number, y: number, w: number, h: number, layer: Layer, draw?: ObjDef['draw'], anim?: ObjDef['anim']): ObjDef => ({ r: { x, y, w, h }, layer, draw, anim });
+
+// -----------------------------------------------------------------------------
+// Luz de dia e de madrugada (genéricas, pelas janelas do cômodo)
+// -----------------------------------------------------------------------------
+/** escurece por igual (nas camadas da frente, só os pixels opacos) */
+export function shadeAll(p: Pix, col: string, a: number, front: boolean): void {
+  for (let y = 0; y < SCENE_H; y++)
+    for (let x = 0; x < SCENE_W; x++) {
+      if (front && !(p.get(x, y) >>> 24)) continue;
+      p.pxa(x, y, col, a);
+    }
+}
+
+/**
+ * Luz de lua: cada pixel perde quase toda a cor e vira um cinza-azulado escuro
+ * (pela luminância), como a casa apagada de madrugada. `k` = quanto do brilho fica.
+ */
+export function moonGrade(p: Pix, front: boolean, k = 0.6): void {
+  for (let y = 0; y < p.h; y++)
+    for (let x = 0; x < p.w; x++) {
+      const v = p.get(x, y);
+      const a = v >>> 24;
+      if (front && !a) continue;
+      const r = v & 255;
+      const g = (v >>> 8) & 255;
+      const b = (v >>> 16) & 255;
+      const L = 0.3 * r + 0.59 * g + 0.11 * b;
+      const nr = Math.round((0.16 * r + 0.3 * L) * k * 1.6);
+      const ng = Math.round((0.16 * g + 0.36 * L) * k * 1.6);
+      const nb = Math.round((0.16 * b + 0.54 * L) * k * 1.6);
+      p.raw(x, y, ((a << 24) | (Math.min(255, nb) << 16) | (Math.min(255, ng) << 8) | Math.min(255, nr)) >>> 0);
+    }
+}
+
+/** facho de luz que entra pela janela e cai no piso, inclinado para a direita (sol da esquerda) */
+export function windowShaft(p: Pix, w: Rect, col: string, a: number, front: boolean, floorY = 150, slant = 0.45): void {
+  const y0 = w.y + w.h;
+  for (let y = y0; y < floorY; y++) {
+    const t = (y - y0) / Math.max(1, floorY - y0);
+    const off = (y - y0) * slant;
+    const x0 = w.x + off - t * 4;
+    const x1 = w.x + w.w + off + t * 10;
+    for (let x = Math.floor(x0); x <= x1; x++) {
+      if (front && !(p.get(x, y) >>> 24)) continue;
+      const edge = Math.min(x - x0, x1 - x);
+      if (edge < 2 && !bayerOn(x, y, 0.5)) continue;
+      if (t > 0.75 && !bayerOn(x, y, 1 - (t - 0.75) / 0.25)) continue;
+      p.pxa(x, y, col, a * (1 - t * 0.4));
+    }
+  }
+}
+
+/** dia: claridade entrando pelas janelas, um facho no chão e os cantos só um pouco mais escuros */
+export function dayRoomLight(p: Pix, front: boolean, windows: Rect[] = []): void {
+  for (const w of windows) {
+    p.glow(w.x + w.w / 2, w.y + w.h / 2, 110, '#fff6e0', 0.2, 4, 1, front);
+    windowShaft(p, w, '#fff4d8', 0.16, front);
+  }
+  if (!windows.length) p.glow(80, 30, 240, '#fff6e0', 0.14, 4, 1, front);
+  roomDark(p, 160, 64, 240, 150, HOME.bg0, 0.3, front, 0.55, 2, 118, 96);
+}
+
+/** madrugada: a casa apagada, azul-escura; o luar entra pelas janelas e faz um retângulo pálido no chão */
+export function dawnRoomLight(p: Pix, front: boolean, windows: Rect[] = []): void {
+  // a cor some (fica o cinza-azulado do luar) e tudo escurece
+  moonGrade(p, front, 0.62);
+  for (const w of windows) {
+    p.glow(w.x + w.w / 2, w.y + w.h / 2, 50, '#9ab4e0', 0.16, 3, 1, front);
+    windowShaft(p, w, '#a8c0e8', 0.12, front, 160, 0.3);
+  }
+  roomDark(p, 160, 96, 200, 120, '#020308', 0.55, front, 0.4, 3);
+}
+
+// -----------------------------------------------------------------------------
+// Saídas (setas com o nome do cômodo)
+// -----------------------------------------------------------------------------
+/** seta 7×7 apontando para `dir`, com contorno escuro */
+function arrowGlyph(p: Pix, x: number, y: number, dir: HouseExit['arrow'], fill: string, ink: string): void {
+  const rows = ['...#...', '..###..', '.#####.', '#######', '..###..', '..###..', '..###..'];
+  const at = (cx: number, cy: number): [number, number] => {
+    switch (dir) {
+      case 'D':
+        return [cx, 6 - cy];
+      case 'L':
+        return [cy, cx];
+      case 'R':
+        return [6 - cy, cx];
+      default:
+        return [cx, cy];
+    }
+  };
+  // contorno
+  for (let cy = 0; cy < 7; cy++)
+    for (let cx = 0; cx < 7; cx++) {
+      if (rows[cy][cx] !== '#') continue;
+      const [ax, ay] = at(cx, cy);
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ])
+        p.px(x + ax + dx, y + ay + dy, ink);
+    }
+  for (let cy = 0; cy < 7; cy++)
+    for (let cx = 0; cx < 7; cx++) {
+      if (rows[cy][cx] !== '#') continue;
+      const [ax, ay] = at(cx, cy);
+      p.px(x + ax, y + ay, fill);
+    }
+}
+
+/**
+ * Plaquinha da saída: seta amarela de post-it e o nome do cômodo numa tarja
+ * escura. Na beira do piso fica encostada na borda da tela; na porta, no meio
+ * do vão. `hover` = destaque (âmbar e um pixel maior de borda). Não é gradada
+ * pelo Desgaste (é interface).
+ */
+export function drawExit(p: Pix, e: HouseExit, t: number, hover = false): void {
+  const fill = hover ? '#ffe27a' : '#f2d45c';
+  const ink = '#1b1a17';
+  const bob = Math.floor(t / 380) % 2;
+  const label = e.label.toUpperCase();
+  const tw = textWidth(label);
+  const pw = tw + 6;
+  const ph = 9;
+  const cx = e.r.x + e.r.w / 2;
+  const cy = e.r.y + e.r.h / 2;
+  let ax: number;
+  let ay: number;
+  let lx: number;
+  let ly: number;
+  if (e.arrow === 'L') {
+    ax = Math.max(1, e.r.x + 1) - bob;
+    ay = Math.round(cy - 3);
+    lx = ax + 10;
+    ly = ay - 1;
+  } else if (e.arrow === 'R') {
+    ax = Math.min(SCENE_W - 8, e.r.x + e.r.w - 8) + bob;
+    ay = Math.round(cy - 3);
+    lx = ax - 3 - pw;
+    ly = ay - 1;
+  } else {
+    ax = Math.round(cx - 3);
+    ay = Math.round(cy - 6) + (e.arrow === 'U' ? -bob : bob);
+    lx = Math.round(cx - pw / 2);
+    ly = ay + 10;
+  }
+  lx = Math.max(1, Math.min(SCENE_W - pw - 1, lx));
+  // tarja do nome
+  p.recta(lx, ly, pw, ph, '#0d1311', hover ? 0.88 : 0.72);
+  if (hover) p.frame(lx - 1, ly - 1, pw + 2, ph + 2, '#e8a33d');
+  drawText(p, label, lx + 3, ly + 2, hover ? '#ffffff' : '#e6efd9');
+  arrowGlyph(p, ax, ay, e.arrow, fill, ink);
+}
