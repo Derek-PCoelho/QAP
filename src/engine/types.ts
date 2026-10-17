@@ -1071,6 +1071,8 @@ export type RegId = 'moura' | 'henrique';
 
 export interface TarmInfo {
   color: Color;
+  /** 1.1: a cor do post-it (caixa) que a TARM escreveu; opcional */
+  box?: BoxId;
   priority: boolean;
   to: RegId;
   /** hora (jogo) em que passou para o regulador */

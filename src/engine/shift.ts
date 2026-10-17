@@ -2463,8 +2463,31 @@ export class ShiftSim {
     if (T.log.length > 40) T.log.splice(0, T.log.length - 40);
   }
 
-  /** a TARM passa a ligação ativa para uma mesa de regulação */
-  tarmPass(color: Color, priority: boolean, to: RegId): { ok: boolean; error?: string } {
+  /**
+   * A TARM confere o endereço no cadastro (1.1: na campanha 1 é a Simone quem faz isso e escreve
+   * no post-it). Custa 2 min do TMA; o cadastro não erra. Devolve o que ela anotou.
+   */
+  tarmCheckAddr(): { ok: boolean; text?: string; bad?: boolean } {
+    const call = this.active();
+    if (!this.sh.tarm || !call || call.status !== 'ativa') return { ok: false };
+    if (call.noteAddr !== undefined || call.unlocked.includes('end_conferido')) return { ok: true, text: call.noteAddr ?? 'Endereço confere no cadastro.', bad: call.addrNote === 'nao_confere' };
+    const r = resolveAddress(this.defOf(call).addr);
+    const bad = r.kind === 'sem_rua' || r.kind === 'invalido' || r.kind === 'bairro';
+    call.unlocked.push('end_conferido');
+    if (bad) {
+      call.addrNote = 'nao_confere';
+      call.noteAddr = 'Endereço não confere no mapa.';
+    } else if (r.kind === 'marco' && r.landmark) {
+      call.addrNote = 'marco';
+      call.noteAddr = `No endereço: ${r.landmark.name}.`;
+    }
+    this.sysLine(call, `🗺 Cadastro: ${call.noteAddr ?? 'o endereço confere.'}`);
+    this.advance(2);
+    return { ok: true, text: call.noteAddr ?? 'Endereço confere no cadastro.', bad };
+  }
+
+  /** a TARM passa a ligação ativa para uma mesa de regulação (1.1: `box` = a cor do post-it, opcional) */
+  tarmPass(color: Color, priority: boolean, to: RegId, box?: BoxId): { ok: boolean; error?: string } {
     const sh = this.sh;
     const T = sh.tarm;
     const call = this.active();
@@ -2475,6 +2498,10 @@ export class ShiftSim {
     const def = this.defOf(call);
     const handle = Math.max(0, sh.time - (call.answered ?? sh.time));
     call.tarm = { color, priority, to, at: sh.time, handle, realSec: call.realSec };
+    if (box) {
+      call.tarm.box = box;
+      call.noteBox = box;
+    }
     call.status = 'regulacao';
     sh.activeId = undefined;
     T.passed++;
@@ -2538,7 +2565,9 @@ export class ShiftSim {
     const t = this.truthOf(call);
     const right = call.tarm?.color === colorFor(t.sev);
     if (reg === 'henrique') return 2 + Math.round(r * 3);
-    return 4 + Math.round(r * 4) + (right ? 0 : 3);
+    // 1.1: o post-it da cor certa (a caixa do chamado) poupa um minuto da Mesa 1
+    const boxRight = !!call.tarm?.box && call.tarm.box === simoneBox(this.defOf(call), t);
+    return 4 + Math.round(r * 4) + (right ? 0 : 3) - (boxRight ? 1 : 0);
   }
 
   /** chance de a mesa acertar a decisão, dada a pré-triagem */
