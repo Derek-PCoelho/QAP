@@ -4,7 +4,7 @@ import type { Content } from './content-api';
 import type { Resource, Color, Support, Dest, TruthDef, CallRT, GameState, Choice, SceneNode } from './types';
 import { makeEffCtx } from './state';
 import { Game } from './game';
-import { Rng } from './util';
+import { Rng, hashString } from './util';
 import { colorFor } from './grading';
 import { autoPlayField } from './field';
 
@@ -336,7 +336,8 @@ function playHome(g: Game, p: BotProfile, rng: Rng, stop?: (g: Game) => boolean)
     }
     if (step === 'intervencao') {
       const fs = h.fieldSim();
-      if (fs) autoPlayField(fs, p.accuracy, rng);
+      // gerador isolado para a noite: jogar a Intervenção não reembaralha o sorteio do resto da campanha
+      if (fs) autoPlayField(fs, p.accuracy, new Rng(hashString(`${g.st.seed}:bot-noite:${g.st.day}`)));
       h.finishField();
       continue;
     }

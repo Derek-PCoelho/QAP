@@ -205,9 +205,8 @@ export class HomeSim {
       if (sum.hurt) e.add('desgaste', 6, 'equipe ferida');
       st.flags['noite_em_claro'] = true;
       st.flags['fez_intervencao'] = true;
-      // contador de noites na Intervenção (ROTEIRO 3.1): total e por dia (bicosRecent em state.ts)
+      // noite na Intervenção por dia (ROTEIRO 3.1: bicosRecent em state.ts); o total é `noites_intervencao` (field.ts)
       st.flags['bico_d' + st.day] = true;
-      st.flags['bicos_total'] = (Number(st.flags['bicos_total']) || 0) + 1;
       for (const r of sum.results) st.flags['field_' + r.id] = true;
       // história das noites (Intervenção): noites feitas, capítulos e escolhas
       Object.assign(st.flags, sim.storyFlags());

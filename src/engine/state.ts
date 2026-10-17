@@ -126,7 +126,8 @@ export interface EffSink {
 // ---------------------------------------------------------------------------
 // Origem do dinheiro (1.1, ROTEIRO Parte 3.1): a família fala do dinheiro que existe e de onde veio.
 // Cada entrada positiva soma em `flags['renda_<origem>']` (total da campanha) e em
-// `flags['renda_<origem>_d<dia>']` (do dia). Bicos: `flags['bico_d<dia>']` (noite na Intervenção).
+// `flags['renda_<origem>_d<dia>']` (do dia). Bicos: `flags['bico_d<dia>']` (noite na Intervenção naquele dia);
+// o total de noites é `flags['noites_intervencao']` (gravado pela Intervenção, field.ts).
 // ---------------------------------------------------------------------------
 export type IncomeOrigin = 'salario' | 'bico' | 'atelie' | 'vereador' | 'outros';
 export const INCOME_ORIGINS: readonly IncomeOrigin[] = ['salario', 'bico', 'atelie', 'vereador', 'outros'];
