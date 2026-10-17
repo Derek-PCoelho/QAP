@@ -238,9 +238,12 @@ export const DAY = day({
         ],
       },
       promessa: {
+        onEnter: fx.set('tel_bene'),
         lines: [
           { who: 'BENE', t: '(ele ri, mostrando a cicatriz na testa) Promessa de regulador. Vou anotar no painel da viatura.' },
           { who: 'SIMONE', t: 'Ele anota mesmo, {dr}. Tem lá: "Dr. Castro me deve um pastel desde 2019".' },
+          { who: 'BENE', t: '(rabiscando num pedaço de papel) E anota aí o meu. Se um dia for a sua casa, me liga antes da central. A central às vezes demora. Eu não.' },
+          { who: 'NARRADOR', t: 'Você guarda o papel na carteira, atrás da foto do Liam.' },
         ],
       },
       seco: {
@@ -249,6 +252,94 @@ export const DAY = day({
           { who: 'NARRADOR', t: 'Ele bate duas vezes na porta, como quem bate na madeira, e sai.' },
         ],
       },
+    },
+  }),
+  // 1.1 — ida (a cruz no poste da Av. Brasil), almoço (Bené e o ônibus doze) e volta (a carona do Bené)
+  ida: () => ({
+    id: 'd04_ida',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:40. O 12 faz a curva da Av. Brasil. No poste do número 2400, uma cruz de madeira pintada de branco, com uma flor de plástico desbotada. Escrito à mão: "RAFAEL — 2019".' },
+          { who: 'NARRADOR', t: 'O Seu Aílton faz o sinal da cruz sem tirar a mão do volante.' },
+        ],
+        choices: [
+          { label: '"Quem era?"', next: 'quem', effect: fx.set('viu_cruz') },
+          { label: '(Ficar quiet{m:o|a}.)', next: 'quieto' },
+        ],
+      },
+      quem: {
+        lines: [
+          { who: 'AÍLTON', t: 'Menino de moto. A ambulância demorou. Tá vendo o Regional ali? (ele aponta com o queixo) Quatro quadras. Quatro.' },
+          { who: 'AÍLTON', t: 'O Bené, aquele da ambulância que me ensinou a curva, não passa mais por aqui. Dá a volta pela Santos Dumont.' },
+        ],
+      },
+      quieto: { lines: [{ who: 'NARRADOR', t: 'O ônibus passa. A flor de plástico balança com o vento, como se alguém tivesse acenado.' }] },
+    },
+  }),
+  almoco: () => ({
+    id: 'd04_almoco',
+    bg: 'central',
+    cast: ['BENE', 'SIMONE'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. O Bené veio buscar o crachá e ficou para almoçar. Marmita de alumínio amassada: arroz, ovo frito, farofa. Ele come de colher.' },
+          { who: 'BENÉ', t: 'Trinta e um anos de volante, {bene}. Treze de ônibus doze, dezoito de ambulância. Quem me ensinou a dirigir foi o Seu Nestor, do doze. Parava o ônibus por qualquer coisa. Uma vez parou pra um pedido de casamento no meio da Brasil.' },
+          { who: 'SIMONE', t: 'E a Av. Brasil hoje, Bené?' },
+          { who: 'BENÉ', t: 'Av. Brasil eu faço pela Santos Dumont. É mais longe. Eu gosto de longe.' },
+          { who: 'NARRADOR', t: 'Ele limpa a boca com o guardanapo de papel e, sem perceber, começa a riscar o guardanapo com a caneta: ruas.' },
+        ],
+        choices: [
+          { label: '"Me ensina as ruas, Bené."', next: 'mapa', effect: fx.all(fx.set('bene_mapa_guardanapo'), fx.add('intimBene', 1, 'o mapa no guardanapo')) },
+          { label: '"Por que a Santos Dumont?"', next: 'santos' },
+          { label: '"E o pedido de casamento?"', next: 'casamento', effect: fx.set('bene_contou_casamento') },
+        ],
+      },
+      mapa: {
+        lines: [
+          { who: 'NARRADOR', t: 'Em três minutos, o guardanapo vira a cidade: a Brasil, o Regional, a XV, as duas pontes, a Vila Esperança com a Rua das Acácias sublinhada duas vezes.' },
+          { who: 'BENÉ', t: 'Isso aqui é a Brasil. Isso é o Regional. Isso é onde a cidade alaga. E isso aqui é a sua rua, que eu sei qual é. Guarda.' },
+          { who: 'NARRADOR', t: 'Você dobra o guardanapo em quatro e guarda no bolso do jaleco. Ele cheira a farofa.' },
+        ],
+      },
+      santos: {
+        lines: [
+          { who: 'BENÉ', t: 'Porque eu gosto de longe, já falei.' },
+          { who: 'NARRADOR', t: 'Silêncio. A colher para no meio do caminho.' },
+          { who: 'BENÉ', t: 'Você é curios{m:o|a}, {bene}. Isso é bom no telefone. Na copa, nem tanto.' },
+        ],
+      },
+      casamento: {
+        lines: [
+          { who: 'BENÉ', t: 'A moça disse sim antes do rapaz terminar. Eu puxei as palmas. Tinha dezesseis anos, era trocador.' },
+          { who: 'BENÉ', t: 'O Nestor falou pro rapaz: "ou pede ou desce". (ele ri e para de rir) ...Faz tempo. Come, que esfria.' },
+        ],
+      },
+    },
+  }),
+  volta: (c) => ({
+    id: 'd04_volta',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: c.flag('promessa_bene')
+        ? {
+            lines: [
+              { who: 'NARRADOR', t: '19:10. A USA 01 recolhida para na frente da central, pisca-alerta ligado. O Bené abaixa o vidro.' },
+              { who: 'BENÉ', t: 'Sobe. Até o ponto. Não conta pro Peixoto: viatura não é táxi. Mas regulador que promete PM pode ir até o ponto.' },
+              { who: 'NARRADOR', t: 'Ele dirige com uma mão só e assobia uma moda de viola. No ponto, bate duas vezes no volante, como quem bate na madeira.' },
+            ],
+            onEnter: fx.add('intimBene', 1, 'carona até o ponto'),
+          }
+        : {
+            lines: [
+              { who: 'NARRADOR', t: '19:15. O ponto da XV está cheio de peão de usina saindo do turno. O cheiro de queimada chegou do canavial.' },
+              { who: 'NARRADOR', t: 'O 12 vem lotado. Você vai em pé até a Vila, com o crachá batendo no peito a cada buraco.' },
+            ],
+          },
     },
   }),
   timeline: [
@@ -302,6 +393,8 @@ export const DAY = day({
         historico: ['Pressão. Tomo direitinho.', 'A vacina do tétano... sei lá quando foi. {{Acho que foi quando o Brasil foi campeão.|vacina}} Uma das vezes.'],
         paciente: 'Sou eu mesma, {meu} {filho}.',
         seguranca: 'Seguro. Só eu, o Bolinha e a agulha.',
+        pulso: 'Normalzinho, {meu} {filho}. Só o dedo que lateja um pouco.',
+        pele: 'Normal. O dedão tá vermelhinho em volta do furo, só.',
       },
       extra: [
         { id: 'sinais', label: 'Vermelhidão, pus, febre?', say: 'O dedo está muito vermelho, inchado, com pus? A senhora tem febre?', a: 'Nada disso. Um pontinho vermelho só. Tá até envergonhado de ter me espetado.' },
@@ -406,6 +499,8 @@ export const DAY = day({
         paciente: ['JOSUÉ: Ai... a minha perna... não deixa ele voltar, Neno...', '[gemido]'],
         referencia: 'Bar do Neno, em frente ao portão 2 da usina. Todo mundo conhece.',
         seguranca: ['Seguro?! {{O cara tá na calçada, andando de um lado pro outro, gritando que vai voltar|na_calcada}}!', '{{Ninguém chamou a polícia ainda|sem_pm}}, todo mundo correu!'],
+        pulso: 'Eu não vou levantar daqui pra pegar pulso de ninguém, {m:moço|moça}! ...Ele tá falando comigo. Tá gemendo. Tá vivo.',
+        pele: 'Branco. {{Branco que nem cal|branco}}, suando. E a boca tá ficando sem cor.',
       },
       extra: [
         { id: 'onde_tiro', label: 'Onde pegou o tiro?', say: 'Onde pegou o tiro? Só na perna?', a: 'Na coxa, do lado de dentro. Só um tiro, eu acho. Ele mexe os pés.' },
@@ -425,7 +520,7 @@ export const DAY = day({
           if (d.support.includes('PM')) e.set('d4_pm_ok');
         }
       },
-      patient: { name: 'Josué Batista', age: 34, sex: 'M' },
+      patient: { name: 'Josué Pacheco', age: 34, sex: 'M' },
       truth: { dx: 'Ferimento por arma de fogo na coxa com hemorragia', sev: 'vermelho', ok: ['USA'], sup: ['PM'], risk: { good: 45, bad: 110, guideBonus: 15 } },
       radio: {
         // sem {tokens}: no caminho "sem PM" o motor agenda este texto sem resolver os marcadores
@@ -673,19 +768,21 @@ export const DAY = day({
       ],
       q: {
         oque: 'Pegou fogo do nada! O sobrado inteiro! Tem gente queimada!',
-        consciencia: 'Os cinco? Tá... uns tão, outros não. Sei lá!',
+        consciencia: '{{Todos. Não. Uns.|cons_uns}} Uns tão, outros não. Sei lá!',
         respira: 'Tão tossindo, tossindo muito!',
         idade: 'De tudo quanto é idade. Velho, criança...',
         inicio: 'Agora!',
         sangramento: 'Muito! Tá todo mundo sangrando!',
         historico: 'Como é que eu vou saber, {m:moço|moça}?',
-        paciente: ['[risadinha abafada]', 'Não dá pra falar com ninguém, tá todo mundo... queimando!'],
+        paciente: ['[a plateia da televisão aplaude alguma coisa]', 'Não dá pra falar com ninguém, tá todo mundo... queimando!'],
         referencia: '{{Do lado da padaria, em frente ao mercadinho|padaria}}.',
-        seguranca: 'Seguro não, tá pegando fogo! [a televisão ri junto com a plateia]',
+        seguranca: 'Seguro não, tá pegando fogo! [ao fundo, o apresentador: "e quem vai levar o carro zero?"]',
+        pulso: 'De quem? Dos cinco? ...Tá todo mundo com pulso. Rápido. Devagar. Normal.',
+        pele: 'Queimada! Preta de fumaça. Uns vermelhos. Não sei, {m:moço|moça}, tem muita fumaça.',
       },
       extra: [
         { id: 'bombeiros', label: 'Já chamaram os Bombeiros?', say: 'Os Bombeiros já foram chamados? Tem alguém tirando as pessoas de lá?', a: 'Bombeiro? Não... {{chama você, que é mais rápido|bombeiro}}.' },
-        { id: 'nomes', label: 'Conhece os feridos?', say: 'Você conhece as pessoas feridas? Sabe o nome de alguma?', a: ['É... a família do... Seu Zé. Os Zé. Todos eles. Manda logo!', '[uma risadinha abafada, longe do fone]'] },
+        { id: 'nomes', label: 'Conhece os feridos?', say: 'Você conhece as pessoas feridas? Sabe o nome de alguma?', a: ['É... a família do... Seu Zé. Os Zé. Todos eles. Manda logo!', '[ninguém tosse, ninguém grita; só a televisão]'] },
       ],
       callback: ['[{{"O número chamado não existe ou está temporariamente fora de serviço."|retorno_inexistente}}]'],
       links: [
@@ -709,8 +806,8 @@ export const DAY = day({
       at: '16:00',
       pool: 'leve',
       num: '(17) 3328-4410',
-      caller: 'Seu Geraldo',
-      callerName: 'Seu Geraldo',
+      caller: 'Seu Onofre',
+      callerName: 'Seu Onofre',
       type: 'minimizador',
       voice: 'idoso',
       note: 'Senhor de 76 caiu, diz que já levantou.',
@@ -739,7 +836,7 @@ export const DAY = day({
         { a: 'sem_anticoag', b: 'ralou', kind: 'confirma', insight: 'Sem remédio de afinar o sangue e só um ralado: orientação. (Idoso anticoagulado que bate a cabeça seria outra história.)' },
         { a: 'levantei', b: 'manual:verde', insight: 'Levantou sozinho, anda, só ralou o joelho: caso verde. Lavar, cobrir e procurar a UBS se inchar (Manual p.1).' },
       ],
-      patient: { name: 'Geraldo Freitas', age: 76, sex: 'M' },
+      patient: { name: 'Onofre Cavalcante', age: 76, sex: 'M' },
       truth: { dx: 'Queda mecânica com escoriação no joelho', sev: 'verde', ok: ['ORI'], ref: ['CASA', 'UBS'] },
       radio: { excess: '{central}, {unit}. Ralado no joelho. Ele ofereceu alface pra equipe. Liberamos, {dr}.' },
       diary: { ori: 'Tropeçou na mangueira regando a horta. Ralou o joelho. Terminou de regar.' },
@@ -758,11 +855,13 @@ export const DAY = day({
             { who: 'NARRADOR', t: 'Na mesa da sala, uns retalhos, uma fita métrica e a Gazeta aberta num anúncio circulado de caneta: "Máquinas de costura usadas, revisadas, a partir de R$ 450".' },
             { who: 'LUCIA', t: 'A bombinha, {nome}. Você disse que ia passar na farmácia.', when: (c) => c.flag('prometeu_bombinha') && !c.flag('bombinha') },
             { who: 'NARRADOR', t: '{c:Ela|Ele} não fala mais nada sobre isso. Alisa um retalho em cima da mesa.', when: (c) => c.flag('prometeu_bombinha') && !c.flag('bombinha') },
-            { who: 'LUCIA', t: 'A Cleide do 52 quer barra de calça. A Zuleide, dois vestidos pra neta. Na confecção eu fazia sessenta peças por dia.' },
+            { who: 'LUCIA', t: 'A Dona Quitéria, da quitanda, quer barra de calça. A Zuleide, dois vestidos pra neta. Na confecção eu fazia sessenta peças por dia.' },
             { who: 'LUCIA', t: 'Com uma máquina eu tiro uns quarenta reais por folga sua. Fácil. Mais, se pegar uniforme de escola.' },
-            { who: 'LUCIA', t: 'Eu tinha começado a juntar num pote de margarina. Tinha cento e vinte. ...Foi na conta de água do Valdemar.', when: (c) => c.flag('lucia_pagou_agua') },
+            { who: 'LUCIA', t: 'Eu tinha começado a juntar num pote de margarina. Tinha cento e vinte. Setenta foram na água do Valdemar. Cinquenta foram no gás. ...Sobrou o pote.', when: (c) => c.flag('lucia_pagou_agua') },
             { who: 'LUCIA', t: 'Tenho cento e vinte guardados num pote de margarina. Falta muito, eu sei.', when: (c) => !c.flag('lucia_pagou_agua') },
             { who: 'LUCIA', t: 'Não precisa ser agora... mas pensa.' },
+            { who: 'NARRADOR', t: 'Na poltrona, a Dona Zélia toma o comprimido da pressão na frente de todo mundo, com um copo d\'água erguido como quem faz um brinde.', when: is.flag('zelia_ofereceu_remedio') },
+            { who: 'ZELIA', t: 'Tô tomando, ó. Pra ninguém dizer que eu sou mártir.', when: is.flag('zelia_ofereceu_remedio') },
           ],
           onEnter: (e) => {
             if (e.flag('prometeu_bombinha') && !e.flag('bombinha') && !e.flag('d4_cobrou_bombinha')) {

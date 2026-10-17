@@ -8,6 +8,7 @@
 import type { Ctx, TruthDef } from '../../engine/types';
 import { hm } from '../../engine/util';
 import { day, call, fx, is, NUM, ADDR } from '../dsl';
+import { temFolga } from '../home-base';
 
 /** Cenário Moderado (bombinha comprada) × Grave (sem bombinha) */
 const M = (c: Ctx) => c.flag('bombinha');
@@ -17,10 +18,18 @@ const casaTruth = (c: Ctx): TruthDef =>
     ? { dx: 'Crise de asma moderada', sev: 'amarelo', ok: ['USB'], dest: ['UPA', 'REG'] }
     : { dx: 'Crise de asma grave (tórax silencioso)', sev: 'vermelho', ok: ['USA', 'USB'], dest: ['REG'], noPenalty: true };
 
+/** flags.md: marcia_caneta_alerta — no sarau você perguntou da caneta; ela separou a caneta e o marido acha rápido (+5 min) */
+const janelaMarcia = (c: Ctx) => (c.flag('marcia_caneta_alerta') ? { good: 33, bad: 75, guideBonus: 35 } : { good: 28, bad: 70, guideBonus: 35 });
 const marciaTruth = (c: Ctx): TruthDef =>
   M(c)
-    ? { dx: 'Anafilaxia grave (picada de abelha)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: { good: 28, bad: 70, guideBonus: 35 }, key: 'davi_marcia' }
-    : { dx: 'Anafilaxia grave (picada de abelha)', sev: 'vermelho', ok: ['USA', 'USB'], dest: ['REG'], risk: { good: 28, bad: 70, guideBonus: 35 }, key: 'davi_marcia', noPenalty: true };
+    ? { dx: 'Anafilaxia grave (picada de abelha)', sev: 'vermelho', ok: ['USA'], dest: ['REG'], risk: janelaMarcia(c), key: 'davi_marcia' }
+    : { dx: 'Anafilaxia grave (picada de abelha)', sev: 'vermelho', ok: ['USA', 'USB'], dest: ['REG'], risk: janelaMarcia(c), key: 'davi_marcia', noPenalty: true };
+
+/** ROTEIRO R1: o W.T. do jornal é o assessor que bateu na sua porta no domingo */
+const wtGazeta = (c: Ctx) =>
+  c.key('rosangela') === 'perdido'
+    ? '"RUA IPÊ: POLÍCIA AINDA PROCURA O MARIDO." A moradora do sobrado verde foi morta em casa na segunda. O marido, W.T., 41, assessor parlamentar na Câmara, está foragido.'
+    : '"TRÊS DIAS DEPOIS: A MULHER QUE PEDIU PIZZA." O agressor, W.T., 41, assessor de gabinete na Câmara, foi preso em flagrante. Na casa, uma gaveta com envelopes de dinheiro com a cinta do gabinete 7.';
 
 export const DAY = day({
   day: 9,
@@ -30,8 +39,12 @@ export const DAY = day({
   goal: { maxUSA: 3, bonus: 30 },
   onStart: fx.all(fx.doc('bilhete_marcia'), fx.doc('jornal_rosangela')),
   newspaper: (c) => ({
-    headline: c.key('rosangela') === 'perdido' ? 'Mulher é morta em casa na Rua Ipê' : 'Mulher pede socorro com "pedido de pizza" e é resgatada',
-    sub: c.key('rosangela') === 'perdido' ? 'Vizinhos dizem que ouviram gritos. Ligação à emergência foi encerrada como trote.' : 'Agressor foi preso na Rua Ipê, 112, Jardim Norte. Vítima está num abrigo.',
+    // 1.1 (calendário): o caso foi na segunda; a Gazeta de quinta traz a matéria de fundo — e o W.T. (ROTEIRO R1)
+    headline: c.key('rosangela') === 'perdido' ? 'Rua Ipê: polícia ainda procura o marido' : 'Três dias depois: a mulher que pediu pizza',
+    sub:
+      c.key('rosangela') === 'perdido'
+        ? 'A moradora do sobrado verde foi morta em casa na segunda. A ligação para a emergência tinha sido encerrada. O marido, W.T., 41, assessor parlamentar na Câmara, está foragido.'
+        : 'Ela ligou para a emergência fingindo pedir uma calabresa. O agressor, W.T., 41, assessor de gabinete na Câmara, foi preso em flagrante. Na casa, a polícia achou uma gaveta de envelopes de dinheiro com a cinta do gabinete 7.',
     photo: c.key('rosangela') === 'perdido' ? 'policia' : 'casa',
     stories: [
       { title: 'Saúde+ Gestão comemora economia', text: 'A OS divulgou economia de 18% na frota de ambulâncias desde o corte de viaturas.' },
@@ -50,18 +63,102 @@ export const DAY = day({
         lines: [
           { who: 'NARRADOR', t: 'O Henrique está de pé, jaleco aberto, mascando bala de menta. O cheiro de menta é forte demais para as sete da manhã.' },
           c.flag('henrique_coberto')
-            ? { who: 'HENRIQUE', t: '{nome}, meu herói. Te devo uma, sério.' }
+            ? { who: 'HENRIQUE', t: '{nome}, meu herói. Segunda você assinou dezenove horas pra mim. Te devo uma, sério.' }
             : { who: 'HENRIQUE', t: 'Ah. Bom dia. (ele não olha pra você)' },
+          // flags.md: avisou_sarau (eco tardio)
+          { who: 'HENRIQUE', t: 'Você avisou do sarau. Eu cheguei tarde mesmo assim. ...Desculpa o menino.', when: is.flag('avisou_sarau') },
           { who: 'HENRIQUE', t: 'Noite tranquila. Deixei um velhinho de pressão na fila, ligou 06:52. Nada demais, você pega.' },
           { who: 'NARRADOR', t: 'As mãos dele não param de mexer no crachá.' },
           { who: 'HENRIQUE', t: 'Vou dormir até as cinco. Se o Peixoto perguntar, eu saí sete e quinze.' },
         ],
         choices: [
           { label: '"Henrique, você tá bem?"', next: 'pergunta', effect: fx.set('henrique_perguntado') },
-          { label: '"Bom descanso."' },
+          { label: '"Bom descanso."', next: 'simone' },
         ],
       },
-      pergunta: { lines: [{ who: 'HENRIQUE', t: 'Tô ótimo. Calor, né.' }] },
+      pergunta: { lines: [{ who: 'HENRIQUE', t: 'Tô ótimo. Calor, né.' }], next: 'simone' },
+      // ROTEIRO R1 / flags.md d7_assessor_negado: a Simone liga o W.T. do jornal ao homem de terno do domingo
+      simone: {
+        lines: [
+          { who: 'NARRADOR', t: 'Quando o Henrique sai, a Simone abre a Gazeta em cima do seu teclado. Matéria de fundo, página três: o W.T.' },
+          c.flag('d7_assessor_negado')
+            ? { who: 'SIMONE', t: 'Esse W.T. aí, {dr}... é o de terno que você barrou na porta da base no domingo. O da "ordem do Peixoto". Você barrou um homem desses.' }
+            : c.flag('d7_usa_vip')
+              ? { who: 'SIMONE', t: 'Esse W.T. aí, {dr}... é o de terno que foi de batedor na frente da 01 no domingo. O da "ordem do Peixoto".' }
+              : { who: 'SIMONE', t: 'Esse W.T. aí, {dr}. Assessor de gabinete. Gabinete sete. O do Arlindo, aposto o meu pastel.' },
+          { who: 'SIMONE', t: 'Envelope com a cinta do gabinete. Na gaveta de casa. (ela fecha o jornal) Tem gente nessa cidade que vai dormir mal hoje.' },
+        ],
+      },
+    },
+  }),
+  // 1.1 — ida (dois dias de folga; calor de abelha), almoço às 13:25 interrompido pela Thaís (13:30) e volta
+  ida: () => ({
+    id: 'd09_ida',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:30. Dois dias de folga e você ainda ouve o telefone tocando no chuveiro.' },
+          { who: 'NARRADOR', t: 'A cidade está cheia de abelha: na lixeira do ponto, na banca, no copo de caldo de cana do Seu Aílton.' },
+          { who: 'AÍLTON', t: 'Calor de abelha, {dr}. Quem é alérgico, hoje, fica em casa.' },
+        ],
+      },
+    },
+  }),
+  almocoAt: '13:25',
+  almoco: (c) => {
+    const thais = c.s.shift ? Object.values(c.s.shift.calls).find((x) => x.def === 'd09_thais' && !x.gen) : undefined;
+    return {
+      id: 'd09_almoco',
+      bg: 'central',
+      cast: ['SIMONE'],
+      nodes: {
+        start: {
+          lines: [
+            { who: 'NARRADOR', t: 'Quinta. Calor seco, abelhas batendo no vidro da janela. A Simone come de pé, olhando o quadro de cortiça, onde você prendeu o bilhete do sarau de segunda.' },
+            { who: 'NARRADOR', t: '"— Tia Márcia, 3º B (Márcia Albuquerque Reis)", preso com um percevejo vermelho.' },
+            { who: 'SIMONE', t: 'Quem é a Tia Márcia? Namorada nova do quadro?' },
+          ],
+          choices: [
+            { label: '"A professora do Liam. Alérgica a tudo, até picada de abelha."', next: 'marcia', effect: fx.set('falou_marcia_almoco') },
+            { label: '"Ninguém. Um bilhete."', next: 'ninguem' },
+          ],
+        },
+        marcia: {
+          lines: [
+            { who: 'SIMONE', t: 'Com esse tanto de abelha hoje... Fala pra ela não sair de casa.' },
+            { who: 'NARRADOR', t: 'Ela ri. Você não.' },
+          ],
+          next: 'fim',
+        },
+        ninguem: {
+          lines: [{ who: 'SIMONE', t: 'Ninguém não ganha percevejo vermelho, {dr}.' }],
+          next: 'fim',
+        },
+        fim: {
+          lines: [
+            thais
+              ? { who: 'NARRADOR', t: 'A linha já está piscando: "THAÍS · MÃE DO PEDRO, 3º B". A Simone olha o bilhete, olha você.' }
+              : { who: 'NARRADOR', t: '13:30. A linha acende antes do fim do almoço. O relógio volta a correr. A Simone olha o bilhete, olha você.' },
+          ],
+        },
+      },
+    };
+  },
+  volta: (c) => ({
+    id: 'd09_volta',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:35. No ônibus, duas mães falam da professora do 3º B. Você ouve "abelha", "ambulância", "Márcia".' },
+          c.flag('marcia_morreu')
+            ? { who: 'NARRADOR', t: 'Uma delas olha para o crachá no seu peito e para de falar. A outra olha pela janela até o ponto dela.' }
+            : { who: 'NARRADOR', t: '"...salvou com uma caneta vencida, acredita? O marido aplicou com o telefone no ouvido." Uma delas olha o seu crachá e sorri sem saber por quê.' },
+        ],
+      },
     },
   }),
   timeline: [
@@ -99,6 +196,19 @@ export const DAY = day({
           'nao',
           25,
         );
+      },
+    },
+    {
+      // ROTEIRO R2 (pista): enquanto o Regional diz "sem maca", tem maca vazia subindo pro quarto andar
+      at: '11:20',
+      kind: 'script',
+      id: 'maca_quarto',
+      run: (c) => {
+        const id = c.sflag('retida');
+        if (typeof id !== 'string') return;
+        const u = c.shift.units[id];
+        if (!u || u.status !== 'RETIDO') return;
+        c.radio(u.radioName, '{Dr}, tem maca vazia no elevador de serviço, subindo pro quarto andar. Duas. Aqui embaixo dizem que não tem maca.', 'alerta');
       },
     },
     {
@@ -262,6 +372,8 @@ export const DAY = day({
         sangramento: 'Do {{ouvido|ouvido}}, e um pouco no queixo.',
         oque: 'Ele vinha rápido, o carro saiu do posto, pá. Voou longe.',
         historico: 'Não sei, {m:moço|moça}, nunca vi ele.',
+        pulso: 'Eu não sei pegar... [pausa] No pescoço tá batendo. Rápido. Ele tá respirando com aquele barulho.',
+        pele: 'Branco. Branco e suado. A boca tá normal, eu acho.',
       },
       extra: [
         { id: 'capacete', label: 'Capacete?', say: 'Ele está de capacete?', a: 'Tá de capacete. {{Tá saindo sangue do ouvido|ouvido2}}.' },
@@ -294,7 +406,10 @@ export const DAY = day({
       noteFixed: true,
       addr: ADDR.cida,
       amb: ['tv'],
-      open: ['Oi {meu} {filho}, é a Cida! Ó, {{o gesso tá coçando que é uma loucura|gesso}}. Posso enfiar uma agulha de tricô por dentro?'],
+      open: (c: Ctx) => [
+        'Oi {meu} {filho}, é a Cida! Ó, {{o gesso tá coçando que é uma loucura|gesso}}. Tirei o provisório ontem e botaram o de verdade. Posso enfiar uma agulha de tricô por dentro?',
+        ...(c.flag('cida_queda_regulada') ? ['A moça da ambulância pequena, na segunda, me pôs a tala e disse "foi a central que mandou". Eu disse: eu sei, foi {meu} {filho}.'] : []),
+      ],
       q: {
         oque: 'O gesso, {meu} {filho}! Coça!',
         consciencia: 'Acordadíssima.',
@@ -302,6 +417,8 @@ export const DAY = day({
         idade: 'Setenta e nove.',
         paciente: 'Sou eu mesma!',
         historico: 'Pressão. E agora esse braço, né.',
+        pulso: 'O do braço bom tá batendo direitinho. O do gesso tá lá dentro, coçando.',
+        pele: 'Os dedinhos tão rosados, {meu} {filho}. Rosados e coçando.',
       },
       extra: [
         { id: 'dedos', label: 'Como estão os dedos?', say: 'Como estão os dedos da mão do gesso? Cor, inchaço, formigamento?', a: '{{Rosadinhos, mexendo|dedos_ok}}. Só coça.' },
@@ -339,9 +456,11 @@ export const DAY = day({
       noteFixed: true,
       addr: ADDR.cida,
       amb: ['silencio'],
-      open: ['{{O punho tá roxo e inchado desde ontem|punho}}, {meu} {filho}. {{Não dormi.|nao_dormiu}}', '[ela respira fundo]', 'Desculpa ligar de novo.'],
+      open: ['{{O punho tá roxo e inchado desde segunda|punho}}, {meu} {filho}. {{Três noites sem dormir.|nao_dormiu}}', '[ela respira fundo]', 'Desculpa ligar de novo.'],
       q: {
-        oque: 'Desde a queda de ontem. Eu achei que ia passar.',
+        oque: 'Desde a queda de segunda. Eu achei que ia passar. Enfaixei com um pano de prato.',
+        pulso: 'O coração tá bom, {meu} {filho}. O pulso do braço eu nem encosto, dói.',
+        pele: 'Roxo, o punho inteiro. E os dedos tão inchados e meio frios.',
         consciencia: 'Acordada. Cansada.',
         idade: 'Setenta e nove.',
         paciente: 'Sou eu.',
@@ -354,8 +473,8 @@ export const DAY = day({
       // RT6: idosa > 70 anos com fratura → USI/USB. Dedos "inchados, meio dormentes" = alteração de sensibilidade
       // distal, que o RC24 chama de "comprometimento vascular distal" (discriminador de USA): USA ⚖. Deixou de ser
       // "fratura simples" (perfil traumato-ortopédico, Anexo VII): Regional também é destino correto.
-      truth: { dx: 'Fratura de punho não tratada (queda de ontem)', sev: 'amarelo', ok: ['USB', 'USA'], best: 'USB', dest: ['REG', 'UPA'] },
-      diary: { alive: 'Fratura de punho que esperou um dia inteiro. A queda de ontem tinha sido dispensada.' },
+      truth: { dx: 'Fratura de punho não tratada (queda de segunda)', sev: 'amarelo', ok: ['USB', 'USA'], best: 'USB', dest: ['REG', 'UPA'] },
+      diary: { alive: 'Fratura de punho que esperou três dias. A queda de segunda tinha sido dispensada.' },
     }),
     // ----------------------------------------------------------------- 4
     call({
@@ -383,6 +502,8 @@ export const DAY = day({
         gestacao: ['39 semanas.', 'Segundo filho. {{O primeiro nasceu no carro.|primeiro_carro}}'],
         referencia: 'Rua das Acácias, 88. A quatro casas da casa azul.',
         seguranca: 'Tranquilo.',
+        pulso: 'O dela? Tá rápido. Ela tá fazendo força, {dr}!',
+        pele: 'Vermelha de força. Suando. A boca tá normal.',
       },
       extra: [{ id: 'cabeca', label: 'Dá pra ver a cabeça?', say: 'Dá pra ver a cabeça do bebê?', a: 'Tô vendo... {{cabelinho|cabelinho}}!' }],
       links: [
@@ -422,8 +543,10 @@ export const DAY = day({
         respira: 'Respira.',
         sangramento: 'Um pouco.',
         historico: 'Não sei. Remédio de velho.',
-        paciente: 'Ela não pode falar agora. [música de videogame]',
+        paciente: ['Ela não pode falar agora.', '[{{o "plim" de pausa de um videogame; a música para de repente|pausa}}]'],
         referencia: 'Perto da... praça.',
+        pulso: 'Tem. ...Deve ter. Ela tá respirando, então tem.',
+        pele: 'Normal. Branca. Normal de velha.',
       },
       extra: [{ id: 'nome', label: 'Nome da sua avó?', say: 'Qual o nome da sua avó?', a: '{{Dona... Maria.|hesita}}' }],
       callback: ['[{{"O número chamado não existe ou está fora de serviço."|retorno_inexistente}}]'],
@@ -535,6 +658,8 @@ export const DAY = day({
         paciente: (c: Ctx) => (M(c) ? ['{CONJ}: Liam, fala com {m:o pai|a mãe}.', 'LIAM: {Pai}, tô cansado. [chiado] A bombinha ajudou um pouco.'] : ['{CONJ}: Ele não consegue falar, só balança a cabeça.']),
         referencia: 'É a nossa casa, {nome}!',
         seguranca: 'Seguro! Vem logo!',
+        pulso: (c: Ctx) => (M(c) ? 'Tá rápido, {nome}. Rápido de susto e da bombinha.' : 'Tá disparado, {nome}! Eu não consigo nem contar!'),
+        pele: (c: Ctx) => (M(c) ? 'Branquinho. A boca tá normal, rosada.' : 'ZÉLIA (pegando o telefone): A boca tá roxinha, {filho}. E cinza em volta do nariz.'),
       },
       extra: [
         { id: 'labios', label: 'Lábios e unhas?', say: 'Como estão os lábios e as unhas dele?', a: (c: Ctx) => (M(c) ? 'Normais.' : '{{Roxinhos|labios_roxos}}.') },
@@ -608,7 +733,7 @@ export const DAY = day({
       addr: ADDR.marcia,
       amb: ['respiracao', 'cachorro'],
       open: [
-        'Moça! {Dr}! {{Minha mulher tá roxa|roxa}}, ela não consegue respirar! {{Foi uma abelha|abelha}}, lá no pé de manga, ela é alérgica, pelo amor de Deus!',
+        '{m:Moço|Moça}! {Dr}! {{Minha mulher tá roxa|roxa}}, ela não consegue respirar! {{Foi uma abelha|abelha}}, lá no pé de manga, ela é alérgica, pelo amor de Deus!',
         '[respiração com um assobio agudo; cachorro latindo]',
         'MÁRCIA (rouca): Marcos... a garganta...',
       ],
@@ -622,11 +747,21 @@ export const DAY = day({
         oque: 'Tava apanhando manga, a abelha picou no pescoço, em dois minutos começou a inchar!',
         paciente: 'MÁRCIA: [{{voz rouca, quase sem ar|rouca}}] ...não... consigo...',
         seguranca: 'Seguro! Vem logo!',
+        pulso: 'Tá fraquinho! Rápido e fraquinho, eu mal acho!',
+        pele: 'Vermelha, cheia de vergão! E a boca tá ficando roxa!',
       },
       extra: [
         { id: 'nome', label: 'Nome completo da paciente?', say: 'Qual o nome completo dela?', a: '{{Márcia Albuquerque Reis|marcia_nome}}. Pelo amor de Deus, manda!' },
         { id: 'inchaco', label: 'Inchaço? Manchas?', say: 'Tem inchaço? Manchas na pele?', a: 'A boca e o olho tão inchando, tá cheio de mancha vermelha no braço.' },
-        { id: 'adrenalina', label: 'Tem caneta de adrenalina?', say: 'Ela tem caneta de adrenalina em casa?', a: 'Tem uma caneta que a médica deu, mas {{tá vencida desde o ano passado|vencida}}!' },
+        {
+          id: 'adrenalina',
+          label: 'Tem caneta de adrenalina?',
+          say: 'Ela tem caneta de adrenalina em casa?',
+          a: (c: Ctx) =>
+            c.flag('marcia_caneta_alerta')
+              ? ['Tem! Ela olhou a caneta depois do sarau, {dr}. {{Tava vencida|vencida}}. Ela ia comprar outra hoje.', 'Mas separou essa em cima da geladeira. Tá aqui na minha mão!']
+              : 'Tem uma caneta que a médica deu, mas {{tá vencida desde o ano passado|vencida}}!',
+        },
         { id: 'professora', label: 'Ela é professora?', locked: true, unlockedBy: ['nome', 'flag:falou_marcia_almoco'], onAsk: fx.set('sabia_que_era_marcia'), say: 'Ela é professora? Da escola Monteiro Lobato?', a: 'É... do 3º B. Como {m:o senhor|a senhora} sabe?' },
       ],
       links: [
@@ -653,7 +788,7 @@ export const DAY = day({
       patient: { name: 'Márcia Albuquerque Reis', age: 41, sex: 'F' },
       truth: marciaTruth,
       radio: {
-        ok: '{central}, Márcia estabilizada. A caneta vencida segurou ela. Quem mandou aplicar? ...Achei. Bom trabalho.',
+        ok: '{central}, Márcia estabilizada. A caneta vencida segurou ela. Quem mandou aplicar foi a voz do telefone, o marido disse. Bom trabalho.',
         saved: '{central}, Márcia estabilizada. Foi por pouco. Quem mandou aplicar a caneta? Bom trabalho.',
         dead: 'Central... óbito constatado às {hora}. (pausa) O marido tá perguntando o nome do regulador. Eu não falei.',
         under: '{unit}: anafilaxia grave, edema de glote! Precisamos de USA, AGORA!',
@@ -744,14 +879,100 @@ export const DAY = day({
       { id: 'internacao_davi', label: 'Táxi e farmácia (internação do Liam)', amount: 40, when: (c) => !c.flag('bombinha'), desc: 'O Liam ficou internado. {Oconj} não costura hoje.', onPay: fx.set('sem_costura_hoje'), onSkip: fx.all(fx.set('sem_costura_hoje'), fx.add('lacos', -1, '{oconj} pagou do bolso')) },
       { id: 'bombinha_receita', label: 'Bombinha nova (receita da alta)', amount: (c) => (c.flag('farmacia_popular') ? 0 : 80), when: (c) => !c.flag('bombinha'), desc: (c) => (c.flag('farmacia_popular') ? 'Farmácia Popular: de graça com a receita (dica do Seu Valdir).' : 'R$ 80 na farmácia.'), onPay: fx.set('bombinha') },
     ],
+    // ROTEIRO R1 (virada): na mesa da cozinha, a Gazeta de quinta. O envelope muda de peso.
+    pre: (c) => {
+      const conj = is.present('lucia')(c);
+      const gasto = c.money() < 1000;
+      return {
+        id: 'd09_gazeta',
+        bg: 'cozinha',
+        cast: ['LUCIA', 'ZELIA'],
+        nodes: {
+          start: {
+            onEnter: (e) => {
+              if (e.flag('envelope_aceito') && gasto && conj && !e.flag('d9_gazeta_lacos')) {
+                e.set('d9_gazeta_lacos');
+                e.add('lacos', -1, 'o homem do envelope');
+              }
+            },
+            lines: [
+              { who: 'NARRADOR', t: 'Na mesa da cozinha, a Gazeta de quinta, aberta na página três. {Oconj} não tirou o olho dela desde que você entrou.', when: () => conj },
+              { who: 'NARRADOR', t: 'Na mesa da cozinha, a Gazeta de quinta, aberta na página três. A Dona Zélia deixou os óculos em cima, marcando.', when: () => !conj },
+              { who: 'NARRADOR', t: wtGazeta(c) },
+              // envelope aceito: o homem esteve na nossa porta
+              { who: 'LUCIA', t: '{nome}. Esse homem esteve na nossa porta. Eu ofereci café pra ele.', when: (cc) => conj && cc.flag('envelope_aceito') },
+              { who: 'LUCIA', t: 'Gabinete sete. A cinta tava no nosso lixo, {nome}.', when: (cc) => conj && cc.flag('envelope_aceito') },
+              { who: 'ZELIA', t: 'Dinheiro tem cheiro. Esse cheira a sabonete de motel.', when: (cc) => cc.flag('envelope_aceito') },
+              // recusado / jogado / porta fechada
+              { who: 'LUCIA', t: 'Ainda bem que a gente não pegou.', when: (cc) => conj && cc.flag('vereador_inimigo') },
+              { who: 'LUCIA', t: 'Eu joguei o dinheiro de um homem desses na calçada, {nome}. Com a rua inteira olhando. (ela quase ri) Eu faria de novo.', when: (cc) => conj && cc.flag('d7_lucia_jogou') },
+              { who: 'ZELIA', t: 'Teu pai ia gostar de saber que a gente não pegou. Ia contar pro bairro inteiro.', when: (cc) => cc.flag('vereador_inimigo') },
+              // escondido pelo cônjuge
+              { who: 'LUCIA', t: '(baixinho) Eu escondi o envelope dele na caixa de costura. Tá lá, embaixo dos moldes. Eu não consigo nem olhar.', when: (cc) => cc.flag('envelope_lucia') && !cc.flag('envelope_entregue') },
+            ],
+            choices: [
+              { label: '"Amanhã cedo a gente leva na delegacia."', next: 'delegacia', when: (cc) => cc.flag('envelope_lucia') && !cc.flag('envelope_entregue'), effect: fx.all(fx.set('envelope_entregue_policia'), fx.set('envelope_entregue'), fx.add('integridade', 2, 'entregou o envelope à polícia')) },
+              { label: '"Guarda. A gente decide depois."', next: 'guarda', when: (cc) => cc.flag('envelope_lucia') && !cc.flag('envelope_entregue'), effect: fx.set('envelope_guardado') },
+              { label: '"Queima, mãe."', next: 'queima', when: (cc) => cc.flag('envelope_lucia') && !cc.flag('envelope_entregue') && cc.s.family.zelia.status !== 'morto', effect: fx.all(fx.set('envelope_queimado'), fx.add('integridade', 1, 'queimou o envelope')) },
+              {
+                label: '"Amanhã cedo eu levo o envelope na delegacia." (R$ 1.000)',
+                next: 'delegacia',
+                needMoney: 1000,
+                when: (cc) => cc.flag('envelope_aceito') && !cc.flag('envelope_entregue'),
+                effect: fx.all(fx.money(-1000, 'Envelope do vereador entregue à polícia'), fx.set('envelope_entregue_policia'), fx.set('envelope_entregue'), fx.add('integridade', 2, 'entregou o envelope à polícia')),
+              },
+              { label: '(Fechar o jornal.)', next: 'fecha', when: (cc) => cc.flag('envelope_aceito') && !cc.flag('envelope_entregue') },
+            ],
+          },
+          delegacia: {
+            lines: [
+              { who: 'LUCIA', t: 'Eu vou junto. Eu quero ver a cara do delegado quando a gente puser isso na mesa.', when: () => conj },
+              { who: 'ZELIA', t: 'Vai de manhã cedo, antes que o dinheiro fique com saudade de você.' },
+              { who: 'NARRADOR', t: 'O envelope passa a noite em cima da geladeira, dentro de um saco plástico de pão. Ninguém encosta nele.' },
+            ],
+          },
+          guarda: {
+            lines: [
+              { who: 'LUCIA', t: '...Tá. Ele volta pra caixa de costura. Eu fecho a tampa com um rolo de linha em cima, pra não abrir sozinha.', when: () => conj },
+              { who: 'NARRADOR', t: 'Ninguém fala mais nisso no jantar.' },
+            ],
+          },
+          queima: {
+            lines: [
+              { who: 'NARRADOR', t: 'A Dona Zélia pega o envelope com dois dedos, como quem pega rato morto, e acende a boca do fogão.' },
+              { who: 'ZELIA', t: 'Mil reais. O fogo não pergunta de onde veio. Ainda bem que alguém nessa casa não pergunta.' },
+              { who: 'NARRADOR', t: 'Cheiro de papel queimado. A cinta do gabinete sete é a última coisa a virar cinza.' },
+            ],
+          },
+          fecha: {
+            lines: [
+              { who: 'NARRADOR', t: 'Você fecha o jornal. A foto do sobrado verde fica virada para a mesa.', when: (cc) => cc.money() >= 1000 },
+              { who: 'NARRADOR', t: 'Você fecha o jornal. Uma parte do dinheiro já virou luz, gás e comida. Não dá pra devolver o que já foi comido.', when: (cc) => cc.money() < 1000 },
+            ],
+          },
+        },
+      };
+    },
     scene: (c) => ({
       id: 'd09_noite',
       bg: 'quarto',
       cast: ['DAVI', 'LUCIA'],
       nodes: {
         start: {
+          onEnter: (e) => {
+            // flags.md: d9_lucia_religou — ela ligou duas vezes
+            if (e.flag('d9_lucia_religou') && !e.flag('simone_segura') && !e.flag('d9_religou_lacos')) {
+              e.set('d9_religou_lacos');
+              e.add('lacos', -1, 'a ligação de casa ficou na fila');
+            }
+          },
           lines: [
             { who: 'NARRADOR', t: 'Liam na cama. A bombinha do lado do travesseiro.' },
+            { who: 'LUCIA', t: '(da porta, sem entrar) Eu liguei duas vezes. Na segunda eu achei que você tinha deixado a gente na fila.', when: (cc) => cc.flag('d9_lucia_religou') && is.present('lucia')(cc) },
+            // flags.md: d3_segurou_bombinha e bombinha_lucia (ecos tardios)
+            { who: 'DAVI', t: 'Eu fiquei quietinho aquele dia, lembra? Pra não tossir. Hoje não deu.', when: (cc) => cc.flag('d3_segurou_bombinha') && !M(cc) },
+            { who: 'DAVI', t: 'Hoje eu tossi à vontade, {pai}. Tinha bombinha.', when: (cc) => cc.flag('d3_segurou_bombinha') && M(cc) },
+            { who: 'LUCIA', t: 'Aquele táxi de cem reais foi o dinheiro mais bem gasto da minha vida.', when: (cc) => cc.flag('bombinha_lucia') && is.present('lucia')(cc) },
             ...(c.flag('marcia_morreu')
               ? [
                   { who: 'LUCIA', t: '(na porta, baixinho) A escola ligou. A professora dele... a Márcia. Morreu hoje à tarde, em casa. Uma alergia. Disseram que a ambulância demorou.' },
@@ -795,7 +1016,9 @@ export const DAY = day({
         },
         fim: {
           lines: [
-            { who: 'ZELIA', t: '(da cozinha) Amanhã a gente arruma o dinheiro da bombinha, {filho}. Nem que eu venda alguma coisa.', when: (cc) => !cc.flag('bombinha') },
+            // ROTEIRO 3.1-e: a fala da venda só com o saldo apertado; com folga, o que faltou não foi dinheiro
+            { who: 'ZELIA', t: '(da cozinha) Amanhã a gente arruma o dinheiro da bombinha, {filho}. Nem que eu venda alguma coisa.', when: (cc) => !cc.flag('bombinha') && !temFolga(cc) },
+            { who: 'ZELIA', t: '(da cozinha, baixinho) Dinheiro tinha, {filho}. O que faltou foi alguém em casa pra ver o menino puxando ar.', when: (cc) => !cc.flag('bombinha') && temFolga(cc) },
             { who: 'ZELIA', t: '(da cozinha) Deixa o menino dormir, {filho}. Vem comer.', when: (cc) => cc.flag('bombinha') },
           ],
         },

@@ -233,16 +233,23 @@ export const DOCS: Record<string, DeskDoc> = {
   },
   bilhete_marcia: {
     id: 'bilhete_marcia',
-    title: 'Bilhete da professora',
-    text: (c) => `"${protagonistFirst(c.g, c.s)}, o Liam leu a redação mais bonita da turma. Ele tem muito orgulho de você. — Tia Márcia, 3º B (Márcia Albuquerque Reis)"`,
+    title: 'Bilhete da professora (do sarau de segunda)',
+    // dia 9: o bilhete do sarau de segunda está na mesa (você trouxe e esqueceu)
+    text: (c) =>
+      `"${protagonistFirst(c.g, c.s)}, o Liam leu a redação mais bonita da turma. Ele tem muito orgulho de você. — Tia Márcia, 3º B (Márcia Albuquerque Reis)"` +
+      (c.flag('marcia_caneta_alerta') ? ' No verso, com a sua letra, sublinhado duas vezes: "alérgica a tudo, até abelha — caneta vencida?"' : ''),
     clues: [{ id: 'doc:marcia', text: 'Bilhete: "Tia Márcia, 3º B — Márcia Albuquerque Reis"' }],
   },
   jornal_rosangela: {
     id: 'jornal_rosangela',
-    title: 'Gazeta de Santa Aurora (dia 9)',
-    text: 'Matéria sobre a casa da Rua Ipê, 112 — Jardim Norte.',
+    title: 'Gazeta de Santa Aurora (quinta-feira)',
+    // ROTEIRO R1: o homem do envelope é o homem da pizza (W.T., assessor de gabinete na Câmara)
+    text: (c) =>
+      c.key('rosangela') === 'perdido'
+        ? 'Matéria de fundo, página 3: "RUA IPÊ: POLÍCIA AINDA PROCURA O MARIDO. A moradora do sobrado verde da Rua Ipê, 112, foi morta em casa na segunda. A ligação para a emergência tinha sido encerrada. O marido, W.T., 41, assessor parlamentar na Câmara, está foragido."'
+        : 'Matéria de fundo, página 3: "TRÊS DIAS DEPOIS: A MULHER QUE PEDIU PIZZA. Na segunda, uma moradora da Rua Ipê, 112, ligou para a emergência fingindo pedir uma calabresa. O agressor, W.T., 41, assessor de gabinete na Câmara, foi preso em flagrante. Na casa, a polícia encontrou uma gaveta com envelopes de dinheiro com a cinta do gabinete 7."',
     until: 9,
-    clues: [{ id: 'doc:rua_ipe', text: 'Jornal: o caso da Rua Ipê, 112 (casa da Rosângela) — casa fechada' }],
+    clues: [{ id: 'doc:rua_ipe', text: 'Jornal: o caso da Rua Ipê, 112 (casa da Rosângela) — W.T., assessor de gabinete' }],
   },
   ordem_peixoto: {
     id: 'ordem_peixoto',
@@ -259,8 +266,26 @@ export const DOCS: Record<string, DeskDoc> = {
   peixoto_pai: {
     id: 'peixoto_pai',
     title: 'Anotação: conversa com o Peixoto',
-    text: '"Meu pai tem 84 anos e nunca precisou de ambulância. É hábito, doutor, o povo se acostumou mal." — Dr. Peixoto, dia 5. (O pai: Seu Osvaldo Peixoto, mora sozinho na Bela Vista.)',
+    text: '"Meu pai tem 84 anos e nunca precisou de ambulância. É hábito, {dr}, o povo se acostumou mal." — Dr. Peixoto, dia 5. (O pai: Seu Osvaldo Peixoto, mora sozinho na Bela Vista. "Com uma cuidadora que ele demite toda semana.")',
     clues: [{ id: 'doc:peixoto_pai', text: 'Peixoto: "Meu pai, Osvaldo, 84 anos, nunca precisou de ambulância"' }],
+  },
+  // ROTEIRO 3.2: o bilhete das 22:07 (dia 10). Existe só com `anotou_henrique_d10`; a frente D11–20 põe na mesa
+  // do dia 12 (fx.doc('bilhete_henrique')). `bilhete_origem`: 'papel' (anotou na hora) ou 'desenho' (D11).
+  bilhete_henrique: {
+    id: 'bilhete_henrique',
+    title: 'Papel de pão dobrado em quatro',
+    text: (c) => {
+      const esp = Number(c.val('zelia_espera')) || 40;
+      const fim = c.flag('zelia_bene_corrigiu')
+        ? ' Embaixo, menor: "O Bené corrigiu pelo rádio. 15 min."'
+        : c.flag('zelia_ze_carlos')
+          ? ' Embaixo, menor: "Zé Carlos veio a pé. USB: ' + esp + ' min."'
+          : c.flag('zelia_tarm_corrigiu')
+            ? ' Embaixo, menor: "A TARM corrigiu. ' + esp + ' min."'
+            : ' Embaixo, menor: "USB: ' + esp + ' min."';
+      return 'A sua letra, tremida: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias."' + fim;
+    },
+    clues: [{ id: 'doc:bilhete_henrique', text: 'Bilhete: "22:07. Henrique. Voz arrastada. Passou Palmeiras em vez de Acácias."' }],
   },
   postit_cida: {
     id: 'postit_cida',
@@ -271,7 +296,7 @@ export const DOCS: Record<string, DeskDoc> = {
 };
 
 export const NAMES = {
-  m: ['José', 'João', 'Antônio', 'Francisco', 'Carlos', 'Paulo', 'Pedro', 'Lucas', 'Luiz', 'Marcos', 'Gabriel', 'Ricardo', 'Daniel', 'Marcelo', 'Bruno', 'Eduardo', 'Felipe', 'Raimundo', 'Rodrigo', 'Manoel', 'Sebastião', 'Valdir', 'Jorge', 'Wellington', 'Cícero', 'Geraldo', 'Edson', 'Reginaldo', 'Adilson', 'Matheus', 'Kauã', 'Enzo', 'Samuel', 'Arthur', 'Otávio', 'Benedito', 'Osmar', 'Nilton', 'Wesley', 'Josué'],
-  f: ['Maria', 'Ana', 'Francisca', 'Antônia', 'Adriana', 'Juliana', 'Márcia', 'Fernanda', 'Patrícia', 'Aline', 'Sandra', 'Camila', 'Amanda', 'Bruna', 'Jéssica', 'Letícia', 'Júlia', 'Luciana', 'Vanessa', 'Mariana', 'Gabriela', 'Rosângela', 'Aparecida', 'Sueli', 'Valdirene', 'Cleide', 'Tereza', 'Rita', 'Neusa', 'Irene', 'Kátia', 'Larissa', 'Beatriz', 'Helena', 'Alice', 'Lurdes', 'Odete', 'Iracema', 'Zuleide', 'Raimunda'],
-  last: ['Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira', 'Lima', 'Gomes', 'Costa', 'Ribeiro', 'Martins', 'Carvalho', 'Almeida', 'Lopes', 'Soares', 'Fernandes', 'Vieira', 'Barbosa', 'Rocha', 'Dias', 'Nascimento', 'Andrade', 'Moreira', 'Nunes', 'Marques', 'Machado', 'Mendes', 'Freitas', 'Cardoso', 'Ramos', 'Gonçalves', 'Santana', 'Teixeira', 'Araújo', 'Pinto', 'Batista', 'Bento', 'Prado'],
+  m: ['José', 'João', 'Antônio', 'Francisco', 'Carlos', 'Paulo', 'Pedro', 'Lucas', 'Luiz', 'Marcos', 'Gabriel', 'Ricardo', 'Daniel', 'Rubens', 'Bruno', 'Eduardo', 'Felipe', 'Raimundo', 'Rodrigo', 'Manoel', 'Sebastião', 'Valdir', 'Jorge', 'Vicente', 'Cícero', 'Geraldo', 'Elias', 'Reginaldo', 'Adilson', 'Matheus', 'Kauã', 'Enzo', 'Samuel', 'Arthur', 'Otávio', 'Silvio', 'Osmar', 'Nilton', 'Ademar', 'Josué'],
+  f: ['Maria', 'Ana', 'Francisca', 'Antônia', 'Adriana', 'Elaine', 'Silvana', 'Fernanda', 'Patrícia', 'Aline', 'Sandra', 'Camila', 'Amanda', 'Bruna', 'Jéssica', 'Letícia', 'Júlia', 'Luciana', 'Vanessa', 'Mariana', 'Gabriela', 'Regina', 'Denise', 'Sueli', 'Valdirene', 'Solange', 'Tereza', 'Rita', 'Cristina', 'Irene', 'Kátia', 'Larissa', 'Beatriz', 'Helena', 'Alice', 'Lurdes', 'Eliane', 'Iracema', 'Zuleide', 'Raimunda'],
+  last: ['Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira', 'Lima', 'Gomes', 'Costa', 'Ribeiro', 'Martins', 'Carvalho', 'Almeida', 'Lopes', 'Soares', 'Fernandes', 'Vieira', 'Barbosa', 'Rocha', 'Dias', 'Nascimento', 'Andrade', 'Moreira', 'Moraes', 'Marques', 'Machado', 'Mendes', 'Freitas', 'Cardoso', 'Ramos', 'Gonçalves', 'Santana', 'Pacheco', 'Araújo', 'Pinto', 'Quintino', 'Bento', 'Prado'],
 };

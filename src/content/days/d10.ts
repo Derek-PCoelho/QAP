@@ -7,9 +7,10 @@
 //       ↺ Henrique (atende a sua família se a Zélia cair) · ↺ Biel (9-8877)
 //       ↺ Cida (a aliança que ela vendeu × a aliança que a Zélia oferece)
 // =============================================================================
-import type { Choice, Ctx, DLine, SceneDef } from '../../engine/types';
+import type { Choice, Ctx, Effect, SceneDef } from '../../engine/types';
 import type { GuideScript } from '../../engine/content-api';
 import { day, call, fx, is, NUM, ADDR } from '../dsl';
+import { temFolga, dinheiroVereador, falaLiam } from '../home-base';
 
 /** recurso carimbado numa ligação do dia (lido nos ganchos onStamp) */
 const carimbo = (c: Ctx, defId: string) => (c.s.shift ? Object.values(c.s.shift.calls).find((x) => x.def === defId)?.decision?.resource : undefined);
@@ -92,9 +93,12 @@ export const GUIDES_EXTRA: Record<string, GuideScript> = {
 };
 
 // -----------------------------------------------------------------------------
-// Casa — GDD 9.1: a hipoglicemia da Dona Zélia (Modo Inconsistência doméstico)
+// Casa — a hipoglicemia da Dona Zélia ("reparar"), a aliança (ROTEIRO 3.1-e, por faixa × origem do dinheiro)
+// e, se ninguém percebeu, a queda das 22:00 com a ligação INTERATIVA para a Regulação (ROTEIRO 3.2).
 // -----------------------------------------------------------------------------
 const ESCOLHAS_ZELIA: Choice[] = [
+  // zelia_ligou_almoco: ela mesma contou "arroz com ovo" ao meio-dia — a pista fica à vista, sem precisar reparar
+  { label: '"Mãe, a senhora me disse no telefone que comeu arroz com ovo. O prato tá seco."', when: is.flag('zelia_ligou_almoco'), next: 'confissao' },
   { label: '"Mãe, o prato tá seco. A senhora aplicou a insulina e não comeu?"', needLink: 'prato', next: 'confissao' },
   { label: '"Mãe, a sua mão tá tremendo. Isso é açúcar baixo."', needLink: 'hipo', next: 'confissao_hipo' },
   { label: 'Que bom, mãe. (Sentar e tomar o café.)', next: 'ignora' },
@@ -105,187 +109,329 @@ const ESCOLHAS_SUCO: Choice[] = [
   { label: '"A senhora não pode fazer isso! A senhora quer morrer?"', next: 'bronca' },
 ];
 
-const QUEDA: DLine[] = [
-  { who: 'NARRADOR', t: '22:00. Um barulho seco no banheiro. Depois, nada.', when: is.flag('zelia_caiu_d10') },
-  { who: 'LUCIA', t: '{nome}! A sua mãe!', when: is.all(is.flag('zelia_caiu_d10'), is.present('lucia')) },
-  { who: 'NARRADOR', t: 'Ela está no chão do banheiro, encharcada de suor, os olhos abertos e perdidos. Responde com palavras soltas. Um galo começa a subir na testa.', when: is.flag('zelia_caiu_d10') },
-  { who: 'DAVI', t: '(na porta, de pijama) Vó? Vó, acorda...', when: is.all(is.flag('zelia_caiu_d10'), is.present('davi')) },
-  { who: 'NARRADOR', t: 'Você corre até a cozinha e acha, atrás da lata de açúcar, um copo de suco cheio. Ela engole de golinho em golinho, com você segurando a cabeça dela.', when: is.flag('zelia_caiu_d10') },
-  { who: 'NARRADOR', t: 'Ela bateu a cabeça na pia. Você liga para a emergência do seu próprio celular.', when: is.flag('zelia_caiu_d10') },
-  { who: 'VOZ', t: 'R-Regulação... Dr. Henrique... o que aconteceu?', when: is.flag('zelia_caiu_d10') },
-  { who: 'NARRADOR', t: 'A voz é lenta. Arrastada. As sílabas escorregam umas nas outras.', when: is.flag('zelia_caiu_d10') },
-  { who: 'NARRADOR', t: 'Você sabe exatamente o que essa voz significa.', when: is.flag('zelia_caiu_d10') },
-  { who: 'EU', t: 'Henrique, sou eu. {nome}. Minha mãe: diabética, hipoglicemia, caiu e bateu a cabeça. Rua das Acácias, 40.', when: is.flag('zelia_caiu_d10') },
-  { who: 'HENRIQUE', t: 'Rua das... Acácias. Tá. Qual... qual número mesmo?', when: is.flag('zelia_caiu_d10') },
-  { who: 'NARRADOR', t: 'Você repete. Ele pergunta de novo.', when: is.flag('zelia_caiu_d10') },
-  { who: 'JOANA', t: 'Desculpa a demora, {dr}. O noturno passou "Rua das Palmeiras". A gente rodou a Vila inteira.', when: is.flag('zelia_caiu_d10') },
-  { who: 'NARRADOR', t: 'Quarenta minutos. A sua mãe sai na maca da USB 01, acordada, pedindo desculpa pela camisola.', when: is.flag('zelia_caiu_d10') },
-];
+/** quem pode corrigir o endereço na noite da queda */
+const temBene = (c: Ctx) => c.flag('tel_bene') || c.flag('promessa_bene') || c.flag('bene_mapa_guardanapo') || c.v('intimBene') >= 4;
 
-const ZELIA_SCENE: SceneDef = {
-  id: 'd10_zelia',
-  bg: 'cozinha',
-  cast: ['ZELIA', 'LUCIA', 'DAVI'],
-  nodes: {
-    start: {
-      lines: [
-        { who: 'NARRADOR', t: 'Cozinha. Fim de tarde. Você volta da padaria com o pão; a casa está quieta. A Dona Zélia está sentada de costas para a pia.' },
-        { who: 'ZELIA', t: 'Chegou cedo hoje, {filho}. Senta, tem café requentado.' },
-        { who: 'EU', t: 'A senhora almoçou, mãe?' },
-        { who: 'ZELIA', t: '{{Almocei, almocei|almocei}}. Arroz com ovo. Tava uma delícia.' },
-        { who: 'NARRADOR', t: '{{Uma gota de suor desce pela têmpora dela|suor}}, devagar. A janela está aberta e a tarde já esfriou.' },
-        { who: 'ZELIA', t: '{{Tô ótima, {filho}. Para de me olhar com essa cara de plantão.|otima}}' },
-      ],
-      choices: [ESCOLHAS_ZELIA[0], ESCOLHAS_ZELIA[1], { label: '"Almoçou mesmo, mãe?"', next: 'insiste' }, ESCOLHAS_ZELIA[2]],
-    },
-    insiste: {
-      lines: [
-        { who: 'ZELIA', t: 'Almocei, {filho}. Quer que eu desenhe? Arroz, ovo, um tomatinho. Pronto.' },
-        { who: 'NARRADOR', t: 'Ela sorri. A xícara, na mão dela, faz um tlec-tlec miúdo contra o pires.' },
-      ],
-      choices: ESCOLHAS_ZELIA,
-    },
-    confissao: {
-      lines: [
-        { who: 'ZELIA', t: '(pausa) ...É que o arroz tava acabando. O menino precisa mais do que eu.' },
-        { who: 'NARRADOR', t: 'Ela fala olhando para a xícara. A mão não para.' },
-      ],
-      choices: ESCOLHAS_SUCO,
-    },
-    confissao_hipo: {
-      lines: [
-        { who: 'ZELIA', t: 'Tremendo nada. É o café requentado, que é forte.' },
-        { who: 'NARRADOR', t: 'A xícara bate no pires. Ela põe a xícara na mesa e esconde a mão no colo.' },
-        { who: 'ZELIA', t: '(pausa) ...Não almocei, não. O arroz tava acabando. O menino precisa mais do que eu.' },
-      ],
-      choices: ESCOLHAS_SUCO,
-    },
-    suco: {
-      onEnter: fx.all(fx.set('zelia_hipo_percebida'), fx.add('lacos', 1, 'ouviu a sua mãe'), fx.ach('ouvir_a_familia')),
-      lines: [
-        { who: 'NARRADOR', t: 'Ela não discute. Estica o braço, tira o copo de trás da lata de açúcar e bebe em goles pequenos, de olhos fechados.' },
-        { who: 'ZELIA', t: 'Como é que você sabia do suco?' },
-        { who: 'EU', t: 'Eu passo doze horas por dia ouvindo gente dizer que tá ótima, mãe.' },
-        { who: 'ZELIA', t: '...E eu achando que enganava {m:o médico|a médica}.' },
-        { who: 'NARRADOR', t: 'Dez minutos depois, o tremor passa. Você frita o último ovo e divide no meio. Ela come a metade dela devagar, e você finge que não está contando as garfadas.' },
-        { who: 'ZELIA', t: 'Tá salgado.' },
-        { who: 'EU', t: 'Tá perfeito.' },
-        { who: 'ZELIA', t: 'Tá salgado e tá perfeito. Pode ser as duas coisas, {filho}.' },
-      ],
-      next: 'dinheiro',
-    },
-    bronca: {
-      onEnter: fx.all(fx.set('zelia_hipo_percebida'), fx.set('zelia_fechada'), fx.add('lacos', -1, 'a bronca')),
-      lines: [
-        { who: 'ZELIA', t: 'Não grita comigo, {nome}. Eu sou sua mãe, não sou ligação.' },
-        { who: 'NARRADOR', t: 'Ela bebe o suco que estava escondido atrás da lata de açúcar. O tremor passa. Mas ela não olha mais pra você.' },
-        { who: 'ZELIA', t: 'Pronto. Bebi. {m:Satisfeito|Satisfeita}?' },
-        { who: 'NARRADOR', t: 'Ela lava duas vezes uma xícara que já estava limpa. Você entende, tarde demais, que da próxima vez ela vai esconder melhor.' },
-      ],
-      next: 'dinheiro',
-    },
-    ignora: {
-      lines: [
-        { who: 'NARRADOR', t: 'Você toma o café requentado. Conta da igreja que virou trote, do homem que ria de nervoso. Ela ri nas horas certas.' },
-        { who: 'ZELIA', t: 'Vai tomar um banho, {filho}. Você tá com cheiro de central.' },
-        { who: 'NARRADOR', t: 'No jantar, ela empurra o prato pro lado.' },
-        { who: 'ZELIA', t: 'Já belisquei na vizinha. Comam vocês.' },
-      ],
-      next: 'dinheiro',
-    },
-    dinheiro: {
-      lines: [
-        { who: 'NARRADOR', t: 'Mais tarde, com o Liam dormindo, a Dona Zélia põe na mesa uma caixinha de veludo vermelho, gasta nos cantos.' },
-        { who: 'ZELIA', t: 'Eu falei que vendia alguma coisa. Falei sério.', when: is.not('bombinha') },
-        { who: 'ZELIA', t: 'Ontem foi o susto do menino. Amanhã é o aluguel. Eu sei fazer conta, {filho}. Fiz.', when: is.flag('bombinha') },
-        { who: 'ZELIA', t: 'A aliança do seu pai. Ouro dezoito. O Seu Jacó, da joalheria da XV, dá duzentos. Eu já fui lá perguntar.' },
-        { who: 'ZELIA', t: 'Seu pai ia preferir ver o neto respirando do que ver isso aqui dentro de uma gaveta.' },
-      ],
-      choices: [
-        { label: 'Aceitar a aliança.', next: 'vende', effect: fx.all(fx.money(200, 'A aliança do seu pai'), fx.add('lacos', -1, 'a aliança'), fx.set('alianca_vendida')) },
-        { label: '"Guarda, mãe. Isso não se vende."', next: 'guarda' },
-      ],
-    },
-    vende: {
-      lines: [
-        { who: 'NARRADOR', t: 'Ela empurra a caixinha pra você. Antes de soltar, abre uma última vez.' },
-        { who: 'ZELIA', t: 'Ele me deu isso dentro de um ônibus. Não tinha dinheiro pro jantar, então me deu no ônibus mesmo, na frente de todo mundo. Ficou vermelho, o bobo.' },
-        { who: 'ZELIA', t: 'Vende amanhã cedo, {filho}. Antes de eu me arrepender.' },
-        { who: 'NARRADOR', t: 'Você guarda a caixinha no bolso do jaleco. Pesa mais do que devia.' },
-        { who: 'NARRADOR', t: 'Você lembra da Dona Cida, de manhã, no telefone: "Ouro a gente vende uma vez só. Depois fica o dedo pelado, contando história."', when: is.flag('cida_conversou_d10') },
-      ],
-      next: 'noite',
-    },
-    guarda: {
-      lines: [
-        { who: 'NARRADOR', t: 'Você fecha a caixinha e devolve. Ela segura a sua mão por cima do veludo.' },
-        { who: 'EU', t: 'Uma senhora me disse hoje, no telefone, que ouro a gente vende uma vez só.', when: is.flag('cida_conversou_d10') },
-        { who: 'ZELIA', t: 'Senhora sabida. Deve ser lá da igreja.', when: is.flag('cida_conversou_d10') },
-        { who: 'ZELIA', t: '{m:Teimoso|Teimosa} igual a ele.' },
-        { who: 'ZELIA', t: 'Então faz um trato comigo: eu como direito, e você para de olhar pra minha mão.', when: is.all(is.flag('zelia_hipo_percebida'), is.not('zelia_fechada')) },
-        { who: 'NARRADOR', t: 'Ela guarda a caixinha no bolso do avental.' },
-      ],
-      next: 'noite',
-    },
-    noite: {
-      onEnter: (e) => {
-        if (e.flag('zelia_hipo_percebida')) return;
-        // C) não percebeu / ignorou: a queda das 22:00
-        e.set('zelia_caiu_d10');
-        e.set('henrique_atendeu_zelia');
-        e.s.family.zelia.risk += 3;
-        e.add('desgaste', 10, 'a queda da sua mãe');
+/** espera da USB na queda (min) → risco da Zélia e conta (ROTEIRO 3.2) */
+function esperaZelia(min: number, ze = false): Effect {
+  return (e) => {
+    e.set('zelia_espera', min);
+    const risco = ze || min <= 15 ? 1 : min >= 40 ? 3 : 2;
+    e.s.family.zelia.risk += risco;
+  };
+}
+
+const ZELIA_SCENE = (c: Ctx): SceneDef => {
+  // faixa do saldo e origem do dinheiro lidas quando a cena abre (antes das contas)
+  const folga = temFolga(c);
+  const vereador = folga && dinheiroVereador(c);
+  const liam = is.present('davi')(c);
+  return {
+    id: 'd10_zelia',
+    bg: 'cozinha',
+    cast: ['ZELIA', 'LUCIA', 'DAVI'],
+    nodes: {
+      start: {
+        lines: [
+          // 1.1 (calendário): o plantão acaba às sete; é começo da noite
+          { who: 'NARRADOR', t: 'Cozinha. Começo da noite. Você chega com o pão da padaria do Toninho; a casa está quieta. A Dona Zélia está sentada de costas para a pia.' },
+          { who: 'ZELIA', t: 'Chegou, {filho}? Hoje até que não demorou. Senta, tem café requentado.' },
+          { who: 'EU', t: 'A senhora almoçou, mãe?' },
+          { who: 'ZELIA', t: '{{Almocei, almocei|almocei}}. Arroz com ovo. Tava uma delícia.' },
+          { who: 'NARRADOR', t: 'Arroz com ovo. Foi exatamente o que ela disse ao telefone, às treze e dez. Com as mesmas palavras.', when: is.flag('zelia_ligou_almoco') },
+          { who: 'NARRADOR', t: '{{Uma gota de suor desce pela têmpora dela|suor}}, devagar. A janela está aberta e a noite já esfriou.' },
+          { who: 'ZELIA', t: '{{Tô ótima, {filho}. Para de me olhar com essa cara de plantão.|otima}}' },
+        ],
+        choices: [ESCOLHAS_ZELIA[0], ESCOLHAS_ZELIA[1], ESCOLHAS_ZELIA[2], { label: '"Almoçou mesmo, mãe?"', next: 'insiste' }, ESCOLHAS_ZELIA[3]],
       },
-      lines: [
-        { who: 'NARRADOR', t: 'Antes de dormir, ela bate na porta do seu quarto: "Jantei. Arroz, feijão e um tomate. Pode dormir, {dr}."', when: is.all(is.flag('zelia_hipo_percebida'), is.not('zelia_fechada')) },
-        { who: 'NARRADOR', t: 'Antes de dormir, você ouve a geladeira abrir e fechar. Ela comeu sozinha, no escuro, pra você não ver.', when: is.flag('zelia_fechada') },
-        ...QUEDA,
-      ],
-      choices: [
-        { label: '(Anotar no celular: hora, voz, endereço trocado.)', when: is.flag('zelia_caiu_d10'), next: 'anotou' },
-        { label: '(Não pensar nisso agora.)', when: is.flag('zelia_caiu_d10'), next: 'upa' },
-      ],
-    },
-    anotou: {
-      onEnter: fx.set('anotou_henrique_d10'),
-      lines: [
-        { who: 'NARRADOR', t: 'Você digita com a mão que ainda treme: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias."' },
-        { who: 'NARRADOR', t: 'Você salva a nota. Não sabe pra quem ela serve. Ainda.' },
-      ],
-    },
-    upa: {
-      lines: [{ who: 'NARRADOR', t: 'Você passa a madrugada na sala de espera da UPA, segurando a mão da sua mãe. A voz arrastada fica no fundo da cabeça, como uma ligação que ninguém desligou.' }],
-    },
-  },
-  inspect: {
-    objects: [
-      { id: 'prato_seco', label: 'Prato no escorredor', desc: 'Um prato no escorredor. Limpo e seco: nem uma gota da torneira. Ninguém comeu nele hoje.', x: 20, y: 84, w: 30, h: 14 },
-      { id: 'xicara', label: 'A xícara de café', desc: 'A xícara treme na mão direita dela. O café faz ondinhas. Quando percebe que você olhou, ela segura com as duas mãos.', x: 150, y: 104, w: 14, h: 12 },
-      {
-        id: 'insulina',
-        label: 'Insulina',
-        desc: (c) =>
-          c.flag('geladeira_quebrada') && !c.flag('geladeira_ok')
-            ? 'A caixa de isopor aberta em cima da mesa, o gelo virando água. A caneta de insulina está fora, sem a tampa, com um algodão usado do lado: ela aplicou a dose do almoço.'
-            : 'A caneta de insulina em cima da mesa, ao lado do açucareiro, sem a tampa. Um algodão usado do lado: ela aplicou a dose do almoço.',
-        x: 178,
-        y: 100,
-        w: 24,
-        h: 16,
+      insiste: {
+        lines: [
+          { who: 'ZELIA', t: 'Almocei, {filho}. Quer que eu desenhe? Arroz, ovo, um tomatinho. Pronto.' },
+          { who: 'NARRADOR', t: 'Ela sorri. A xícara, na mão dela, faz um tlec-tlec miúdo contra o pires.' },
+        ],
+        choices: ESCOLHAS_ZELIA,
       },
-      { id: 'lata_acucar', label: 'Lata de açúcar', desc: 'A lata de açúcar na prateleira, fora do lugar: puxada pra frente, torta, como se alguém tivesse escondido alguma coisa atrás dela com pressa.', x: 248, y: 56, w: 18, h: 22 },
-      { id: 'suco_escondido', label: 'Copo atrás da lata', desc: 'Atrás da lata de açúcar, um copo de suco de laranja, cheio até a borda. Escondido. Ela sabe exatamente o que está sentindo.', x: 268, y: 60, w: 12, h: 18 },
-    ],
-    links: [
-      { a: 'almocei', b: 'prato_seco', insight: '"Almocei, almocei"... e o único prato do escorredor está seco, sem uma gota. Ninguém comeu nele hoje.', unlock: 'prato' },
-      { a: 'prato_seco', b: 'insulina', insight: 'Insulina do almoço aplicada e prato sem uso: ela tomou a dose e não comeu.', unlock: 'prato' },
-      { a: 'xicara', b: 'insulina', insight: 'A mão tremendo na xícara e a insulina do almoço aplicada. Hipoglicemia: igual à mãe do dia 6.', unlock: 'hipo' },
-      { a: 'suor', b: 'insulina', insight: 'Suor frio com a janela aberta e a insulina do almoço aplicada. Hipoglicemia: igual à mãe do dia 6.', unlock: 'hipo' },
-      { a: 'suor', b: 'xicara', insight: 'Suor frio e mão tremendo: o corpo dela está pedindo açúcar.', unlock: 'hipo' },
-      { a: 'otima', b: 'xicara', insight: '"Tô ótima", com a xícara batendo no pires.', unlock: 'hipo' },
-      { a: 'lata_acucar', b: 'suco_escondido', insight: 'Um copo de suco escondido atrás da lata de açúcar. Ela sabe que está baixando, e está escondendo de você.', unlock: 'hipo' },
-    ],
-  },
+      confissao: {
+        lines: [
+          { who: 'ZELIA', t: '(pausa) ...É que o arroz tava acabando. O menino precisa mais do que eu.' },
+          { who: 'NARRADOR', t: 'Ela fala olhando para a xícara. A mão não para.' },
+        ],
+        choices: ESCOLHAS_SUCO,
+      },
+      confissao_hipo: {
+        lines: [
+          { who: 'ZELIA', t: 'Tremendo nada. É o café requentado, que é forte.' },
+          { who: 'NARRADOR', t: 'A xícara bate no pires. Ela põe a xícara na mesa e esconde a mão no colo.' },
+          { who: 'ZELIA', t: '(pausa) ...Não almocei, não. O arroz tava acabando. O menino precisa mais do que eu.' },
+        ],
+        choices: ESCOLHAS_SUCO,
+      },
+      suco: {
+        onEnter: fx.all(fx.set('zelia_hipo_percebida'), fx.add('lacos', 1, 'ouviu a sua mãe'), fx.ach('ouvir_a_familia')),
+        lines: [
+          { who: 'NARRADOR', t: 'Ela não discute. Estica o braço, tira o copo de trás da lata de açúcar e bebe em goles pequenos, de olhos fechados.' },
+          { who: 'ZELIA', t: 'Como é que você sabia do suco?' },
+          { who: 'EU', t: 'Eu passo doze horas por dia ouvindo gente dizer que tá ótima, mãe.' },
+          { who: 'ZELIA', t: '...E eu achando que enganava {m:o médico|a médica}.' },
+          { who: 'NARRADOR', t: 'Dez minutos depois, o tremor passa. Você frita o último ovo e divide no meio. Ela come a metade dela devagar, e você finge que não está contando as garfadas.' },
+          { who: 'ZELIA', t: 'Tá salgado.' },
+          { who: 'EU', t: 'Tá perfeito.' },
+          { who: 'ZELIA', t: 'Tá salgado e tá perfeito. Pode ser as duas coisas, {filho}.' },
+        ],
+        next: 'dinheiro',
+      },
+      bronca: {
+        onEnter: fx.all(fx.set('zelia_hipo_percebida'), fx.set('zelia_fechada'), fx.add('lacos', -1, 'a bronca')),
+        lines: [
+          { who: 'ZELIA', t: 'Não grita comigo, {nome}. Eu sou sua mãe, não sou ligação.' },
+          { who: 'NARRADOR', t: 'Ela bebe o suco que estava escondido atrás da lata de açúcar. O tremor passa. Mas ela não olha mais pra você.' },
+          { who: 'ZELIA', t: 'Pronto. Bebi. {m:Satisfeito|Satisfeita}?' },
+          { who: 'NARRADOR', t: 'Ela lava duas vezes uma xícara que já estava limpa. Você entende, tarde demais, que da próxima vez ela vai esconder melhor.' },
+        ],
+        next: 'dinheiro',
+      },
+      ignora: {
+        lines: [
+          { who: 'NARRADOR', t: 'Você toma o café requentado. Conta do dia na central: a ligação da igreja, o homem que ria de nervoso. Ela ri nas horas certas.' },
+          { who: 'ZELIA', t: 'Vai tomar um banho, {filho}. Você tá com cheiro de central.' },
+          { who: 'NARRADOR', t: 'No jantar, ela empurra o prato pro lado.' },
+          { who: 'ZELIA', t: 'Já belisquei na vizinha. Comam vocês.' },
+        ],
+        next: 'dinheiro',
+      },
+      // ROTEIRO 3.1-e: a aliança muda com o dinheiro que existe (aperto/justo → oferece; folga sem vereador → guarda
+      // mais um mês; folga/sobra com o dinheiro do vereador → põe na mesa a aliança e a cinta do banco)
+      dinheiro: vereador
+        ? {
+            lines: [
+              { who: 'NARRADOR', t: 'Mais tarde, com o Liam dormindo, a Dona Zélia põe na mesa duas coisas: uma caixinha de veludo vermelho, gasta nos cantos, e uma cinta de papel de banco, amassada.' },
+              { who: 'NARRADOR', t: 'Na cinta, carimbado: "Câmara Municipal — Gab. 7". Ela achou no lixo da cozinha.' },
+              { who: 'ZELIA', t: 'A aliança do seu pai. Eu ia vender pro Seu Jacó. Aí eu fui jogar a casca de batata fora e achei isso.' },
+              { who: 'ZELIA', t: 'Teu pai devolvia troco errado de padaria. Isso aqui é o quê, {filho}?' },
+            ],
+            choices: [
+              { label: '"Foi um agradecimento do vereador."', next: 'contou_vereador' },
+              { label: '"É nosso agora, mãe."', next: 'nosso', effect: fx.add('lacos', -1, 'é nosso agora') },
+              { label: '"Vou devolver."', next: 'devolver', effect: fx.set('prometeu_devolver') },
+            ],
+          }
+        : folga
+          ? {
+              onEnter: fx.set('zelia_contou_alianca'),
+              lines: [
+                { who: 'NARRADOR', t: 'Mais tarde, com o Liam dormindo, a Dona Zélia põe na mesa uma caixinha de veludo vermelho, gasta nos cantos. Abre. Fecha.' },
+                { who: 'ZELIA', t: 'Eu ia te oferecer a aliança do seu pai. Ouro dezoito. O Seu Jacó dá duzentos, eu fui lá perguntar.' },
+                { who: 'ZELIA', t: 'Mas vocês tão respirando um pouco agora. Eu guardo mais um mês.' },
+                { who: 'ZELIA', t: 'Ele me deu isso dentro de um ônibus, sabia? O doze. Não tinha dinheiro pro jantar, então me deu no ônibus mesmo, na frente de todo mundo. Ficou vermelho, o bobo.' },
+                { who: 'ZELIA', t: 'O motorista parou no meio da avenida pra ele terminar de falar. Hoje prendiam.' },
+                { who: 'NARRADOR', t: 'Ela guarda a caixinha no bolso do avental e dá dois tapinhas por cima, como quem acalma um bicho.' },
+              ],
+              next: 'noite',
+            }
+          : {
+              lines: [
+                { who: 'NARRADOR', t: 'Mais tarde, com o Liam dormindo, a Dona Zélia põe na mesa uma caixinha de veludo vermelho, gasta nos cantos.' },
+                { who: 'ZELIA', t: 'Eu falei que vendia alguma coisa. Falei sério.', when: is.not('bombinha') },
+                { who: 'ZELIA', t: 'Ontem foi o susto do menino. Amanhã é o aluguel. Eu sei fazer conta, {filho}. Fiz.', when: is.flag('bombinha') },
+                { who: 'ZELIA', t: 'A aliança do seu pai. Ouro dezoito. O Seu Jacó, da joalheria da XV, dá duzentos. Eu já fui lá perguntar.' },
+                { who: 'ZELIA', t: 'Seu pai ia preferir ver o neto respirando do que ver isso aqui dentro de uma gaveta.' },
+              ],
+              choices: [
+                { label: 'Aceitar a aliança.', next: 'vende', effect: fx.all(fx.money(200, 'A aliança do seu pai'), fx.add('lacos', -1, 'a aliança'), fx.set('alianca_vendida'), fx.set('alianca_vendida_dia', 10)) },
+                { label: '"Guarda, mãe. Isso não se vende."', next: 'guarda' },
+              ],
+            },
+      contou_vereador: {
+        lines: [
+          { who: 'ZELIA', t: 'Agradecimento de quê? Você mandou a ambulância pra mãe dele?' },
+          { who: 'NARRADOR', t: 'Você não responde rápido o bastante.', when: is.flag('d7_vereador_usa') },
+          { who: 'ZELIA', t: 'Mandou. Eu sabia.', when: is.flag('d7_vereador_usa') },
+          { who: 'ZELIA', t: 'Não mandou? Então ele pagou pelo quê, {filho}? Pelo que você ainda vai fazer?', when: is.not('d7_vereador_usa') },
+          { who: 'NARRADOR', t: 'Ela guarda a aliança no bolso do avental. A cinta fica na mesa, entre vocês dois, até alguém jogar fora de novo.' },
+        ],
+        onEnter: fx.when(is.flag('d7_vereador_usa'), fx.add('integridade', -1, 'a mãe sabia')),
+        next: 'noite',
+      },
+      nosso: {
+        onEnter: fx.all(fx.set('zelia_alianca_sutia'), fx.set('zelia_contou_alianca')),
+        lines: [
+          { who: 'ZELIA', t: '(guarda a aliança dentro do sutiã, devagar) Então essa aqui é minha.' },
+          { who: 'ZELIA', t: 'Ele me deu dentro de um ônibus, o doze. O motorista parou no meio da avenida. Ninguém pagou ele pra isso, {filho}. Ninguém.' },
+        ],
+        next: 'noite',
+      },
+      devolver: {
+        onEnter: fx.set('zelia_contou_alianca'),
+        lines: [
+          { who: 'ZELIA', t: 'Devolve. Eu vou perguntar. Toda semana eu vou perguntar.' },
+          { who: 'ZELIA', t: '(abre a caixinha, olha a aliança) Teu pai me deu isso dentro de um ônibus. Ficou vermelho, o bobo. O motorista parou no meio da avenida. Hoje prendiam.' },
+          { who: 'NARRADOR', t: 'Ela fecha a caixinha e leva com ela. Não oferece mais.' },
+        ],
+        next: 'noite',
+      },
+      vende: {
+        onEnter: fx.set('zelia_contou_alianca'),
+        lines: [
+          { who: 'NARRADOR', t: 'Ela empurra a caixinha pra você. Antes de soltar, abre uma última vez.' },
+          { who: 'ZELIA', t: 'Ele me deu isso dentro de um ônibus. O doze. Não tinha dinheiro pro jantar, então me deu no ônibus mesmo, na frente de todo mundo. Ficou vermelho, o bobo.' },
+          { who: 'ZELIA', t: 'O motorista parou no meio da avenida pra ele terminar. Hoje prendiam.' },
+          { who: 'ZELIA', t: 'Vende amanhã cedo, {filho}. Antes de eu me arrepender.' },
+          { who: 'NARRADOR', t: 'Você guarda a caixinha no bolso do jaleco. Pesa mais do que devia.' },
+          { who: 'NARRADOR', t: 'Você lembra da Dona Cida, de manhã, no telefone: "Ouro a gente vende uma vez só. Depois fica o dedo pelado, contando história."', when: is.flag('cida_conversou_d10') },
+        ],
+        next: 'noite',
+      },
+      guarda: {
+        onEnter: fx.set('zelia_contou_alianca'),
+        lines: [
+          { who: 'NARRADOR', t: 'Você fecha a caixinha e devolve. Ela segura a sua mão por cima do veludo.' },
+          { who: 'EU', t: 'Uma senhora me disse hoje, no telefone, que ouro a gente vende uma vez só.', when: is.flag('cida_conversou_d10') },
+          { who: 'ZELIA', t: 'Senhora sabida. Deve ser lá da igreja.', when: is.flag('cida_conversou_d10') },
+          { who: 'ZELIA', t: '{m:Teimoso|Teimosa} igual a ele. Ele me deu isso dentro de um ônibus, sabia? O motorista parou no meio da avenida. Hoje prendiam.' },
+          { who: 'ZELIA', t: 'Então faz um trato comigo: eu como direito, e você para de olhar pra minha mão.', when: is.all(is.flag('zelia_hipo_percebida'), is.not('zelia_fechada')) },
+          { who: 'NARRADOR', t: 'Ela guarda a caixinha no bolso do avental.' },
+        ],
+        next: 'noite',
+      },
+      noite: {
+        onEnter: (e) => {
+          if (e.flag('zelia_hipo_percebida')) return;
+          // não percebeu / ignorou: a queda das 22:00 (o risco depende de quanto a ambulância demora: ver escolhas)
+          e.set('zelia_caiu_d10');
+          e.set('henrique_atendeu_zelia');
+          e.add('desgaste', 10, 'a queda da sua mãe');
+          if (is.present('davi')(e)) e.set('davi_viu_queda');
+        },
+        lines: [
+          { who: 'NARRADOR', t: 'Antes de dormir, ela bate na porta do seu quarto: "Jantei. Arroz, feijão e um tomate. Pode dormir, {dr}."', when: is.all(is.flag('zelia_hipo_percebida'), is.not('zelia_fechada')) },
+          { who: 'NARRADOR', t: 'Antes de dormir, você ouve a geladeira abrir e fechar. Ela comeu sozinha, no escuro, pra você não ver.', when: is.flag('zelia_fechada') },
+          { who: 'NARRADOR', t: '21:58. O Ozzy late para a porta do banheiro. Duas vezes. Ninguém entende por quê.', when: is.flag('zelia_caiu_d10') },
+          { who: 'NARRADOR', t: '22:00. Um barulho seco no banheiro. Depois, nada.', when: is.flag('zelia_caiu_d10') },
+          { who: 'LUCIA', t: '{nome}! A sua mãe!', when: is.all(is.flag('zelia_caiu_d10'), is.present('lucia')) },
+          { who: 'NARRADOR', t: 'Ela está no chão do banheiro, encharcada de suor, os olhos abertos e perdidos. Responde com palavras soltas. Um galo começa a subir na testa.', when: is.flag('zelia_caiu_d10') },
+          { who: 'DAVI', t: '(na porta, de pijama) Vó? Vó, acorda...', when: is.all(is.flag('zelia_caiu_d10'), is.present('davi')) },
+          // [validar] confusa mas engolindo: açúcar umedecido na mucosa da bochecha, em pequenas porções, cabeça de
+          // lado; nada de copo "goela abaixo" com a consciência alterada (protocolos de hipoglicemia, campo A15)
+          { who: 'NARRADOR', t: 'Atrás da lata de açúcar, um copo de suco cheio, escondido. Você não dá o copo: ela não está acordada o bastante para beber de goles.', when: is.flag('zelia_caiu_d10') },
+          { who: 'NARRADOR', t: 'Ela engole quando você encosta a colher. Açúcar umedecido por dentro da bochecha, um pouquinho de cada vez, com a cabeça dela de lado no seu colo.', when: is.flag('zelia_caiu_d10') },
+          { who: 'NARRADOR', t: 'Ela bateu a cabeça na pia. Você liga para a emergência do seu próprio celular.', when: is.flag('zelia_caiu_d10') },
+          { who: 'VOZ', t: 'R-Regulação... Dr. Henrique... o que aconteceu?', when: is.flag('zelia_caiu_d10') },
+          { who: 'NARRADOR', t: 'A voz é lenta. Arrastada. As sílabas escorregam umas nas outras.', when: is.flag('zelia_caiu_d10') },
+          { who: 'NARRADOR', t: 'De manhã você sentiu o cheiro. Agora você ouve o cheiro.', when: is.all(is.flag('zelia_caiu_d10'), is.flag('henrique_cheiro_d10')) },
+          { who: 'EU', t: 'Henrique, sou eu. {nome}. Minha mãe: diabética, hipoglicemia, caiu e bateu a cabeça. Rua das Acácias, 40, Vila Esperança.', when: is.flag('zelia_caiu_d10') },
+          { who: 'HENRIQUE', t: 'Tá. ...Repete o número? ...Quarenta. Tá. Palmeiras, quarenta. Tá indo.', when: is.flag('zelia_caiu_d10') },
+          { who: 'NARRADOR', t: 'Palmeiras. Ele disse Palmeiras. A Rua das Palmeiras fica do outro lado da Vila.', when: is.flag('zelia_caiu_d10') },
+        ],
+        choices: [
+          { label: '"Acácias, Henrique. A-cá-cias. Repete pra mim."', when: is.flag('zelia_caiu_d10'), next: 'q_repete', effect: fx.all(fx.set('zelia_henrique_corrigido'), esperaZelia(25)) },
+          { label: '"Me passa a TARM."', when: is.flag('zelia_caiu_d10'), next: 'q_tarm', effect: fx.all(fx.set('zelia_tarm_corrigiu'), esperaZelia(20)) },
+          { label: 'Desligar e ligar para o Bené. (O número dele está na carteira.)', when: (cc) => cc.flag('zelia_caiu_d10') && temBene(cc), next: 'q_bene', effect: fx.all(fx.set('zelia_bene_corrigiu'), fx.add('intimBene', 1, 'o Bené corrigiu pelo rádio'), esperaZelia(15)) },
+          { label: 'Ligar para o Zé Carlos, três ruas pra cima.', when: (cc) => cc.flag('zelia_caiu_d10') && cc.flag('tel_ze_carlos'), next: 'q_ze', effect: fx.all(fx.set('zelia_ze_carlos'), esperaZelia(25, true)) },
+          { label: '(Não insistir. Ele já disse que tá indo.)', when: is.flag('zelia_caiu_d10'), next: 'q_espera', effect: esperaZelia(40) },
+        ],
+      },
+      q_repete: {
+        lines: [
+          { who: 'HENRIQUE', t: 'A-cá-cias. Acácias, quarenta. Desculpa. ...Tá. Tá indo.' },
+          { who: 'NARRADOR', t: 'Você ouve ele digitar do outro lado. Devagar demais.' },
+          { who: 'NARRADOR', t: '22:32. A USB 01 encosta no portão. A Joana desce correndo, o prendedor de borboleta torto.' },
+          { who: 'JOANA', t: 'Desculpa a demora, {dr}. O endereço chegou trocado e depois chegou certo. Vinte e cinco minutos. Bateu a cabeça? Ela tá falando, que bom.' },
+        ],
+        next: 'bilhete',
+      },
+      q_tarm: {
+        lines: [
+          { who: 'NARRADOR', t: 'Silêncio na linha. Um clique. Uma voz de mulher, rápida.' },
+          { who: 'CLEIDE', t: 'TARM do noturno, Cleide. Acácias, quarenta, casa azul, perto da base da Vila. Anotado, {dr}. Desculpa.' },
+          { who: 'NARRADOR', t: '22:20. A USB 01 encosta no portão. A Joana pula da viatura antes de ela parar.' },
+          { who: 'JOANA', t: 'Vinte minutos, {dr}. A Cleide gritou o endereço certo no rádio duas vezes. Deixa eu ver ela.' },
+        ],
+        next: 'bilhete',
+      },
+      q_bene: {
+        lines: [
+          { who: 'NARRADOR', t: 'Você desliga na cara da Regulação pela primeira vez na vida e liga para o número da carteira. Atende no segundo toque.' },
+          { who: 'BENÉ', t: '(voz de quem dormia) Fala, {bene}. ...Acácias? A casa azul? Deixa comigo.' },
+          { who: 'NARRADOR', t: 'Ele não desliga. Você ouve, pelo telefone dele, o rádio velho da base pegando a frequência da USB 01.' },
+          { who: 'BENÉ', t: 'Joana, é o Bené. Não é Palmeiras. É Acácias, quarenta. A casa azul do doutor. Corre.' },
+          { who: 'NARRADOR', t: '22:15. A USB 01 encosta no portão. Quinze minutos.' },
+          { who: 'JOANA', t: 'O Bené gritou no rádio de pijama, {dr}. Nunca vi isso. Cadê ela?' },
+        ],
+        next: 'bilhete',
+      },
+      q_ze: {
+        lines: [
+          { who: 'NARRADOR', t: 'O Zé Carlos atende no primeiro toque, com a televisão alta atrás.' },
+          { who: 'ZÉ CARLOS', t: 'Moro a três ruas. Tô indo. ...Ela engole? Então açúcar na bochecha, devagar, que nem você tá fazendo. Não para.' },
+          { who: 'NARRADOR', t: '22:06. Palmas no portão. O Zé Carlos de chinelo, bermuda e o glicosímetro da mulher na mão. Ele ajoelha no chão do banheiro como quem ajoelha numa calçada.' },
+          { who: 'ZÉ CARLOS', t: 'Trinta e oito. Subindo. Ela tá voltando, {dr}. Bate aqui no meu ombro, Dona Zélia. Isso.' },
+          { who: 'NARRADOR', t: 'A USB chega às 22:32, com o endereço consertado no meio do caminho. Quando a Joana entra, a sua mãe já está sentada, pedindo desculpa pela camisola.' },
+        ],
+        next: 'bilhete',
+      },
+      q_espera: {
+        lines: [
+          { who: 'NARRADOR', t: 'Você espera. Dez minutos. Vinte. Lá fora, uma sirene passa na rua de cima, devagar, procurando número, e vai embora.' },
+          { who: 'NARRADOR', t: 'Da janela da frente, a Dona Dirce grita para a rua vazia: "É NA ACÁCIAS!"' },
+          { who: 'JOANA', t: 'Desculpa a demora, {dr}. O noturno passou "Rua das Palmeiras". A gente rodou a Vila inteira.' },
+          { who: 'NARRADOR', t: 'Quarenta minutos. A sua mãe sai na maca da USB 01, acordada, pedindo desculpa pela camisola.' },
+        ],
+        next: 'bilhete',
+      },
+      bilhete: {
+        lines: [
+          { who: 'NARRADOR', t: 'Da porta do quarto, o Liam viu tudo: a vó no chão, o telefone, a sirene que não achava a rua. Ele não chorou. Ficou olhando.', when: () => liam },
+          { who: 'NARRADOR', t: 'Em cima da mesa da cozinha, o papel do pão, ainda com farelo. E uma caneta.' },
+        ],
+        choices: [
+          { label: '(Anotar no papel do pão: hora, voz, endereço trocado.)', next: 'anotou' },
+          { label: '(Não pensar nisso agora.)', next: 'upa' },
+        ],
+      },
+      anotou: {
+        onEnter: fx.all(fx.set('anotou_henrique_d10'), fx.set('bilhete_origem', 'papel')),
+        lines: [
+          { who: 'NARRADOR', t: 'Você escreve com a mão que ainda treme: "22:07. Henrique. Voz arrastada. Pediu o número duas vezes. Passou Palmeiras em vez de Acácias."' },
+          { who: 'NARRADOR', t: 'Dobra o papel de pão em quatro e guarda no bolso do jaleco. Não sabe pra quem ele serve. Ainda.' },
+        ],
+      },
+      upa: {
+        lines: [
+          { who: 'NARRADOR', t: 'Você passa a madrugada na sala de espera da UPA, segurando a mão da sua mãe. A voz arrastada fica no fundo da cabeça, como uma ligação que ninguém desligou.', when: (cc) => (Number(cc.val('zelia_espera')) || 40) >= 20 && !cc.flag('zelia_ze_carlos') },
+          { who: 'NARRADOR', t: 'A equipe faz o curativo da testa ali mesmo, mede o açúcar duas vezes e deixa ela em casa, com a recomendação de não ficar sozinha. Você não dorme. A voz arrastada fica no fundo da cabeça.', when: (cc) => (Number(cc.val('zelia_espera')) || 40) < 20 || cc.flag('zelia_ze_carlos') },
+        ],
+      },
+    },
+    inspect: {
+      objects: [
+        { id: 'prato_seco', label: 'Prato no escorredor', desc: (cc) => (cc.flag('zelia_ligou_almoco') ? '"Arroz com ovo", ela disse ao telefone, às treze e dez. O único prato do escorredor está limpo e seco: nem uma gota da torneira. Ninguém comeu nele hoje.' : 'Um prato no escorredor. Limpo e seco: nem uma gota da torneira. Ninguém comeu nele hoje.'), x: 20, y: 84, w: 30, h: 14 },
+        { id: 'xicara', label: 'A xícara de café', desc: 'A xícara treme na mão direita dela. O café faz ondinhas. Quando percebe que você olhou, ela segura com as duas mãos.', x: 150, y: 104, w: 14, h: 12 },
+        {
+          id: 'insulina',
+          label: 'Insulina',
+          desc: (cc) =>
+            cc.flag('geladeira_quebrada') && !cc.flag('geladeira_ok')
+              ? 'A caixa de isopor aberta em cima da mesa, o gelo virando água. A caneta de insulina está fora, sem a tampa, com um algodão usado do lado: ela aplicou a dose do almoço.'
+              : 'A caneta de insulina em cima da mesa, ao lado do açucareiro, sem a tampa. Um algodão usado do lado: ela aplicou a dose do almoço.',
+          x: 178,
+          y: 100,
+          w: 24,
+          h: 16,
+        },
+        { id: 'lata_acucar', label: 'Lata de açúcar', desc: 'A lata de açúcar na prateleira, fora do lugar: puxada pra frente, torta, como se alguém tivesse escondido alguma coisa atrás dela com pressa.', x: 248, y: 56, w: 18, h: 22 },
+        { id: 'suco_escondido', label: 'Copo atrás da lata', desc: 'Atrás da lata de açúcar, um copo de suco de laranja, cheio até a borda. Escondido. Ela sabe exatamente o que está sentindo.', x: 268, y: 60, w: 12, h: 18 },
+      ],
+      links: [
+        { a: 'almocei', b: 'prato_seco', insight: '"Almocei, almocei"... e o único prato do escorredor está seco, sem uma gota. Ninguém comeu nele hoje.', unlock: 'prato' },
+        { a: 'prato_seco', b: 'insulina', insight: 'Insulina do almoço aplicada e prato sem uso: ela tomou a dose e não comeu.', unlock: 'prato' },
+        { a: 'xicara', b: 'insulina', insight: 'A mão tremendo na xícara e a insulina do almoço aplicada. Hipoglicemia: igual à mãe do dia 6.', unlock: 'hipo' },
+        { a: 'suor', b: 'insulina', insight: 'Suor frio com a janela aberta e a insulina do almoço aplicada. Hipoglicemia: igual à mãe do dia 6.', unlock: 'hipo' },
+        { a: 'suor', b: 'xicara', insight: 'Suor frio e mão tremendo: o corpo dela está pedindo açúcar.', unlock: 'hipo' },
+        { a: 'otima', b: 'xicara', insight: '"Tô ótima", com a xícara batendo no pires.', unlock: 'hipo' },
+        { a: 'lata_acucar', b: 'suco_escondido', insight: 'Um copo de suco escondido atrás da lata de açúcar. Ela sabe que está baixando, e está escondendo de você.', unlock: 'hipo' },
+      ],
+    },
+  };
 };
 
 const BICO_SCENE: SceneDef = {
@@ -302,7 +448,7 @@ const BICO_SCENE: SceneDef = {
       lines: [
         { who: 'NARRADOR', t: '00:50. A USA 01 deixa o último paciente no Regional.', when: is.present('lucia') },
         { who: 'NARRADOR', t: 'Na observação, numa maca, de camisola, com um galo na testa: a Dona Zélia. A USB 03 trouxe ela às dez da noite. Ela te reconhece primeiro.', when: is.present('lucia') },
-        { who: 'LUCIA', t: '{nome}, a sua mãe caiu no banheiro. Tava suando, falando coisa sem sentido. Eu achei um suco escondido atrás da lata de açúcar e dei pra ela. Ela engoliu.', when: is.present('lucia') },
+        { who: 'LUCIA', t: '{nome}, a sua mãe caiu no banheiro. Tava suando, falando coisa sem sentido. Eu achei um suco escondido atrás da lata de açúcar e dei de golinho, só quando ela conseguia engolir. Ela engoliu.', when: is.present('lucia') },
         { who: 'LUCIA', t: 'Eu liguei pra emergência. O médico que atendeu... {nome}, ele tava estranho. Falava devagar, perguntou o número da casa duas vezes. Disse que era o Dr. Henrique.', when: is.present('lucia') },
         { who: 'ZELIA', t: 'Não conta pra ninguém que eu dei trabalho, {filho}.', when: is.present('lucia') },
         { who: 'NARRADOR', t: 'Você chega da ambulância de madrugada. A casa está quieta. Ninguém percebe nada.', when: (c) => !is.present('lucia')(c) },
@@ -380,6 +526,82 @@ export const DAY = day({
         lines: [
           { who: 'SIMONE', t: 'Bom dia, {dr}. Recado do Peixoto, por escrito, olha só: "endereço duvidoso, ligar de volta antes de despachar". Meia hora de relógio. Ele mesmo disse que compensa.' },
           { who: 'SIMONE', t: 'E outra coisa, já que é sexta e eu tô sincera: hoje eu vou errar nota. Esses trotes novos tão me pegando também. Não confia cego no meu post-it.' },
+          // flags.md: admitiu_vinculo / d9_impedimento (eco imediato) — o Peixoto responde por escrito
+          { who: 'NARRADOR', t: 'Embaixo do recado, um segundo papel, com a letra de planilha do Peixoto: "Recebi o seu 9-B. \'Vínculo pessoal\'. Ninguém escreve isso. Vou guardar."', when: is.flag('admitiu_vinculo') },
+          { who: 'NARRADOR', t: 'Preso no seu monitor, um bilhete do Peixoto: "9-C. Você me passou o seu filho. Foi o certo. Foi o pior minuto dos meus quatro anos nessa cadeira."', when: is.flag('d9_impedimento') },
+        ],
+      },
+    },
+  }),
+  // 1.1 — ida (o Benício no carrinho), almoço (a Zélia liga: "arroz com ovo") e volta (a joalheria do Seu Jacó)
+  ida: (c) => ({
+    id: 'd10_ida',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: c.flag('d9_parto_regulado')
+        ? {
+            lines: [
+              { who: 'NARRADOR', t: '06:25. Na calçada da casa 88, o Diego empurra um carrinho de bebê azul, de chinelo. A Tainara acena da janela, de camisola.' },
+              { who: 'DIEGO', t: 'Nasceu, {dr}! Na ambulância pequena, ontem. Benício. A moça disse "foi a central". Foi você?' },
+            ],
+            choices: [
+              { label: '"Foi a central."', next: 'afilhado', effect: fx.set('benicio_afilhado') },
+              { label: '(Olhar o Benício dormindo.)', next: 'olhar' },
+            ],
+          }
+        : {
+            lines: [
+              { who: 'NARRADOR', t: '06:25. Na calçada da casa 88, o Diego empurra um carrinho de bebê azul.' },
+              { who: 'DIEGO', t: 'Nasceu no carro, {dr}. De novo! Benício. Rápido igual o irmão. A Tainara disse que o próximo nasce no ônibus.' },
+            ],
+          },
+      afilhado: { lines: [{ who: 'DIEGO', t: 'Então a central ganhou um afilhado. Vou contar pra ele quando ele crescer.' }] },
+      olhar: { lines: [{ who: 'NARRADOR', t: 'Ele dorme de boca aberta, com o punho fechado do lado da orelha, como quem segura um telefone.' }] },
+    },
+  }),
+  almoco: () => ({
+    id: 'd10_almoco',
+    bg: 'central',
+    cast: ['SIMONE', 'ZELIA'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Sexta. A Simone espalha os post-its do dia na mesa da copa, como cartas de baralho. Dois têm "trote?" escrito e riscado.' },
+          { who: 'SIMONE', t: 'Já errei dois hoje, {dr}. Esses trotes de voz calma me pegam. Não confia cego no meu post-it, eu falei.' },
+          { who: 'NARRADOR', t: 'O seu celular vibra em cima da mesa. "CASA".' },
+          { who: 'ZELIA', t: '(ao telefone) Almoçou, {filho}? Eu já almocei. Arroz com ovo. Tava uma delícia. Só liguei pra saber se você almoçou. Não almoçou, né? Tá na voz.' },
+        ],
+        choices: [
+          { label: '"O que a senhora comeu, mãe?"', next: 'perguntou', effect: fx.set('zelia_ligou_almoco') },
+          { label: '"Almocei, mãe. Fica tranquila."', next: 'mentiu' },
+        ],
+      },
+      perguntou: {
+        lines: [
+          { who: 'ZELIA', t: 'Arroz com ovo, já falei. O menino comeu o ovo. Eu comi o arroz. É a mesma coisa.' },
+          { who: 'NARRADOR', t: 'Ela desliga antes de você perguntar de novo. Arroz com ovo. Você anota de cabeça, sem saber por quê.' },
+          { who: 'SIMONE', t: 'Mãe é a única que liga pra saber se a gente comeu. O resto liga pra saber se a gente morreu.' },
+        ],
+      },
+      mentiu: {
+        lines: [
+          { who: 'ZELIA', t: 'Mentira de filho eu conheço de longe. Come alguma coisa. Tchau.' },
+          { who: 'SIMONE', t: 'Mãe é a única que liga pra saber se a gente comeu. O resto liga pra saber se a gente morreu.' },
+        ],
+      },
+    },
+  }),
+  volta: (c) => ({
+    id: 'd10_volta',
+    bg: 'rua',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:15. Na XV, o Seu Jacó baixa a porta de ferro da joalheria, de lupa ainda presa na testa. A placa pendurada balança: "COMPRA-SE OURO".' },
+          { who: 'NARRADOR', t: 'No ônibus, você pensa no pão da Dona Zélia. Desce na padaria do Toninho antes de casa.' },
+          { who: 'NARRADOR', t: `Na vitrine da papelaria do lado, uma caixa de giz de cera de vinte e quatro cores. Você lembra do Liam: "${falaLiam(c)}"`, when: () => is.present('davi')(c) },
         ],
       },
     },
@@ -429,11 +651,13 @@ export const DAY = day({
         paciente: ['Ele não consegue falar agora, {dr}.', '[silêncio]'],
         referencia: 'É uma casa. {{Casa de muro branco, perto da praça|casa_muro}}.',
         seguranca: 'Seguro. Só eu e ele, {{aqui em casa|em_casa}}.',
+        pulso: 'Tem pulso. Fraco. Rápido e fraco. Como diz na internet.',
+        pele: 'Pálido. Sudoreico. Frio e úmido. É o quadro completo, {dr}.',
         sangramento: 'Não.',
       },
       extra: [
         { id: 'nome_pai', label: 'Nome completo do seu pai?', say: 'Qual o nome completo do seu pai?', a: '{{José... José da Silva.|nome_generico}}' },
-        { id: 'ouvir_pai', label: 'Pedir para ouvir o pai', say: 'Coloca o telefone perto dele. Eu quero ouvir a respiração dele.', a: ['[{{nada: nem respiração, nem gemido|nada}}]', 'Ele... ele virou pro outro lado.'] },
+        { id: 'ouvir_pai', label: 'Pedir para ouvir o pai', say: 'Coloca o telefone perto dele. Eu quero ouvir a respiração dele.', a: ['[{{nada: nem respiração, nem gemido|nada}}]', '[bem baixinho, longe, {{um órgão tocando um hino|orgao}}]', 'Ele... ele virou pro outro lado.'] },
         {
           id: 'igreja',
           label: '"No endereço tem uma igreja."',
@@ -497,6 +721,8 @@ export const DAY = day({
         paciente: ['MÃE: Renato... a... a janela... o feijão...', '[{{ela fala com calma, como se a frase fizesse todo o sentido|afasia}}]'],
         sangramento: 'Não, nada.',
         seguranca: 'Tá tudo certo aqui, é só eu e ela.',
+        pulso: 'A vizinha enfermeira mediu: oitenta e oito, batendo certinho. Forte. [ri de nervoso] Desculpa.',
+        pele: 'Corada. Normal. Só a boca torta. [a risada quebra no meio]',
         referencia: 'Esquina com a Marechal Deodoro. Portão de grade azul, do lado da quitanda.',
       },
       extra: [
@@ -565,6 +791,8 @@ export const DAY = day({
         fast: 'Tô sorrindo! Levantei os dois braços! "O céu é azul"! Ai, que divertido.',
         paciente: 'Sou eu mesma, {meu} {filho}!',
         seguranca: 'Tranquei a porta. Vai que o moço do banco vem aqui.',
+        pulso: 'Contei! Oitenta e pouco, certinho, igual a moça da farmácia ensinou. Agora tá mais devagar.',
+        pele: 'Vermelha de raiva do golpista, {meu} {filho}. Já tá passando.',
         sangramento: 'Credo, não.',
       },
       extra: [
@@ -794,7 +1022,7 @@ export const DAY = day({
       voice: 'homem',
       note: 'Professor da Estadual. Aluno torceu o joelho no vôlei. Quer ambulância "por protocolo".',
       noteWrong: 'Escola Estadual de novo. Acho que é trote.',
-      addr: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte', ref: 'Escola Estadual Prof. Aurélio Matos, entrada da quadra pela lateral.' },
+      addr: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte', ref: 'Escola Estadual Prof. Aurélio Valença, entrada da quadra pela lateral.' },
       amb: ['escola'],
       open: [
         'Boa tarde, aqui é o Anderson, professor de Educação Física da Escola Estadual. Um aluno {{torceu o joelho no vôlei|torceu}}.',
@@ -894,23 +1122,26 @@ export const DAY = day({
       callerName: 'Garoto',
       type: 'trotista',
       voice: 'adolescente',
-      note: (c) => (bielNoQuadro(c) ? 'Risada. É o 9-8877 de novo, {dr}.' : 'Tô ouvindo risada, {dr}.'),
+      note: (c) => (bielNoQuadro(c) ? 'Videogame no fundo. É o 9-8877 de novo, {dr}.' : 'Voz de moleque. Videogame tocando no fundo.'),
       noteWrong: 'Menino engasgado! Parece sério.',
       addr: { rua: 'Rua dos Bem-te-vis', n: 4800, bairro: 'Bela Vista' },
-      amb: ['risadas', 'videogame'],
+      // 1.1 (trotes-folgados.md): óbvio, mas sem risada — o próprio videogame toca a musiquinha ao fundo
+      amb: ['videogame'],
       open: [
         'Alô, emergência? Corre, {{o meu amigo engoliu o controle do videogame|controle}}! Inteiro! Com pilha e tudo!',
-        '[{{risadas de dois ou três moleques; um grita "fala do fio!"|risadas}}]',
-        'E o fio! O fio tá pra fora! [risada]',
+        '[{{a musiquinha do videogame tocando alto; alguém do lado: "fala do fio!"|risadas}}]',
+        'E o fio! O fio tá pra fora!',
       ],
       q: {
-        oque: 'Ele tava perdendo e engoliu! Pra ninguém mais jogar! [risadas]',
+        oque: 'Ele tava perdendo e engoliu! Pra ninguém mais jogar!',
         consciencia: 'Tá... tá jogando ainda! Quer dizer, tá desmaiado!',
         respira: 'Pelo nariz! O fio tá saindo pela boca!',
-        idade: 'Treze. Não, quinze. [risada]',
+        idade: 'Treze. Não, quinze.',
         referencia: 'Rua dos Bem-te-vis, quatro mil e oitocentos. Do lado da... da casa do lado.',
-        paciente: '[{{"Glub, glub!" — e a gargalhada explode|glub}}]',
-        seguranca: 'Seguro, mas vem rápido senão ele engole o outro controle! [risadas]',
+        paciente: '[{{"Glub, glub!" — e o videogame toca a musiquinha de fim de fase|glub}}]',
+        seguranca: 'Seguro, mas vem rápido senão ele engole o outro controle!',
+        pulso: 'Tem! Tá pulsando que nem o controle quando vibra!',
+        pele: 'Verde. Verde de raiva. Ele tava perdendo.',
         sangramento: 'Não! Quer dizer, sim!',
       },
       extra: [
@@ -922,11 +1153,11 @@ export const DAY = day({
           unlockedBy: ['callback'],
           label: '"Gabriel, o seu avô sabe?"',
           say: 'Gabriel, o seu avô sabe que você liga pra cá?',
-          a: ['[as risadas param de uma vez]', '[{{silêncio; alguém sussurra: "como é que ele sabe o teu nome?"|silencio_biel}}]', '[desliga]'],
+          a: ['[a musiquinha do videogame para de uma vez]', '[{{silêncio; alguém sussurra: "como é que ele sabe o teu nome?"|silencio_biel}}]', '[desliga]'],
           onAsk: fx.set('d10_biel_nome'),
         },
       ],
-      callback: ['[{{Chama, chama... cai na caixa postal|retorno_caixa}}]', '"Fala aí, é o Biel! Se é serviço de geladeira, liga pro meu vô, o Jairo da refrigeração. Se não é... [risada gravada]"'],
+      callback: ['[{{Chama, chama... cai na caixa postal|retorno_caixa}}]', '"Fala aí, é o Biel, neto do Jairo da refrigeração! Se é serviço de geladeira, liga pro meu vô. Se não é... deixa recado."'],
       links: [
         { a: 'num', b: 'doc:jairo_neto', insight: '9-8877: é o número do Gabriel, o neto do Seu Jairo. Está no verso do recibo da geladeira.', unlock: 'avo' },
         { a: 'controle', b: 'risadas', insight: 'Controle de videogame engolido "com pilha e tudo" e gargalhadas ao fundo: trote clássico.' },
@@ -943,9 +1174,13 @@ export const DAY = day({
       {
         id: 'd10_queda',
         label: 'Táxi da UPA e curativo (Dona Zélia)',
-        amount: 30,
+        // ROTEIRO 3.2: com socorro em 15 min ou o Zé Carlos, sem observação na UPA: só o curativo
+        amount: (c) => ((Number(c.val('zelia_espera')) || 40) <= 15 || c.flag('zelia_ze_carlos') ? 10 : 30),
         when: is.flag('zelia_caiu_d10'),
-        desc: 'A queda no banheiro: o táxi de volta da UPA e o curativo da testa.',
+        desc: (c) =>
+          (Number(c.val('zelia_espera')) || 40) <= 15 || c.flag('zelia_ze_carlos')
+            ? 'A queda no banheiro: só o curativo da testa. Ela não precisou passar a noite na UPA.'
+            : 'A queda no banheiro: a noite na UPA, o táxi de volta e o curativo da testa.',
         onSkip: fx.add('lacos', -1, '{oconj} pagou do bolso'),
       },
     ],

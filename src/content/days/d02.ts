@@ -5,7 +5,7 @@
 // Padrões quebrados de propósito: a ligação muda que não é trote "de verdade"
 // (acidental) e o tornozelo com risadas ao fundo que é caso real.
 // =============================================================================
-import type { Ctx } from '../../engine/types';
+import type { Ctx, Effect } from '../../engine/types';
 import type { DeskDoc } from '../../engine/content-api';
 import { day, call, fx, NUM, ADDR } from '../dsl';
 
@@ -18,11 +18,23 @@ const saud = (c: Ctx) => {
 /** desfecho de uma ligação de dia anterior registrada no diário */
 const diaryKind = (c: Ctx, id: string) => c.s.diary.find((d) => d.id === id)?.kind;
 
+/**
+ * 1.1 (correção de continuidade): dizer "a gente paga" na cena MARCA a conta. Paga na hora se o saldo der;
+ * se não der, {oconj} diz "Hoje não dá. Amanhã." e a conta fica para a tela de contas, com o aviso de corte.
+ */
+const pagaAgua: Effect = (e) => {
+  if (e.flag('pagou_agua') || e.flag('brigou_nogueira')) return;
+  if (e.money() >= 70) {
+    e.pay(-70, 'Conta de água do antigo inquilino');
+    e.set('pagou_agua');
+  } else e.set('agua_sem_dinheiro');
+};
+
 export const DOCS_EXTRA: Record<string, DeskDoc> = {
   jornal_d02: {
     id: 'jornal_d02',
     title: 'Gazeta de Santa Aurora (terça-feira)',
-    text: 'Recorte da página 3: "SEM AULA NA ESTADUAL — A Escola Estadual Prof. Aurélio Matos (Rua Ipê, 901, Jardim Norte) não abre nesta terça. O prédio passa por dedetização contra o mosquito da dengue. Os alunos estão dispensados; o mosquito, não."',
+    text: 'Recorte da página 3: "SEM AULA NA ESTADUAL — A Escola Estadual Prof. Aurélio Valença (Rua Ipê, 901, Jardim Norte) não abre nesta terça. O prédio passa por dedetização contra o mosquito da dengue. Os alunos estão dispensados; o mosquito, não."',
     until: 2,
     clues: [{ id: 'doc:escola_fechada', text: 'Jornal: a Escola Estadual (Rua Ipê, 901) está FECHADA hoje para dedetização — sem aula, sem aluno' }],
   },
@@ -45,7 +57,7 @@ export const DAY = day({
     return {
       ...head,
       stories: [
-        { title: 'Sem aula na Estadual', text: 'A Escola Estadual Prof. Aurélio Matos, no Jardim Norte, fica fechada nesta terça para dedetização contra o mosquito da dengue. A diretoria pede que os pais "mantenham os alunos ocupados". Os pais pedem o mesmo à diretoria.' },
+        { title: 'Sem aula na Estadual', text: 'A Escola Estadual Prof. Aurélio Valença, no Jardim Norte, fica fechada nesta terça para dedetização contra o mosquito da dengue. A diretoria pede que os pais "mantenham os alunos ocupados". Os pais pedem o mesmo à diretoria.' },
         { title: 'DAE aperta a cobrança: "o débito é do imóvel"', text: 'O Departamento de Água e Esgoto promete cortar o fornecimento de imóveis com contas atrasadas, "mesmo que o devedor já tenha se mudado". Inquilinos reclamam; o diretor diz que "a água não tem CPF".' },
         { title: 'Saúde+ Gestão divulga números do primeiro dia', text: 'Segundo a OS, o tempo médio de regulação da Central caiu 11% desde a nova gestão. A nota não informa quantas ligações ficaram para o plantão noturno.' },
         { title: 'Amor de Cristal', text: 'Depois de descobrir o segredo, Marta foge da fazenda na garupa de um peão. Telespectadoras da Bela Vista garantem que "ela volta".' },
@@ -89,11 +101,86 @@ export const DAY = day({
       fim: { lines: [{ who: 'SIMONE', t: 'Na dúvida, liga de volta. Custa meia hora. Mandar ambulância pra nada custa mais. E deixar de mandar custa muito mais.' }] },
     },
   }),
+  // 1.1 — ida (o moleque do ponto), almoço (Lia e os "quarenta minutos") e volta (Dona Dirce e o DAE)
+  ida: () => ({
+    id: 'd02_ida',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '06:35. No ponto da Rua das Acácias, um moleque de uns quinze anos, mochila da Estadual nas costas, fone gigante, rindo do celular.' },
+          { who: 'NARRADOR', t: 'Hoje não tem aula na Estadual. Saiu no jornal.' },
+          { who: 'AÍLTON', t: '(abrindo a porta do 12) Esse aí pega o doze todo dia e não paga. Neto do Jairo da geladeira. Fala "bom dia" com o dedão.' },
+        ],
+        choices: [
+          { label: '"Bom dia." (para o moleque)', next: 'bomdia', effect: (e) => e.set('viu_biel_ponto') },
+          { label: '(Passar a catraca.)', next: 'catraca' },
+        ],
+      },
+      bomdia: {
+        lines: [{ who: 'NARRADOR', t: 'Ele tira um lado do fone. "...Dia." E volta pro celular. No visor, um número de telefone sendo digitado.' }],
+      },
+      catraca: { lines: [{ who: 'NARRADOR', t: 'O moleque salta pela porta de trás sem passar a catraca. O Seu Aílton finge que não viu, de novo.' }] },
+    },
+  }),
+  almoco: () => ({
+    id: 'd02_almoco',
+    bg: 'central',
+    cast: ['SIMONE', 'LIA'],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '13:00. Pão com mortadela, dividido no meio em cima de um guardanapo. A Lia, da USB 03, encosta na porta com um pão de queijo frio na mão.' },
+          { who: 'LIA', t: 'Ô Simone, aquele trote de ontem do ET... quem atendeu foi {o} {dr} nov{m:o|a}? Da última vez que mandaram viatura pra trote, a gente chegou e era um aniversário de criança. Cantaram parabéns pra mim.' },
+          { who: 'SIMONE', t: 'Conta a outra, Lia. A do incêndio de verdade.' },
+          { who: 'LIA', t: 'Não, essa não. Essa a gente levou quarenta minutos. Uma vez. (ela olha a Simone) ...Você não gosta que fale.' },
+          { who: 'NARRADOR', t: 'A Simone mastiga devagar. Não responde.' },
+        ],
+        choices: [
+          { label: '"Quarenta minutos por quê?"', next: 'quarenta', effect: (e) => e.set('lia_2019') },
+          { label: '"Me conta o do aniversário."', next: 'aniversario', effect: (e) => e.set('lia_intima') },
+          { label: '(Ficar quiet{m:o|a} com a Simone.)', next: 'quieto', effect: (e) => e.add('lealSimone', 1, 'não perguntou') },
+        ],
+      },
+      quarenta: {
+        lines: [
+          { who: 'LIA', t: 'Maca presa. Coisa de hospital. Pergunta pro Bené um dia. ...Não, não pergunta.' },
+          { who: 'NARRADOR', t: 'Ela vai embora mastigando o pão de queijo, mais depressa do que entrou.' },
+        ],
+      },
+      aniversario: {
+        lines: [
+          { who: 'LIA', t: 'O menino fez sete anos. Ganhou uma medição de pressão de presente. Pediu pra ligar a sirene. Liguei um pouquinho. Não conta pro Peixoto.' },
+          { who: 'LIA', t: 'Qual o seu nome mesmo, {dr}? {nome}? Vou te chamar assim no rádio. "Doutor" é pro Peixoto.' },
+        ],
+      },
+      quieto: {
+        lines: [
+          { who: 'NARRADOR', t: 'Quando a Lia sai, a Simone diz baixinho, sem tirar o olho do pão:' },
+          { who: 'SIMONE', t: 'Obrigada por não perguntar.' },
+        ],
+      },
+    },
+  }),
+  volta: () => ({
+    id: 'd02_volta',
+    bg: 'calcada',
+    cast: [],
+    nodes: {
+      start: {
+        lines: [
+          { who: 'NARRADOR', t: '19:35. A Dona Dirce está no portão dela, do outro lado da rua, com a vassoura parada e o rádio AM no peitoril.' },
+          { who: 'DIRCE', t: 'Vi o homem do DAE na sua porta hoje, {dr}. Ô, que vergonha esse Nogueira. Dívida do inquilino de antes é do inquilino de antes.' },
+          { who: 'DIRCE', t: 'O tal do Valdemar saiu de madrugada com um fusca cheio de lâmpada. Eu vi. Ninguém me perguntou.' },
+        ],
+      },
+    },
+  }),
   timeline: [
     { at: '07:01', kind: 'radio', who: 'USA 01 · BENÉ', text: 'Central, USA 01 em QRV na base Centro. Segundo plantão, {dr}? O primeiro a gente nunca esquece. O segundo é que ensina.' },
     { at: '09:10', kind: 'interfone', who: 'DR. PEIXOTO', text: '{Dr}, Peixoto. Só pra constar: cada básica que sai custa setecentos e vinte reais pra OS. A avançada, mil oitocentos e cinquenta. Trote é dinheiro jogado no asfalto, viu? Página 2. Bom dia.' },
     { at: '12:16', kind: 'simone', who: 'SIMONE', text: 'Ligação muda nem sempre é engano, {dr}. Às vezes é alguém que não consegue falar. Antes de carimbar, liga de volta.' },
-    { at: '12:40', kind: 'simone', who: 'SIMONE', text: 'Almoço é pão com mortadela na mesa. Se {m:o senhor|a senhora} quiser, tem metade aqui.' },
     { at: '15:05', kind: 'radio', who: 'USB 03 · LIA', text: 'Central, USB 03 em QRV na base Norte. E alguém avisa a padaria da Av. Norte que pão de queijo frio é crime.' },
     { at: '17:40', kind: 'simone', who: 'SIMONE', text: 'Amanhã os moleques voltam pra escola e o telefone respira um pouco. Até o meio-dia, pelo menos.' },
   ],
@@ -111,11 +198,13 @@ export const DAY = day({
       voice: 'adolescente',
       note: 'Voz de moleque. Diz que tem um esfaqueado na frente da escola.',
       noteFixed: true,
-      addr: { rua: 'Rua Ipê', n: 905, bairro: 'Jardim Norte', ref: 'Na frente da Escola Estadual, perto do portão.' },
-      amb: ['risadas', 'videogame'],
+      // 1.1 (trotes-folgados.md): sem risada. A pista é o cochicho, a contradição nas perguntas fixas, o fundo
+      // (videogame, nenhum grito, nenhum aluno) e a escola fechada do jornal. O endereço quem confere é a Simone.
+      addr: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte', ref: 'Na frente da Escola Estadual, perto do portão.' },
+      amb: ['videogame'],
       open: [
         'Alô, emergência? Corre, corre! Tem um cara {{esfaqueado|esfaqueado}} aqui na frente da {{Escola Estadual|escola}}! Tá {{jorrando sangue|jorrando}}, manda rápido!',
-        '[{{risadas abafadas, alguém cobrindo o fone|risadas}}]',
+        '[{{alguém cobre o fone; do outro lado, um cochicho e uma musiquinha de videogame|risadas}}]',
       ],
       q: {
         oque: ['Dois cara brigaram, aí um puxou a faca e... pá! Na barriga!', 'Tá cheio de {{aluno em volta gritando|alunos}}, mano!'],
@@ -125,10 +214,12 @@ export const DAY = day({
         inicio: 'Agora! Agorinha! Corre!',
         sangramento: 'Muito! Tá fazendo uma poça, {{tipo filme|filme}}!',
         historico: 'Eu sei lá, mano, nem conheço o cara.',
-        paciente: ['Ele não pode falar, ele tá... desmaiado. Morto. Desmaiado-morto.', '[risadas]'],
+        paciente: ['Ele não pode falar, ele tá... desmaiado. Morto. Desmaiado-morto.', '[cochicho: "fala que ele tá morto!"]'],
         referencia: 'Na frente da escola, ué! Do lado do muro pichado.',
         seguranca: 'Seguro, seguro. O cara da faca já vazou. Correu pra... pra lá.',
-        confronto_quadro: ['[risadas]', '[desliga]'],
+        confronto_quadro: ['[silêncio]', '[desliga]'],
+        pulso: ['Tem, tem... tá batendo...', '[{{cochicho: "fala que não tem!"|cochicho_pulso}}]', '...não tem. Não tem pulso nenhum.'],
+        pele: 'Branco. Não... vermelho. De sangue, sabe? Vermelho de sangue.',
       },
       extra: [
         {
@@ -139,10 +230,10 @@ export const DAY = day({
           // 1.1: aparece quando ele diz onde é ("na frente da escola") — o jornal do dia diz que ela está fechada
           unlockedBy: ['oque', 'seguranca', 'callback'],
           say: 'A Escola Estadual está fechada hoje, para dedetização. Que alunos são esses na porta?',
-          a: ['Ah... é que... são os aluno da... da outra escola!', '[gargalhada de três vozes]', '[desliga]'],
+          a: ['Ah... é que... são os aluno da... da outra escola!', '[alguém do lado: "desliga, desliga!"]', '[desliga]'],
         },
       ],
-      callback: ['[chama... chama...]', '[{{caixa postal, voz de adolescente: "Fala aí, é o Biel. Não posso atender, tô ocupado salvando vidas. Deixa recado!" (risada)|retorno_caixa}}]'],
+      callback: ['[chama... chama...]', '[{{caixa postal, voz de adolescente: "Fala aí, é o Biel. Não posso atender, tô ocupado salvando vidas. Deixa recado!"|retorno_caixa}}]'],
       links: [
         { a: 'alunos', b: 'doc:escola_fechada', insight: 'Cheio de aluno na porta de uma escola que está fechada hoje para dedetização (jornal): horário incompatível. Sinal de trote (Manual p.2).', unlock: 'fechada' },
         { a: 'mapa', b: 'doc:escola_fechada', insight: 'O mapa confirma: o endereço é a Escola Estadual — que está fechada hoje. Ninguém "na saída" de uma escola sem aula.', unlock: 'fechada' },
@@ -186,7 +277,7 @@ export const DAY = day({
         sangramento: 'Um cortinho em cima da sobrancelha. Sangrou, mas já pus um pano e parou.',
         historico: ['Epilepsia desde pequeno. Toma remédio de manhã e de noite.', '...Quer dizer, {{tava sem fazia três dias|sem_remedio}}. Acabou e o posto não tinha. Disseram que chega semana que vem.'],
         paciente: ['MARLENE: Gustavo! Gustavo, fala com {m:o moço|a moça}!', 'GUSTAVO: Hmmm... me deixa... dormir...'],
-        referencia: 'Casa amarela em frente ao salão de beleza da Neide.',
+        referencia: 'Casa amarela em frente ao salão de beleza da Vânia.',
         seguranca: 'Tranquilo. Só eu e ele. Afastei a mesa.',
       },
       extra: [
@@ -198,7 +289,7 @@ export const DAY = day({
         { a: 'dois_min', b: 'manual:amarelo', insight: 'Convulsão que já passou, com trauma na cabeça e sem remédio há três dias: amarelo → USB (Manual p.1).' },
         { a: 'sem_remedio', b: 'testa', insight: 'Sem o remédio há três dias e bateu a cabeça na queda: precisa ser avaliado. Ninguém aqui consegue levá-lo.' },
       ],
-      patient: { name: 'Gustavo Teixeira', age: 17, sex: 'M' },
+      patient: { name: 'Gustavo Paiva', age: 17, sex: 'M' },
       truth: { dx: 'Pós-crise convulsiva em epiléptico (sem remédio, corte na testa)', sev: 'amarelo', ok: ['USB'], risk: { good: 100, bad: 280, needs: 'USB' } },
       radio: {
         ok: 'Central, {unit} no local. Rapaz de 17, pós-ictal, acordando. Corte pequeno no supercílio. Sem anticonvulsivante há três dias, "acabou no posto". Removendo pra UPA.',
@@ -223,7 +314,7 @@ export const DAY = day({
       amb: ['tv', 'passaros'],
       open: (c) => [
         `${saud(c)}, {meu} {filho}! É a Cida! É você, {o} {dr} de ontem? Reconheci pela voz!`,
-        'Ó, eu liguei pra dar notícia boa, pra variar: medi a pressão na farmácia do Seu Toninho e deu {{treze por oito|pressao_boa}}! Treze por oito! Nem acreditei.',
+        'Ó, eu liguei pra dar notícia boa, pra variar: medi a pressão na farmácia do Seu Gervásio e deu {{treze por oito|pressao_boa}}! Treze por oito! Nem acreditei.',
       ],
       q: {
         oque: 'Nada, {meu} {filho}! É notícia boa. A gente só liga pra notícia ruim, né? Hoje não.',
@@ -235,6 +326,8 @@ export const DAY = day({
         paciente: 'Sou eu mesma, {meu} {filho}!',
         sangramento: 'Credo, não.',
         seguranca: 'Seguro. Eu e o Bolinha. O gato.',
+        pulso: 'Setenta e oito, a moça mediu. Eu já sei contar no relógio, sabia? A Noêmia, minha vizinha, me ensinou.',
+        pele: 'Corada, {meu} {filho}. Até a moça da farmácia falou que eu tô bonita hoje.',
       },
       extra: [
         {
@@ -297,6 +390,8 @@ export const DAY = day({
         paciente: ['RAPAZ 2: Tô bem, tô bem... ai, ele tá mexendo! Tá mexendo!', '[gargalhada geral]'],
         referencia: 'No pesqueiro da Beira-Rio, do lado da ponte.',
         seguranca: 'Seguro. Só tem a gente e um isopor de cerveja.',
+        pele: 'Prateada... de lambari! [gargalhadas] Não, sério: vermelho de tanto rir.',
+        pulso: 'O do peixe ou o dele? [risadas]',
       },
       extra: [
         { id: 'tosse', label: 'Ele tosse? Fala?', say: 'Ele consegue falar e tossir? Está com a mão no pescoço?', a: 'Falar? Ele não para de falar! [risadas] Tá cantando agora.' },
@@ -628,7 +723,8 @@ export const DAY = day({
         label: 'Conta de água do antigo inquilino',
         amount: 70,
         when: (c) => !c.flag('pagou_agua') && !c.flag('brigou_nogueira'),
-        desc: 'Dezembro e janeiro, no nome de Valdemar Pires. "O débito é do imóvel." Sem pagar, o DAE corta a água amanhã.',
+        desc: (c) =>
+          (c.flag('agua_sem_dinheiro') ? '{Oconj}: "Hoje não dá." ' : '') + 'Dezembro e janeiro, no nome de Valdemar Pires. "O débito é do imóvel." Sem pagar, o DAE corta a água amanhã.',
         onPay: fx.set('pagou_agua'),
         onSkip: fx.all(fx.set('agua_cortada'), fx.add('lacos', -1, 'cortaram a água de casa')),
       },
@@ -675,17 +771,23 @@ export const DAY = day({
           next: 'fim',
         },
         recua: {
+          onEnter: pagaAgua,
           lines: [
             { who: 'NOGUEIRA', t: 'Isso, isso. Gente boa é outra coisa. Um abraço pra família!' },
-            { who: 'LUCIA', t: '({c:ela|ele} olha pro telefone desligado) "Gente boa". Então a gente paga até amanhã cedo.' },
+            { who: 'LUCIA', t: '({c:ela|ele} olha pro telefone desligado) "Gente boa". Então a gente paga.' },
+            { who: 'NARRADOR', t: '{Oconj} separa setenta reais na hora e prende o comprovante na geladeira, com o ímã da pizzaria.', when: (c) => c.flag('pagou_agua') },
+            { who: 'LUCIA', t: 'Hoje não dá, {nome}. Amanhã. Se o homem do DAE vier antes, eu converso com ele.', when: (c) => c.flag('agua_sem_dinheiro') },
           ],
           next: 'fim',
         },
         pagar: {
+          onEnter: pagaAgua,
           lines: [
             { who: 'LUCIA', t: 'Eu também acho. Aquele homem é capaz de inventar um aumento no aluguel só de birra.' },
             { who: 'ZELIA', t: 'Setenta reais pra pagar o banho de um caloteiro que levou as lâmpadas...' },
-            { who: 'LUCIA', t: 'Pelo menos o nosso banho continua.' },
+            { who: 'NARRADOR', t: '{Oconj} separa as notas na hora, antes que alguém mude de ideia, e prende o comprovante na geladeira com o ímã da pizzaria.', when: (c) => c.flag('pagou_agua') },
+            { who: 'LUCIA', t: 'Pelo menos o nosso banho continua.', when: (c) => c.flag('pagou_agua') },
+            { who: 'LUCIA', t: '(contando o dinheiro da carteira duas vezes) ...Hoje não dá. Amanhã. A conta fica aqui, em cima do filtro.', when: (c) => c.flag('agua_sem_dinheiro') },
           ],
           next: 'fim',
         },

@@ -108,7 +108,7 @@ export const LANDMARKS: Landmark[] = [
   { id: 'base_norte', name: 'Base Norte (USA 02 · USB 03 · USB 05)', short: 'BASE NORTE', kind: 'base', addr: { rua: 'Av. Norte', n: 301, bairro: 'Jardim Norte' } },
   { id: 'base_ve', name: 'Base Vila Esperança (USA 03 · USB 01)', short: 'BASE V.ESP.', kind: 'base', addr: { rua: 'Rua das Acácias', n: 901, bairro: 'Vila Esperança' } },
   { id: 'casa', name: 'Sua casa — Rua das Acácias, 40', short: 'SUA CASA', kind: 'casa', addr: { rua: 'Rua das Acácias', n: 40, bairro: 'Vila Esperança' } },
-  { id: 'escola', name: 'Escola Estadual Prof. Aurélio Matos', short: 'ESC. ESTADUAL', kind: 'escola', addr: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte' } },
+  { id: 'escola', name: 'Escola Estadual Prof. Aurélio Valença', short: 'ESC. ESTADUAL', kind: 'escola', addr: { rua: 'Rua Ipê', n: 901, bairro: 'Jardim Norte' } },
   { id: 'escola_davi', name: 'E.M. Monteiro Lobato (escola do Liam)', short: 'ESC. LIAM', kind: 'escola', addr: { rua: 'Rua Sabiá', n: 501, bairro: 'Vila Esperança' } },
   { id: 'igreja_batista', name: 'Igreja Batista Nova Aliança', short: 'IGREJA', kind: 'igreja', addr: { rua: 'Rua Bahia', n: 300, bairro: 'Centro' } },
   { id: 'matriz', name: 'Igreja Matriz de N. Sra. Aparecida', short: 'MATRIZ', kind: 'igreja', addr: { rua: 'Rua XV de Novembro', n: 1201, bairro: 'Centro' } },

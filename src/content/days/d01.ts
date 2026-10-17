@@ -19,6 +19,8 @@ export const DAY = day({
       { title: 'Calor de 33 °C deve durar a semana', text: 'A Defesa Civil recomenda hidratação. As mangueiras do Jardim Primavera estão floridas e cheias de abelhas.' },
       { title: 'Novela das seis bate recorde', text: '"Amor de Cristal" chega ao capítulo do segredo de Marta. Telespectadoras prometem não perder um minuto.' },
       { title: 'Vereador recebe título de "Amigo da Saúde"', text: 'A Câmara aprovou por unanimidade a homenagem ao vereador Arlindo Matos.' },
+      // ROTEIRO R2 (pista): os seis leitos do 4º andar que o PS do Regional diz que não existem
+      { title: 'Regional inaugura ala nova com seis leitos no 4º andar', text: 'A ala foi reformada com verba da Saúde+ Gestão, a mesma OS que assume hoje a Regulação. A diretoria não informou quando os leitos começam a receber pacientes "do sistema".' },
     ],
     notice: 'Seu primeiro plantão começa às 07:00. Leia a página 1 do Manual de Regulação.',
     ad: 'FARMÁCIA POPULAR — remédios de pressão, diabetes e asma de graça, com receita do SUS.',
@@ -51,7 +53,7 @@ export const DAY = day({
       fim: { lines: [{ who: 'SIMONE', t: 'O telefone vai tocar, {dr}. Clica no cartão da fila pra atender. Eu vou falando o resto.' }] },
     },
   }),
-  // 1.1 — exemplo dos ganchos novos (o texto dos 20 dias é da Onda 2; ver docs/roteiro-1.1/)
+  // 1.1 — ida, almoço e volta (docs/roteiro-1.1/ida-volta.md e almoco.md)
   ida: () => ({
     id: 'd01_ida',
     bg: 'calcada',
@@ -137,11 +139,13 @@ export const DAY = day({
         idade: 'Setenta e nove, graças a Deus.',
         consciencia: 'Tô aqui conversando com você, uai!',
         respira: 'Respirando, respirando. Até demais, o médico fala que eu falo muito.',
-        inicio: 'Medi agora de manhã, na farmácia do Seu Toninho.',
+        inicio: 'Medi agora de manhã, na farmácia do Seu Gervásio. A Drogaria do Gervásio, sabe? Do lado da padaria do Toninho.',
         historico: 'Pressão. Tomo o remédio certinho de manhã. {{Hoje já tomei.|cida_tomou}}',
         paciente: 'Sou eu mesma, {meu} {filho}!',
         sangramento: 'Sangue? Credo, não.',
         seguranca: 'Seguro, seguro. Só eu e o gato.',
+        pulso: 'A moça da farmácia contou: oitenta e dois. Batendo direitinho, ela disse. Eu senti aqui no pulso também, ó. Tum, tum.',
+        pele: 'Corada! Passei até um batonzinho pra ir na farmácia.',
       },
       extra: [
         {
@@ -198,6 +202,8 @@ export const DAY = day({
         historico: 'Pressão e osteoporose. Toma cálcio.',
         paciente: ['MÃE: Ai, foi o quadril... não consigo levantar.', 'MÃE: Bater a cabeça eu não bati, não, viu?'],
         seguranca: 'Seguro, só eu e ela.',
+        pulso: 'Tá batendo, sim, forte. Rápido de nervoso, eu acho. O meu também tá.',
+        pele: 'Branquinha de dor, mas normal. Não tá roxa, não tá suando.',
       },
       links: [
         { a: 'perna_curta', b: 'manual:amarelo', insight: 'Idosa, queda sobre o quadril, perna encurtada e virada para fora: provável fratura de fêmur. Amarelo → USB (Manual p.1).' },
@@ -237,6 +243,8 @@ export const DAY = day({
         paciente: 'Ele não fala português, {m:moço|moça}. [risadas]',
         seguranca: 'Seguro, mas traz arma laser! [risadas]',
         sangramento: 'Sangue azul! Muito!',
+        pulso: 'Tem três! Um em cada coração! [risadas]',
+        pele: 'Verde, {m:moço|moça}! Verde-limão! Com umas bolinhas! [gargalhada]',
       },
       links: [
         { a: 'et', b: 'risadas', insight: 'Relato absurdo e risadas abafadas ao fundo: sinais clássicos de trote.' },
@@ -274,6 +282,8 @@ export const DAY = day({
         historico: 'Não conheço ele, {m:moço|moça}!',
         paciente: 'Ele não fala! Ele não fala!',
         seguranca: 'Seguro. Só um monte de gente em volta.',
+        pulso: ['Pulso? Onde? No pescoço? ...Peraí. [respiração ofegante]', 'Eu {{não tô sentindo nada|sem_pulso}}, {m:moço|moça}! Nada!'],
+        pele: 'Tá {{roxo na boca|roxo}}, meio cinza. Tá ficando cinza!',
       },
       links: [
         { a: 'agonica', b: 'manual:parada', insight: '"Ronco de vez em quando" em quem não responde é respiração agônica: PARADA CARDÍACA. USA + RCP guiada (Manual p.1).' },
@@ -291,7 +301,8 @@ export const DAY = day({
       diary: {
         alive: 'Parada na calçada da Av. Brasil. Voltou com dois choques.',
         dead: 'Parada na calçada da Av. Brasil. Ninguém sabia o nome dele.',
-        later: [{ day: 4, text: 'Identificado: Edson Ribeiro, 56, porteiro. Teve alta da UTI.', when: (c) => c.s.diary.some((d) => d.id === 'd01_parada' && d.kind === 'vivo') }],
+        // ROTEIRO (Teia 1.1): o Edson é porteiro do Ed. Aurora (Rua XV, 1950) — o prédio do Henrique e da Dona Iolanda
+        later: [{ day: 4, text: 'Identificado: Edson Ribeiro, 56, porteiro do Ed. Aurora, na Rua XV. Teve alta da UTI. Mandou dizer que vai voltar pra portaria "pra contar pra todo mundo".', when: (c) => c.s.diary.some((d) => (d.id === 'd01_parada' || d.callDef === 'd01_parada') && d.kind === 'vivo') }],
       },
     }),
     // ------------------------------------------------------------------ 5
@@ -451,7 +462,7 @@ export const DAY = day({
       nodes: {
         start: {
           lines: [
-            { who: 'NARRADOR', t: 'Tem bolo de fubá na mesa e uma vela de aniversário reaproveitada, espetada torta.' },
+            { who: 'NARRADOR', t: 'Tem bolo de fubá na mesa e uma vela de aniversário reaproveitada, espetada torta. O Ozzy fica de pé nas patas de trás, de olho na vela.' },
             { who: 'LUCIA', t: 'Primeiro plantão! E aí, {nome}? Salvou o mundo?' },
             { who: 'DAVI', t: '{Pai}, você salvou alguém pelo telefone?' },
           ],
@@ -479,7 +490,9 @@ export const DAY = day({
             { who: 'ZELIA', t: 'Amanhã tem o grupo de senhoras da igreja. Tem uma lá que liga pra vocês todo dia, sabia? Diz que é a única voz que ela ouve o dia inteiro.' },
             { who: 'LUCIA', t: 'Liam, mostra o desenho.' },
             { who: 'DAVI', t: 'Fiz a ambulância grande. A que salva. E você do lado, com o telefone.' },
-            { who: 'NARRADOR', t: 'Ele prende o desenho na geladeira com um ímã de pizzaria.' },
+            { who: 'NARRADOR', t: 'Ele prende o desenho na geladeira com o ímã da pizzaria do Seu Toninho (de dia padaria, de noite pizzaria).' },
+            { who: 'NARRADOR', t: 'Quando vocês olham de novo para a mesa, a vela sumiu. O Ozzy está embaixo da cadeira da Dona Zélia, com cara de quem nunca viu uma vela na vida.' },
+            { who: 'ZELIA', t: 'Deixa. Vela usada é dele. Esse cachorro já assoprou mais aniversário que eu.' },
           ],
           onEnter: fx.set('desenho_geladeira'),
         },
