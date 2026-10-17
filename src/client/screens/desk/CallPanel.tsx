@@ -10,22 +10,59 @@ import { fmtDur } from '../../../engine/util';
 /** progresso de digitação por ligação (fora do React para sobreviver a re-renderizações).
  *  Chave = o objeto da ligação, não o id: ids se repetem ao refazer o dia e no Infinito (inf1_0...),
  *  e o progresso antigo fazia o texto aparecer pronto e sem voz. */
-const typed = new WeakMap<CallRT, { done: number; cur?: number; start: number }>();
+const typed = new WeakMap<CallRT, { done: number; cur?: number; start: number; linger?: boolean; lingerEnd?: number }>();
+
+/** quanto tempo a última fala fica na tela depois que a ligação fechou com quem liga ainda falando */
+const LINGER_MS = 2600;
+
+/**
+ * A ligação fechou (encerrar, desligou) com falas de quem liga ainda por aparecer — a última
+ * palavra do folgado, o "[desliga]": a transcrição fica na tela até essas falas aparecerem (com
+ * voz) e mais um instante. Fechamento comum (carimbo) não segura a tela.
+ */
+function lingers(c: CallRT): boolean {
+  const st = typed.get(c);
+  if (!st) return false;
+  const last = c.lines.length ? c.lines[c.lines.length - 1].id : 0;
+  if (!st.linger) {
+    if (!c.lines.some((l) => l.id > st.done && (l.kind === 'caller' || l.kind === 'ruido'))) return false;
+    st.linger = true;
+  }
+  if (st.done < last) return true;
+  st.lingerEnd ??= performance.now() + LINGER_MS;
+  return performance.now() < st.lingerEnd;
+}
 
 export function CallPanel() {
   const s = useStore();
   const g = s.game!;
   const sh = g.shift!;
-  const call = sh.active();
+  const live = sh.active();
+  const lastRef = useRef<CallRT | undefined>(undefined);
+  const [, setTick] = useState(0);
+  if (live) lastRef.current = live;
+  let call = live;
+  if (!live && lastRef.current) {
+    if (lingers(lastRef.current)) call = lastRef.current;
+    else lastRef.current = undefined;
+  }
+  const closed = !!call && call !== live;
+  // depois da última fala, um redesenho para tirar a ligação fechada da tela (mesmo com o relógio parado)
+  useEffect(() => {
+    if (!closed) return;
+    const t = setInterval(() => setTick((x) => x + 1), 400);
+    return () => clearInterval(t);
+  }, [closed]);
   return (
     <section className="call-panel">
       <div className="monitor bezel">
-        <div className="monitor-screen screen">
-          {call ? <CallHeader call={call} /> : <div className="line-free">{sh.sh.closing ? 'Turno encerrado.' : 'Linha livre. Atenda uma ligação da fila.'}</div>}
+        <div className={'monitor-screen screen' + (closed ? ' closed' : '')}>
+          {call ? <CallHeader call={call} closed={closed} /> : <div className="line-free">{sh.sh.closing ? 'Turno encerrado.' : 'Linha livre. Atenda uma ligação da fila.'}</div>}
           {call && <Transcript call={call} />}
         </div>
       </div>
-      {call && <Keypad call={call} />}
+      {call && !closed && <Keypad call={call} />}
+      {closed && <div className="keypad idle">Ligação encerrada.</div>}
       {!call && <div className="keypad idle">As perguntas aparecem aqui quando você atende.</div>}
     </section>
   );
@@ -37,7 +74,7 @@ export function postitClass(call: CallRT): string {
   return call.noteBox ? ` pi-${call.noteBox}` : '';
 }
 
-function CallHeader({ call }: { call: CallRT }) {
+function CallHeader({ call, closed }: { call: CallRT; closed?: boolean }) {
   const g = store.game!;
   const sh = g.shift!;
   const def = sh.defOf(call);
@@ -47,8 +84,8 @@ function CallHeader({ call }: { call: CallRT }) {
       <span className="ch-num">☎ {def.num}</span>
       <span className="ch-who">{resolveTokens(def.callerName ?? def.caller, g.st.gender, g.st)}</span>
       {call.noteText && call.noteBox && <i className={'ch-chip' + postitClass(call)} title={`Post-it da Simone: ${POSTIT_LABEL[call.noteBox]}`} />}
-      <span className="ch-dur">{fmtDur(dur)}</span>
-      {call.patience < 50 && <span className="ch-imp">{call.patience < 25 ? 'perdendo a paciência' : 'impaciente'}</span>}
+      <span className="ch-dur">{closed ? 'encerrada' : fmtDur(dur)}</span>
+      {!closed && call.patience < 50 && <span className="ch-imp">{call.patience < 25 ? 'perdendo a paciência' : 'impaciente'}</span>}
     </div>
   );
 }
